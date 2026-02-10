@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Water Cycle Eco-Manager</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #87CEEB;
+            font-family: 'Fredoka', sans-serif;
+            touch-action: none;
+            user-select: none;
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* --- UI Layers --- */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        /* HUD */
+        .hud-panel {
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+        }
+
+        .stat-box {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            color: #2c3e50;
+            text-align: center;
+            min-width: 80px;
+            margin-bottom: 10px;
+        }
+
+        .stat-value { font-size: 1.4rem; font-weight: 700; color: #2980b9; }
+        .stat-label { font-size: 0.8rem; color: #7f8c8d; text-transform: uppercase; font-weight: bold; }
+
+        /* Controls for Lab Mode */
+        #lab-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px;
+            border-radius: 20px;
+            display: none; /* Hidden by default */
+            gap: 20px;
+            pointer-events: auto;
+            backdrop-filter: blur(5px);
+            color: white;
+            width: 80%;
+            max-width: 600px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        input[type=range] {
+            accent-color: #FFD700;
+            cursor: pointer;
+        }
+
+        /* Menus */
+        .menu-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(44, 62, 80, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 50;
+            transition: opacity 0.3s;
+        }
+
+        .menu-title {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-align: center;
+            background: linear-gradient(to right, #4facfe, #00f2fe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .btn-grid {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .menu-btn {
+            background: white;
+            color: #2c3e50;
+            border: none;
+            padding: 20px 30px;
+            border-radius: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            font-family: 'Fredoka', sans-serif;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            min-width: 150px;
+            text-align: center;
+            pointer-events: auto;
+        }
+
+        .menu-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        .menu-btn.primary {
+            background: #FFD700;
+            color: #d35400;
+        }
+
+        .menu-btn.secondary {
+            background: #a29bfe;
+            color: white;
+        }
+
+        /* Biome Selector */
+        .biome-select {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .biome-btn {
+            padding: 10px 15px;
+            border: 2px solid rgba(255,255,255,0.3);
+            background: rgba(0,0,0,0.2);
+            color: white;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            pointer-events: auto;
+        }
+        .biome-btn.active {
+            background: white;
+            color: #2c3e50;
+            border-color: white;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            pointer-events: auto;
+            font-weight: bold;
+            display: none;
+        }
+
+        /* Floating Text */
+        .float-text {
+            position: absolute;
+            color: #fff;
+            font-weight: 800;
+            font-size: 1.2rem;
+            pointer-events: none;
+            animation: floatUp 1s ease-out forwards;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            z-index: 10;
+            white-space: nowrap;
+        }
+
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-40px) scale(1.1); }
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Main Menu -->
+    <div id="main-menu" class="menu-screen">
+        <h1 class="menu-title">The Water Cycle<br>Eco-Manager</h1>
+        
+        <p style="margin-bottom: 5px; opacity: 0.8;">Select a Biome:</p>
+        <div class="biome-select">
+            <button class="biome-btn active" onclick="selectBiome('PLAINS')" id="btn-PLAINS">Green Plains</button>
+            <button class="biome-btn" onclick="selectBiome('DESERT')" id="btn-DESERT">Sandy Desert</button>
+            <button class="biome-btn" onclick="selectBiome('JUNGLE')" id="btn-JUNGLE">Misty Jungle</button>
+        </div>
+
+        <div class="btn-grid">
+            <button class="menu-btn primary" onclick="startMode('GAME')">
+                🌱 Eco-Tycoon<br><span style="font-size:0.9rem; font-weight:normal">Grow a forest!</span>
+            </button>
+            <button class="menu-btn secondary" onclick="startMode('LAB')">
+                🧪 Simulation Lab<br><span style="font-size:0.9rem; font-weight:normal">Control the weather</span>
+            </button>
+        </div>
+        <p style="margin-top: 30px; opacity: 0.6; font-size: 0.9rem;">High Score: <span id="high-score-val">0</span> trees</p>
+    </div>
+
+    <!-- HUD -->
+    <div id="ui-layer">
+        <button class="back-btn" id="back-btn" onclick="goToMenu()">Exit to Menu</button>
+        
+        <div class="hud-panel">
+            <div style="pointer-events: auto;">
+                <div class="stat-box" id="score-box">
+                    <div class="stat-label">Trees Alive</div>
+                    <div class="stat-value" id="tree-count">0</div>
+                </div>
+            </div>
+            
+            <div class="stat-box">
+                <div class="stat-label">Soil Moisture</div>
+                <div class="stat-value" id="water-level">Normal</div>
+            </div>
+        </div>
+
+        <!-- LAB CONTROLS -->
+        <div id="lab-controls">
+            <div class="slider-group">
+                <label>Sun Heat</label>
+                <input type="range" min="0" max="100" value="50" id="heat-slider">
+            </div>
+            <div class="slider-group">
+                <label>Wind Speed</label>
+                <input type="range" min="0" max="100" value="20" id="wind-slider">
+            </div>
+            <div class="slider-group">
+                <label>Cloud Density</label>
+                <input type="range" min="0" max="100" value="50" id="cloud-slider">
+            </div>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        /**
+         * Water Cycle Game Engine v4
+         * Updated: Trees die only on Heat AND Dryness
+         */
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // UI Elements
+        const menuScreen = document.getElementById('main-menu');
+        const labControls = document.getElementById('lab-controls');
+        const backBtn = document.getElementById('back-btn');
+        const treeCountEl = document.getElementById('tree-count');
+        const waterLevelEl = document.getElementById('water-level');
+        const scoreBox = document.getElementById('score-box');
+        const highScoreEl = document.getElementById('high-score-val');
+        
+        // Lab Sliders
+        const sHeat = document.getElementById('heat-slider');
+        const sWind = document.getElementById('wind-slider');
+        const sCloud = document.getElementById('cloud-slider');
+
+        // Game State
+        let MODE = 'MENU'; // MENU, GAME, LAB
+        let BIOME = 'PLAINS'; // PLAINS, DESERT, JUNGLE
+        let width, height;
+        let animationId;
+        let frame = 0;
+        let highScore = localStorage.getItem('waterCycleHighScore') || 0;
+        highScoreEl.innerText = highScore;
+
+        // Physics/Simulation Vars
+        let sunIntensity = 0; // 0-100
+        let windSpeed = 0;
+        let humidity = 0; // Stored vapor
+        let soilMoisture = 50; // 0-100
+        let oceanLevel = 100; // Visual only
+
+        // Entity Lists
+        let particles = [];
+        let clouds = [];
+        let trees = [];
+        
+        // Assets Configuration
+        const SUN = { x: 0, y: 0, r: 50, color: '#FDB813' };
+        const MOUNTAIN = { peaks: [], color: '#8D6E63' };
+
+        // Biome Configs
+        const BIOME_DATA = {
+            PLAINS: {
+                skyTop: "#3498db", skyBot: "#b3e5fc",
+                groundColor: "#8D6E63",
+                oceanColor: "#0288D1",
+                moistureDecay: 0.03,
+                growthRate: 0.003,
+                startingMoisture: 50,
+                rainValue: 1.0,
+                treeType: 'OAK'
+            },
+            DESERT: {
+                skyTop: "#e67e22", skyBot: "#f1c40f",
+                groundColor: "#e6b87d",
+                oceanColor: "#2980b9",
+                moistureDecay: 0.06, // Dries very fast
+                growthRate: 0.002, // Slow growth
+                startingMoisture: 30,
+                rainValue: 1.5, // Rain is precious
+                treeType: 'CACTUS'
+            },
+            JUNGLE: {
+                skyTop: "#00695c", skyBot: "#80cbc4",
+                groundColor: "#3e2723",
+                oceanColor: "#004d40",
+                moistureDecay: 0.02, // Dries slow
+                growthRate: 0.005, // Fast growth
+                startingMoisture: 70,
+                rainValue: 1.0,
+                treeType: 'PALM'
+            }
+        };
+
+        // --- Core Loop & Init ---
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+            
+            SUN.x = width * 0.15;
+            SUN.y = height * 0.15;
+
+            generateTerrain();
+        }
+        window.addEventListener('resize', resize);
+
+        function selectBiome(b) {
+            BIOME = b;
+            // Update UI buttons
+            document.querySelectorAll('.biome-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${b}`).classList.add('active');
+            generateTerrain(); // Preview terrain in background if we wanted, but map hidden by menu
+        }
+
+        function generateTerrain() {
+            MOUNTAIN.peaks = [];
+            MOUNTAIN.color = BIOME_DATA[BIOME].groundColor;
+            
+            if(BIOME === 'PLAINS') {
+                MOUNTAIN.peaks = [
+                    {x: 0, y: height}, {x: width * 0.5, y: height}, 
+                    {x: width * 0.65, y: height * 0.7}, 
+                    {x: width * 0.8, y: height * 0.4}, 
+                    {x: width * 0.95, y: height * 0.6}, 
+                    {x: width, y: height * 0.5}, {x: width, y: height}
+                ];
+            } else if (BIOME === 'DESERT') {
+                // Flatter, dunes
+                MOUNTAIN.peaks = [
+                    {x: 0, y: height}, {x: width * 0.4, y: height}, 
+                    {x: width * 0.5, y: height * 0.8}, 
+                    {x: width * 0.6, y: height * 0.85}, 
+                    {x: width * 0.7, y: height * 0.75}, 
+                    {x: width * 0.85, y: height * 0.8}, 
+                    {x: width, y: height * 0.75}, {x: width, y: height}
+                ];
+            } else if (BIOME === 'JUNGLE') {
+                // Jagged
+                MOUNTAIN.peaks = [
+                    {x: 0, y: height}, {x: width * 0.4, y: height},
+                    {x: width * 0.5, y: height * 0.6},
+                    {x: width * 0.6, y: height * 0.8},
+                    {x: width * 0.7, y: height * 0.3}, // High peak
+                    {x: width * 0.8, y: height * 0.7},
+                    {x: width * 0.9, y: height * 0.5},
+                    {x: width, y: height}
+                ];
+            }
+        }
+
+        function startMode(modeName) {
+            MODE = modeName;
+            menuScreen.style.opacity = 0;
+            setTimeout(() => menuScreen.style.display = 'none', 300);
+            backBtn.style.display = 'block';
+
+            // Reset Game State
+            particles = [];
+            clouds = [];
+            trees = [];
+            
+            // Set biome specifics
+            soilMoisture = BIOME_DATA[BIOME].startingMoisture;
+            humidity = 0;
+            
+            resize(); // Force regen terrain for biome
+
+            if (MODE === 'LAB') {
+                labControls.style.display = 'flex';
+                scoreBox.style.display = 'none';
+                generateTrees(5); 
+            } else {
+                labControls.style.display = 'none';
+                scoreBox.style.display = 'block';
+                sunIntensity = 0;
+                // Give player a fair start: 3 seeds
+                generateTrees(3); 
+            }
+
+            if (!animationId) animate();
+        }
+
+        function goToMenu() {
+            MODE = 'MENU';
+            menuScreen.style.display = 'flex';
+            setTimeout(() => menuScreen.style.opacity = 1, 50);
+            backBtn.style.display = 'none';
+            labControls.style.display = 'none';
+            
+            if (trees.length > highScore) {
+                highScore = trees.length;
+                localStorage.setItem('waterCycleHighScore', highScore);
+                highScoreEl.innerText = highScore;
+            }
+        }
+
+        function generateTrees(count) {
+            // Find land range
+            let startX = width * 0.5;
+            if(BIOME === 'DESERT') startX = width * 0.4;
+            
+            for(let i=0; i<count; i++) {
+                const tx = startX + Math.random() * (width - startX - 50) + 20;
+                const ty = getTerrainHeightAt(tx);
+                trees.push(new Tree(tx, ty));
+            }
+        }
+
+        function getTerrainHeightAt(x) {
+            const peaks = MOUNTAIN.peaks;
+            if(x < peaks[1].x) return height; // Water
+            
+            for(let i=0; i<peaks.length-1; i++) {
+                if(x >= peaks[i].x && x <= peaks[i+1].x) {
+                    const t = (x - peaks[i].x) / (peaks[i+1].x - peaks[i].x);
+                    return peaks[i].y + t * (peaks[i+1].y - peaks[i].y);
+                }
+            }
+            return height;
+        }
+
+        // --- Entities ---
+
+        class Particle {
+            constructor(type, x, y) {
+                this.type = type; 
+                this.x = x;
+                this.y = y;
+                this.life = 1;
+                this.vx = (Math.random()-0.5) * 2;
+                this.vy = (Math.random()-0.5) * 2;
+                
+                if(type === 'vapor') {
+                    this.vy = -1 - Math.random() * 2;
+                    this.vx = windSpeed * 0.05 + (Math.random()-0.5);
+                    this.color = 'rgba(255,255,255,0.4)';
+                    this.size = Math.random() * 4 + 2;
+                } else if (type === 'rain') {
+                    this.vx = windSpeed * 0.1;
+                    this.vy = 5 + Math.random() * 5;
+                    this.color = '#00BFFF';
+                    this.size = 2;
+                }
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (this.type === 'vapor') {
+                    this.life -= 0.005;
+                    this.size += 0.05;
+                    if (this.y < height * 0.2) {
+                        this.life = 0; 
+                        humidity += 2; 
+                    }
+                } else if (this.type === 'rain') {
+                    const groundY = getTerrainHeightAt(this.x);
+                    if (this.y >= groundY) {
+                        this.life = 0;
+                        // Add moisture based on Biome Multiplier
+                        soilMoisture = Math.min(soilMoisture + BIOME_DATA[BIOME].rainValue, 100);
+                    }
+                }
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                if(this.type === 'rain') ctx.rect(this.x, this.y, 2, 8);
+                else ctx.arc(this.x, this.y, this.size, 0, Math.PI*2);
+                ctx.fill();
+            }
+        }
+
+        class Cloud {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.waterContent = 20; 
+            }
+
+            update() {
+                this.x += (windSpeed * 0.05) + 0.3; // Always move slightly right
+                if(this.x > width + 100) this.x = -100;
+
+                // Lab Mode Auto Rain
+                if(MODE === 'LAB' && this.x > width * 0.5 && this.waterContent > 0) {
+                    this.rain();
+                }
+            }
+
+            rain() {
+                if (this.waterContent > 0) {
+                    this.waterContent -= 0.5;
+                    for(let i=0; i<3; i++) {
+                        particles.push(new Particle('rain', this.x + (Math.random()-0.5)*60, this.y + 20));
+                    }
+                    return true;
+                }
+                return false;
+            }
+
+            draw() {
+                ctx.fillStyle = this.waterContent > 10 ? '#ecf0f1' : '#95a5a6';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 30, 0, Math.PI*2);
+                ctx.arc(this.x - 25, this.y + 10, 25, 0, Math.PI*2);
+                ctx.arc(this.x + 25, this.y + 10, 25, 0, Math.PI*2);
+                ctx.fill();
+            }
+        }
+
+        class Tree {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.age = 0;
+                this.size = 0.1;
+                this.health = 100;
+                this.dead = false;
+                this.type = BIOME_DATA[BIOME].treeType;
+            }
+
+            update() {
+                if(this.dead) {
+                    // Revival check
+                    if (soilMoisture > 65 && Math.random() < 0.01) {
+                        this.dead = false;
+                        this.health = 50; 
+                        this.size = Math.max(0.3, this.size * 0.8);
+                        
+                        if(MODE === 'GAME') {
+                            spawnFloatText("Revived!", this.x, this.y);
+                            if(trees.length < 80) { 
+                                const newX = this.x + (Math.random() - 0.5) * 60;
+                                if (newX > MOUNTAIN.peaks[1].x && newX < width) {
+                                    const newY = getTerrainHeightAt(newX);
+                                    trees.push(new Tree(newX, newY));
+                                    spawnFloatText("Bonus!", newX, newY);
+                                }
+                            }
+                        }
+                    }
+                    return;
+                }
+
+                const moistureNeed = BIOME === 'DESERT' ? 15 : 25;
+
+                // HEALTH LOGIC
+                // 1. Growth Zone
+                if (soilMoisture > moistureNeed && soilMoisture < 95) {
+                    if (this.size < 1.0) this.size += BIOME_DATA[BIOME].growthRate;
+                    this.age++;
+                } 
+                // 2. Danger Zone (Death Condition)
+                // Dies ONLY if (TOO HOT) AND (TOO DRY)
+                else if (sunIntensity > 60 && soilMoisture < moistureNeed) {
+                    this.health -= 0.5; // Burning and thirsting
+                }
+                // 3. Dormant Zone (Just dry or Just hot)
+                else {
+                    // Do nothing (don't grow, don't die)
+                    // Maybe slight graphical effect later
+                }
+
+                if (this.health <= 0) {
+                    this.dead = true;
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.scale(this.size, this.size);
+
+                if (this.type === 'CACTUS') {
+                    ctx.fillStyle = this.dead ? '#8d6e63' : '#27ae60';
+                    ctx.beginPath(); ctx.rect(-8, -40, 16, 40); ctx.fill();
+                    ctx.beginPath(); ctx.rect(8, -30, 10, 10); ctx.rect(14, -40, 8, 20); ctx.fill();
+                } 
+                else if (this.type === 'PALM') {
+                    ctx.fillStyle = '#795548';
+                    ctx.beginPath(); ctx.moveTo(-5, 0); ctx.lineTo(5, 0); ctx.lineTo(3, -40); ctx.lineTo(-3, -40); ctx.fill();
+                    ctx.fillStyle = this.dead ? '#8d6e63' : '#2ecc71';
+                    for(let i=0; i<5; i++) {
+                        ctx.beginPath(); ctx.ellipse(0, -40, 20, 5, i * (Math.PI/2.5), 0, Math.PI*2); ctx.fill();
+                    }
+                } 
+                else { 
+                    ctx.fillStyle = '#5D4037'; ctx.fillRect(-5, -20, 10, 20);
+                    ctx.fillStyle = this.dead ? '#8d6e63' : '#4CAF50';
+                    ctx.beginPath(); ctx.arc(0, -30, 20, 0, Math.PI*2); ctx.fill();
+                }
+                ctx.restore();
+            }
+        }
+
+        // --- Main Game Loop ---
+
+        function update() {
+            frame++;
+            const data = BIOME_DATA[BIOME];
+
+            // 1. INPUTS & VARIABLES
+            if (MODE === 'LAB') {
+                sunIntensity = parseInt(sHeat.value);
+                windSpeed = parseInt(sWind.value);
+                // Heat impacts evaporation logic below
+            } else if (MODE === 'GAME') {
+                sunIntensity = Math.max(0, sunIntensity - 0.5);
+                windSpeed = 10;
+            }
+
+            // SOIL DECAY with HEAT MULTIPLIER
+            // The hotter it is, the faster soil dries
+            let heatFactor = 1 + (sunIntensity / 40); // At 80 intensity, decay is 3x faster
+            soilMoisture = Math.max(0, soilMoisture - (data.moistureDecay * heatFactor));
+
+            // HOPE MECHANIC
+            const aliveTrees = trees.filter(t => !t.dead).length;
+            if (aliveTrees === 0 && frame % 200 === 0 && MODE === 'GAME') {
+                generateTrees(1);
+                spawnFloatText("Hope Seed!", width*0.7, height*0.5);
+            }
+
+            // 2. EVAPORATION
+            if (sunIntensity > 20) {
+                const vaporChance = sunIntensity / 200; 
+                if (Math.random() < vaporChance) {
+                    particles.push(new Particle('vapor', Math.random() * (width*0.5), height*0.65));
+                }
+            }
+
+            // 3. CLOUDS
+            const cloudThreshold = MODE === 'LAB' ? (105 - sCloud.value) : 20;
+            if (humidity > cloudThreshold) {
+                humidity -= cloudThreshold;
+                const cx = MODE === 'LAB' ? 0 : 50; 
+                clouds.push(new Cloud(cx, height * 0.2));
+                if(MODE === 'GAME') spawnFloatText("Cloud!", 100, height*0.2);
+            }
+
+            // 4. SPAWN NEW TREES
+            let spawnRate = 300;
+            if (BIOME === 'JUNGLE') spawnRate = 150;
+            if (BIOME === 'DESERT') spawnRate = 600;
+
+            if (frame % spawnRate === 0 && soilMoisture > 40) {
+                const mature = trees.filter(t => t.size >= 0.8 && !t.dead);
+                if (mature.length > 0 && trees.length < 50) {
+                    const parent = mature[Math.floor(Math.random() * mature.length)];
+                    const newX = parent.x + (Math.random()-0.5) * 120;
+                    const newY = getTerrainHeightAt(newX);
+                    if (newY < height*0.9 && newX > MOUNTAIN.peaks[1].x) {
+                        trees.push(new Tree(newX, newY));
+                        if(MODE === 'GAME') spawnFloatText("Sprout!", newX, newY);
+                    }
+                }
+            }
+
+            // Update Objects
+            particles.forEach((p, i) => {
+                p.update();
+                if(p.life <= 0) particles.splice(i, 1);
+            });
+
+            clouds.forEach(c => c.update());
+            trees.forEach(t => t.update());
+
+            // UI Text
+            if (frame % 10 === 0) {
+                treeCountEl.innerText = trees.filter(t => !t.dead).length;
+                
+                let s = Math.floor(soilMoisture);
+                let txt = s + "% ";
+                if(s < 20) { txt += "(DRY)"; waterLevelEl.style.color = "#e74c3c"; }
+                else if(s > 80) { txt += "(WET)"; waterLevelEl.style.color = "#3498db"; }
+                else { txt += "(GOOD)"; waterLevelEl.style.color = "#27ae60"; }
+                waterLevelEl.innerText = txt;
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+
+            // Sky Gradient
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, height);
+            if(sunIntensity > 80) {
+                skyGrad.addColorStop(0, "#f1c40f");
+            } else {
+                skyGrad.addColorStop(0, BIOME_DATA[BIOME].skyTop);
+            }
+            skyGrad.addColorStop(1, BIOME_DATA[BIOME].skyBot);
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, width, height);
+
+            // Sun
+            ctx.save();
+            ctx.translate(SUN.x, SUN.y);
+            const pulse = 1 + (sunIntensity/200);
+            ctx.scale(pulse, pulse);
+            ctx.fillStyle = SUN.color;
+            ctx.shadowBlur = sunIntensity;
+            ctx.shadowColor = 'gold';
+            ctx.beginPath();
+            ctx.arc(0, 0, SUN.r, 0, Math.PI*2);
+            ctx.fill();
+            // Happy Face
+            ctx.fillStyle = "#333";
+            ctx.beginPath(); ctx.arc(-15, -10, 5, 0, Math.PI*2); ctx.arc(15, -10, 5, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(0, 10, 10, 0, Math.PI); ctx.stroke();
+            ctx.restore();
+
+            // Mountain / Ground
+            ctx.fillStyle = MOUNTAIN.color;
+            ctx.beginPath();
+            ctx.moveTo(MOUNTAIN.peaks[0].x, MOUNTAIN.peaks[0].y);
+            MOUNTAIN.peaks.forEach(p => ctx.lineTo(p.x, p.y));
+            ctx.fill();
+
+            // Moisture Overlay
+            ctx.fillStyle = `rgba(0, 0, 100, ${soilMoisture/300})`;
+            ctx.beginPath();
+            ctx.moveTo(MOUNTAIN.peaks[0].x, MOUNTAIN.peaks[0].y);
+            MOUNTAIN.peaks.forEach(p => ctx.lineTo(p.x, p.y));
+            ctx.fill();
+
+            // Trees
+            trees.forEach(t => t.draw());
+
+            // Ocean
+            ctx.fillStyle = BIOME_DATA[BIOME].oceanColor;
+            let oceanW = MOUNTAIN.peaks[1].x;
+            ctx.fillRect(0, height*0.65, oceanW, height*0.35);
+            
+            // Particles & Clouds
+            particles.forEach(p => p.draw());
+            clouds.forEach(c => c.draw());
+        }
+
+        function animate() {
+            update();
+            draw();
+            animationId = requestAnimationFrame(animate);
+        }
+
+        // --- Inputs ---
+
+        function handleInput(x, y) {
+            if(MODE !== 'GAME') return; 
+
+            // Click Sun
+            const dSun = Math.hypot(x - SUN.x, y - SUN.y);
+            if (dSun < SUN.r + 20) {
+                sunIntensity = Math.min(sunIntensity + 15, 100);
+                spawnFloatText("Heat++", x, y);
+                return;
+            }
+
+            // Click Clouds
+            let hitCloud = false;
+            clouds.forEach(c => {
+                const dCloud = Math.hypot(x - c.x, y - c.y);
+                if (dCloud < 60) {
+                    if(c.rain()) {
+                        spawnFloatText("Rain!", x, y);
+                        hitCloud = true;
+                    }
+                }
+            });
+        }
+
+        function spawnFloatText(text, x, y) {
+            const el = document.createElement('div');
+            el.className = 'float-text';
+            el.innerText = text;
+            el.style.left = x + 'px';
+            el.style.top = y + 'px';
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 1000);
+        }
+
+        canvas.addEventListener('mousedown', e => handleInput(e.clientX, e.clientY));
+        canvas.addEventListener('touchstart', e => {
+            handleInput(e.touches[0].clientX, e.touches[0].clientY);
+        }, {passive: false});
+
+        // Initialize
+        resize();
+
+    </script>
+</body>
+</html>
