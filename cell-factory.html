@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Cell Factory: Nucleus Defense</title>
+    <style>
+        :root {
+            --bg-color: #0b0b15;
+            --panel-bg: rgba(15, 23, 42, 0.95);
+            --text-color: #e94560;
+            --accent-color: #1e293b;
+            --highlight: #4ecca3;
+            --gold: #ffd700;
+            --shield: #38bdf8;
+            --danger: #ef4444;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: row;
+            width: 100vw;
+            height: 100vh;
+            user-select: none;
+        }
+
+        #game-container {
+            position: relative;
+            flex: 1;
+            background: radial-gradient(circle at center, #1e1e2e 0%, #0b0b15 100%);
+            cursor: crosshair;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #ui-panel {
+            width: 320px;
+            flex: 0 0 320px;
+            background-color: var(--panel-bg);
+            border-left: 2px solid #334155;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            box-shadow: -5px 0 20px rgba(0,0,0,0.6);
+            z-index: 10;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            margin: 0 0 5px 0;
+            font-size: 18px;
+            color: var(--highlight);
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 10px;
+        }
+
+        .resource-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            background: rgba(0,0,0,0.2);
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .res-item { font-size: 14px; font-weight: bold; }
+        .res-label { color: #94a3b8; font-size: 11px; display: block; }
+        
+        .health-box {
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+        }
+
+        .bar-container {
+            width: 100%; height: 8px; background: #1e293b; 
+            border-radius: 4px; overflow: hidden; margin-top: 5px;
+            border: 1px solid #334155;
+        }
+        .bar-fill { height: 100%; transition: width 0.2s; }
+
+        .controls-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding-right: 5px;
+            margin-top: 10px;
+        }
+
+        .category-header {
+            font-size: 11px; color: #94a3b8; text-transform: uppercase; 
+            font-weight: bold; margin: 12px 0 5px 0; border-bottom: 1px solid #334155;
+        }
+
+        .build-btn {
+            background: #1e293b;
+            color: white;
+            border: 1px solid #334155;
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            text-align: left;
+            margin-bottom: 6px;
+            transition: all 0.2s;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: center;
+        }
+
+        .build-btn:hover:not(:disabled) {
+            background: #334155;
+            border-color: var(--highlight);
+            transform: translateX(2px);
+        }
+
+        .build-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .btn-info { display: flex; flex-direction: column; }
+        .btn-name { font-weight: bold; font-size: 13px; }
+        .btn-desc { font-size: 10px; color: #94a3b8; }
+        .btn-cost { text-align: right; font-size: 12px; color: var(--gold); font-weight: bold; }
+
+        #message-area {
+            position: absolute;
+            top: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.85);
+            padding: 8px 20px; border-radius: 20px;
+            color: #fff; font-weight: bold; opacity: 0;
+            transition: opacity 0.3s; pointer-events: none;
+            border: 1px solid var(--highlight); z-index: 20;
+            font-size: 14px;
+        }
+
+        #click-cd-bar {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 150px;
+            height: 10px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 5px;
+            overflow: hidden;
+            z-index: 50;
+        }
+        #click-cd-fill { height: 100%; width: 100%; background: var(--highlight); transition: width 0.1s linear; }
+
+        .fs-menu {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(11, 11, 21, 0.98);
+            display: flex; flex-direction: column;
+            z-index: 100; overflow-y: auto;
+        }
+        
+        .menu-center { align-items: center; justify-content: center; text-align: center; }
+        
+        .fs-title { font-size: 3.5em; color: var(--highlight); text-shadow: 0 0 20px rgba(78, 204, 163, 0.4); margin-bottom: 15px; }
+        
+        .menu-btn-main {
+            background: var(--highlight); color: #0b0b15;
+            font-size: 1.1em; padding: 12px 35px; border-radius: 8px;
+            border: none; cursor: pointer; font-weight: bold; margin: 8px;
+            transition: transform 0.2s;
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="message-area">Wave Incoming</div>
+        
+        <div id="click-cd-bar" class="hidden">
+            <div style="font-size: 9px; position: absolute; width: 100%; text-align: center; top: -12px;">LYSIS COOLDOWN</div>
+            <div id="click-cd-fill"></div>
+        </div>
+
+        <div id="main-menu" class="fs-menu menu-center">
+            <h1 class="fs-title">CELL FACTORY<br><span style="font-size:0.4em; color:white;">NUCLEUS DEFENSE</span></h1>
+            <p style="color: #94a3b8; max-width: 500px; line-height: 1.5; font-size: 14px;">
+                Strategic biological defense. Click to manually dissolve viruses, but beware the cooldown.
+            </p>
+            <div style="margin-top: 25px;">
+                <button class="menu-btn-main" onclick="game.startGame()">START DEFENSE</button>
+            </div>
+        </div>
+
+        <div id="game-over-screen" class="fs-menu hidden menu-center">
+            <h1 style="color: var(--danger); font-size: 3em;">NUCLEUS DESTROYED</h1>
+            <p>Your genetic sequence has been compromised.</p>
+            <div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 12px; margin: 20px 0; min-width: 300px;">
+                <h2 style="margin:5px 0;">Score: <span id="final-score" style="color: var(--highlight);">0</span></h2>
+                <h3 style="color: #94a3b8; margin:5px 0;">Wave Survival: <span id="final-wave">0</span></h3>
+            </div>
+            <button class="menu-btn-main" onclick="location.reload()">RE-INITIALIZE</button>
+        </div>
+    </div>
+
+    <div id="ui-panel" class="hidden">
+        <h1>Cell OS</h1>
+        
+        <div class="health-box">
+            <div style="display:flex; justify-content:space-between; font-size:11px;">
+                <span class="res-label">CELL WALL INTEGRITY</span>
+                <span id="health-txt" style="color:var(--highlight); font-weight:bold;">150/150</span>
+            </div>
+            <div class="bar-container">
+                <div id="health-bar" class="bar-fill" style="background: var(--highlight); width: 100%;"></div>
+            </div>
+        </div>
+
+        <div class="resource-grid">
+            <div><span class="res-label">ATP</span><span id="atp-txt" class="res-item" style="color: var(--gold)">100</span></div>
+            <div><span class="res-label">Proteins</span><span id="prot-txt" class="res-item" style="color: #f472b6">0</span></div>
+            <div><span class="res-label">AA</span><span id="aa-txt" class="res-item" style="color: #4ecca3">10</span></div>
+            <div><span class="res-label">Wave</span><span id="wave-txt" class="res-item">1</span></div>
+        </div>
+
+        <div class="controls-container" id="build-list"></div>
+    </div>
+
+    <script>
+        const DB = {
+            buildings: {
+                mitochondria: { name: "Mitochondria", desc: "ATP Production.", cost: 40, time: 80, cat: "Energy" },
+                chloroplast: { name: "Chloroplast", desc: "Passive ATP income.", cost: 150, time: 180, cat: "Energy" },
+                ribosome: { name: "Ribosome", desc: "AA to Protein.", cost: 80, time: 120, cat: "Production" },
+                lysosome: { name: "Lysosome", desc: "Internal Defender.", cost: 100, time: 150, cat: "Defense" },
+                centriole: { name: "Centriole", desc: "Genetic Guardian.", cost: 200, time: 200, cat: "Defense" },
+                repair: { name: "Repair Wall", desc: "Heal 50 Wall HP.", cost: 30, time: 0, cat: "Actions", instant: true }
+            }
+        };
+
+        class Game {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.container = document.getElementById('game-container');
+                this.ctx = this.canvas.getContext('2d');
+                
+                this.entities = [];
+                this.particles = [];
+                this.projectiles = [];
+                this.orbs = [];
+                this.mouse = { x: 0, y: 0 };
+                
+                // Clicking logic
+                this.clickDmg = 5;
+                this.clickMaxCooldown = 30; // ~0.5s at 60fps
+                this.clickCooldown = 0;
+
+                window.addEventListener('resize', () => this.resize());
+                this.canvas.addEventListener('mousemove', e => this.handleMouse(e));
+                this.canvas.addEventListener('mousedown', () => this.handleClick());
+                
+                this.loop = this.loop.bind(this);
+                this.resize();
+            }
+
+            resize() {
+                const rect = this.container.getBoundingClientRect();
+                this.canvas.width = rect.width;
+                this.canvas.height = rect.height;
+                this.cx = this.canvas.width / 2;
+                this.cy = this.canvas.height / 2;
+                this.radius = Math.min(this.canvas.width, this.canvas.height) * 0.38;
+                if(this.nucleus) { this.nucleus.x = this.cx; this.nucleus.y = this.cy; }
+            }
+
+            startGame() {
+                document.getElementById('main-menu').classList.add('hidden');
+                document.getElementById('ui-panel').classList.remove('hidden');
+                document.getElementById('click-cd-bar').classList.remove('hidden');
+                this.initSession();
+                this.isRunning = true;
+                this.resize();
+                requestAnimationFrame(this.loop);
+            }
+
+            initSession() {
+                this.res = { atp: 100, aa: 10, prot: 0, wallHp: 150, maxWallHp: 150 };
+                this.entities = []; this.particles = []; this.projectiles = []; this.orbs = [];
+                
+                // Wave System
+                this.wave = 1;
+                this.waveState = 'spawning'; // 'spawning' or 'clearing'
+                this.virusesInWave = 0;
+                this.spawnedInWave = 0;
+                this.waveSpawnTimer = 0;
+                this.waveSpawnDelay = 60; // Start at 1s
+                
+                this.aaTimer = 0;
+                this.nucleus = new Nucleus(this.cx, this.cy);
+                this.addEnt(this.nucleus);
+                this.refreshBuildMenu();
+                this.prepWave();
+            }
+
+            prepWave() {
+                this.waveState = 'spawning';
+                this.virusesInWave = 5 + (this.wave * 3);
+                this.spawnedInWave = 0;
+                this.waveSpawnDelay = Math.max(15, 60 - (this.wave * 4)); // Get faster every wave
+                this.spawnMsg(`WAVE ${this.wave} DETECTED`);
+            }
+
+            refreshBuildMenu() {
+                const container = document.getElementById('build-list');
+                container.innerHTML = '';
+                const cats = {};
+                for (const [key, data] of Object.entries(DB.buildings)) {
+                    if (!cats[data.cat]) cats[data.cat] = [];
+                    cats[data.cat].push({key, ...data});
+                }
+                for (const [catName, items] of Object.entries(cats)) {
+                    const header = document.createElement('div');
+                    header.className = 'category-header'; header.innerText = catName;
+                    container.appendChild(header);
+                    items.forEach(item => {
+                        const btn = document.createElement('button');
+                        btn.className = 'build-btn'; btn.id = `btn-${item.key}`;
+                        btn.onclick = () => this.buy(item.key);
+                        btn.innerHTML = `<div class="btn-info"><span class="btn-name">${item.name}</span><span class="btn-desc">${item.desc}</span></div><div class="btn-cost">${item.cost} ATP</div>`;
+                        container.appendChild(btn);
+                    });
+                }
+            }
+
+            buy(key) {
+                const item = DB.buildings[key];
+                if (this.res.atp >= item.cost) {
+                    if (item.instant) { 
+                        if (key === 'repair' && this.res.wallHp < this.res.maxWallHp) {
+                            this.res.atp -= item.cost;
+                            this.res.wallHp = Math.min(this.res.maxWallHp, this.res.wallHp + 50);
+                            this.spawnPart(this.cx, this.cy, '#4ecca3', 15);
+                        }
+                        return;
+                    }
+                    this.res.atp -= item.cost;
+                    const angle = Math.random() * Math.PI * 2;
+                    const r = Math.random() * (this.radius * 0.7);
+                    this.addEnt(new Construction(this.cx + Math.cos(angle) * r, this.cy + Math.sin(angle) * r, key, item.time));
+                }
+            }
+
+            update() {
+                // Clicking Cooldown
+                if (this.clickCooldown > 0) this.clickCooldown--;
+                document.getElementById('click-cd-fill').style.width = ((this.clickMaxCooldown - this.clickCooldown) / this.clickMaxCooldown * 100) + '%';
+
+                this.aaTimer++; if (this.aaTimer > 300) { this.res.aa++; this.aaTimer = 0; }
+                this.entities = this.entities.filter(e => !e.dead);
+                this.entities.forEach(e => e.update(this));
+                this.projectiles = this.projectiles.filter(p => !p.dead);
+                this.projectiles.forEach(p => p.update(this));
+                this.particles = this.particles.filter(p => p.life > 0);
+                this.particles.forEach(p => p.update());
+                
+                this.manageWave();
+
+                this.orbs.forEach((o, i) => {
+                    if (Math.hypot(this.mouse.x - o.x, this.mouse.y - o.y) < 45) {
+                        if(o.type === 'atp') { this.res.atp += o.val; this.spawnText(o.x, o.y, `+${o.val}`, '#ffd700'); }
+                        if(o.type === 'prot') { this.res.prot += o.val; this.spawnText(o.x, o.y, `+${o.val}`, '#f472b6'); }
+                        this.orbs.splice(i, 1);
+                    }
+                });
+                this.updateUI();
+            }
+
+            manageWave() {
+                if (this.waveState === 'spawning') {
+                    this.waveSpawnTimer++;
+                    if (this.waveSpawnTimer >= this.waveSpawnDelay) {
+                        this.spawnVirus();
+                        this.spawnedInWave++;
+                        this.waveSpawnTimer = 0;
+                        if (this.spawnedInWave >= this.virusesInWave) {
+                            this.waveState = 'clearing';
+                        }
+                    }
+                } else if (this.waveState === 'clearing') {
+                    const activeViruses = this.entities.filter(e => e.isEnemy).length;
+                    if (activeViruses === 0) {
+                        this.wave++;
+                        this.prepWave();
+                    }
+                }
+            }
+
+            spawnVirus() {
+                const angle = Math.random() * Math.PI * 2;
+                const dist = this.radius + 350;
+                this.addEnt(new Virus(this.cx + Math.cos(angle) * dist, this.cy + Math.sin(angle) * dist, 1 + this.wave * 0.15));
+            }
+
+            spawnMsg(t) {
+                const el = document.getElementById('message-area');
+                el.innerText = t;
+                el.style.opacity = 1;
+                setTimeout(() => el.style.opacity = 0, 2000);
+            }
+
+            gameOver() {
+                this.isRunning = false;
+                document.getElementById('game-over-screen').classList.remove('hidden');
+                document.getElementById('ui-panel').classList.add('hidden');
+                document.getElementById('final-score').innerText = Math.floor(this.res.prot * 10);
+                document.getElementById('final-wave').innerText = this.wave;
+            }
+
+            handleClick() {
+                if (this.clickCooldown > 0) return;
+                
+                const enemies = this.entities.filter(e => e.isEnemy);
+                let hit = false;
+                for(let e of enemies) {
+                    if (Math.hypot(e.x - this.mouse.x, e.y - this.mouse.y) < e.r + 30) {
+                        e.takeDamage(this.clickDmg, this);
+                        this.spawnPart(this.mouse.x, this.mouse.y, 'white', 5);
+                        hit = true;
+                        break; 
+                    }
+                }
+                
+                if (hit) {
+                    this.clickCooldown = this.clickMaxCooldown;
+                }
+            }
+
+            updateUI() {
+                document.getElementById('atp-txt').innerText = Math.floor(this.res.atp);
+                document.getElementById('aa-txt').innerText = Math.floor(this.res.aa);
+                document.getElementById('prot-txt').innerText = Math.floor(this.res.prot);
+                document.getElementById('wave-txt').innerText = this.wave;
+                document.getElementById('health-txt').innerText = `${Math.ceil(this.res.wallHp)}/${this.res.maxWallHp}`;
+                document.getElementById('health-bar').style.width = (Math.max(0, this.res.wallHp) / this.res.maxWallHp * 100) + '%';
+                for (const key in DB.buildings) {
+                    const btn = document.getElementById(`btn-${key}`);
+                    if (btn) btn.disabled = this.res.atp < DB.buildings[key].cost;
+                }
+            }
+
+            draw() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Cytoplasm
+                this.ctx.beginPath(); 
+                this.ctx.arc(this.cx, this.cy, this.radius, 0, Math.PI * 2);
+                this.ctx.fillStyle = 'rgba(30, 30, 46, 0.4)'; 
+                this.ctx.fill();
+                
+                // Wall
+                this.ctx.beginPath();
+                this.ctx.arc(this.cx, this.cy, this.radius, 0, Math.PI * 2);
+                this.ctx.lineWidth = 10;
+                const wallBroken = this.res.wallHp <= 0;
+                this.ctx.strokeStyle = wallBroken ? 'rgba(239, 68, 68, 0.15)' : '#4ecca3';
+                if(wallBroken) this.ctx.setLineDash([10, 15]);
+                this.ctx.stroke();
+                this.ctx.setLineDash([]);
+
+                this.entities.forEach(e => e.draw(this.ctx));
+                this.projectiles.forEach(p => p.draw(this.ctx));
+                this.orbs.forEach(o => {
+                    this.ctx.beginPath(); 
+                    this.ctx.arc(o.x, o.y, o.r + Math.sin(Date.now()/150)*2, 0, Math.PI*2);
+                    this.ctx.fillStyle = o.type === 'atp' ? '#ffd700' : '#f472b6';
+                    this.ctx.fill();
+                    this.ctx.shadowBlur = 10; this.ctx.shadowColor = this.ctx.fillStyle;
+                    this.ctx.stroke(); this.ctx.shadowBlur = 0;
+                });
+                this.particles.forEach(p => p.draw(this.ctx));
+            }
+
+            loop() { if (this.isRunning) { this.update(); this.draw(); } requestAnimationFrame(this.loop); }
+            addEnt(e) { this.entities.push(e); }
+            spawnText(x, y, t, c) { this.particles.push(new FloatingText(x, y, t, c)); }
+            spawnPart(x, y, c, n) { for(let i=0;i<n;i++) this.particles.push(new Particle(x, y, c)); }
+            handleMouse(e) { 
+                const r = this.canvas.getBoundingClientRect(); 
+                this.mouse = { x: e.clientX - r.left, y: e.clientY - r.top }; 
+            }
+        }
+
+        class Entity {
+            constructor(x, y, c, r) { this.x=x; this.y=y; this.c=c; this.r=r; this.dead=false; this.isEnemy=false; }
+            update(g) {}
+            draw(ctx) { ctx.beginPath(); ctx.arc(this.x,this.y,this.r,0,Math.PI*2); ctx.fillStyle=this.c; ctx.fill(); }
+        }
+
+        class Construction extends Entity {
+            constructor(x, y, key, time) { super(x, y, '#475569', 8); this.key = key; this.time = time; }
+            update(g) { 
+                this.time--; 
+                if (this.time <= 0) { 
+                    this.dead = true; 
+                    let o;
+                    if(this.key==='mitochondria') o = new Mitochondria(this.x,this.y);
+                    if(this.key==='chloroplast') o = new Chloroplast(this.x,this.y);
+                    if(this.key==='ribosome') o = new Ribosome(this.x,this.y);
+                    if(this.key==='lysosome') o = new Lysosome(this.x,this.y);
+                    if(this.key==='centriole') o = new Centriole(this.x,this.y);
+                    if(o) g.addEnt(o);
+                } 
+            }
+        }
+
+        class Nucleus extends Entity {
+            constructor(x,y) { super(x,y, '#ef4444', 35); }
+            draw(ctx) {
+                const grad = ctx.createRadialGradient(this.x, this.y, 5, this.x, this.y, this.r);
+                grad.addColorStop(0, '#ff6b6b'); grad.addColorStop(1, '#880000');
+                ctx.fillStyle = grad;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI*2); ctx.fill();
+                // DNA helix look
+                ctx.strokeStyle = "rgba(255,255,255,0.2)"; ctx.lineWidth = 1;
+                ctx.beginPath();
+                for(let i=0; i<Math.PI*2; i+=0.4) {
+                    ctx.moveTo(this.x + Math.cos(i)*10, this.y + Math.sin(i)*10);
+                    ctx.lineTo(this.x + Math.cos(i+0.4)*25, this.y + Math.sin(i+0.4)*25);
+                }
+                ctx.stroke();
+            }
+        }
+
+        class Mitochondria extends Entity {
+            constructor(x,y) { super(x,y,'#ffd700',14); this.t=0; }
+            update(g) { this.t++; if(this.t > 150) { this.t=0; g.orbs.push({x:this.x,y:this.y,val:25,type:'atp',r:7}); } }
+        }
+        class Chloroplast extends Entity {
+            constructor(x,y) { super(x,y,'#22c55e',15); this.t=0; }
+            update(g) { this.t++; if(this.t > 100) { this.t=0; g.res.atp+=5; g.spawnText(this.x,this.y,"+5", '#ffd700'); } }
+        }
+        class Ribosome extends Entity {
+            constructor(x,y) { super(x,y,'#d946ef',10); this.t=0; }
+            update(g) { if(g.res.aa>=3) { this.t++; if(this.t>120) { this.t=0; g.res.aa-=3; g.orbs.push({x:this.x,y:this.y,val:1,type:'prot',r:8}); } } }
+        }
+        class Lysosome extends Entity {
+            constructor(x,y) { super(x,y,'#f97316',12); }
+            update(g) { 
+                const target = g.entities.find(e => e.isEnemy && Math.hypot(e.x-this.x, e.y-this.y) < 150);
+                if(target) { 
+                    const ang = Math.atan2(target.y-this.y, target.x-this.x); 
+                    this.x += Math.cos(ang)*2.2; this.y += Math.sin(ang)*2.2; 
+                    if(Math.hypot(target.x-this.x, target.y-this.y) < this.r+target.r) target.takeDamage(1.2, g); 
+                } 
+            }
+        }
+        class Centriole extends Entity {
+            constructor(x,y) { super(x,y,'#6366f1',16); this.t=0; }
+            update(g) { this.t++; if(this.t>40) { const target = g.entities.find(e => e.isEnemy && Math.hypot(e.x-this.x, e.y-this.y) < 350); if(target) { this.t=0; g.projectiles.push(new Projectile(this.x,this.y,target)); } } }
+        }
+
+        class Virus extends Entity {
+            constructor(x,y,s) { super(x,y,'#ef4444', 10*s); this.isEnemy=true; this.hp=15*s; this.speed=1.2; this.dmg=0.25; }
+            takeDamage(n, g) { this.hp-=n; if(this.hp<=0) { this.dead=true; g.spawnPart(this.x,this.y,this.c,10); } }
+            update(g) {
+                const dx = g.cx - this.x, dy = g.cy - this.y, dist = Math.hypot(dx, dy);
+                
+                if (g.res.wallHp > 0 && dist <= g.radius + 5) {
+                    g.res.wallHp -= this.dmg;
+                    this.x += (Math.random()-0.5)*2; this.y += (Math.random()-0.5)*2;
+                    return;
+                }
+
+                this.x += (dx/dist) * this.speed;
+                this.y += (dy/dist) * this.speed;
+                if (dist < 40) g.gameOver();
+            }
+            draw(ctx) {
+                ctx.fillStyle = this.c;
+                ctx.beginPath();
+                for(let i=0; i<6; i++) {
+                    const a = i * Math.PI/3 + (Date.now()/500);
+                    const r2 = this.r * (i%2===0?1:0.7);
+                    ctx.lineTo(this.x + Math.cos(a)*r2, this.y + Math.sin(a)*r2);
+                }
+                ctx.closePath(); ctx.fill();
+            }
+        }
+
+        class Projectile {
+            constructor(x,y,t) { this.x=x;this.y=y;this.t=t; this.dead=false; }
+            update(g) { 
+                if(this.t.dead) { this.dead=true; return; } 
+                const ang = Math.atan2(this.t.y-this.y, this.t.x-this.x); 
+                this.x+=Math.cos(ang)*9; this.y+=Math.sin(ang)*9; 
+                if(Math.hypot(this.t.x-this.x, this.t.y-this.y) < 15) { this.t.takeDamage(6,g); this.dead=true; } 
+            }
+            draw(ctx) { ctx.fillStyle='#6366f1'; ctx.beginPath(); ctx.arc(this.x,this.y,4,0,Math.PI*2); ctx.fill(); }
+        }
+
+        class Particle {
+            constructor(x,y,c) { this.x=x;this.y=y;this.c=c; this.vx=(Math.random()-0.5)*5; this.vy=(Math.random()-0.5)*5; this.life=25; }
+            update() { this.x+=this.vx; this.y+=this.vy; this.life--; }
+            draw(ctx) { ctx.globalAlpha=this.life/25; ctx.fillStyle=this.c; ctx.beginPath(); ctx.arc(this.x,this.y,2,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1; }
+        }
+
+        class FloatingText {
+            constructor(x,y,t,c) { this.x=x;this.y=y;this.t=t;this.c=c;this.life=40; }
+            update() { this.y-=1.2; this.life--; }
+            draw(ctx) { ctx.globalAlpha=this.life/40; ctx.fillStyle=this.c; ctx.font="bold 11px sans-serif"; ctx.textAlign="center"; ctx.fillText(this.t,this.x,this.y); ctx.globalAlpha=1; }
+        }
+
+        const game = new Game();
+    </script>
+</body>
+</html>
