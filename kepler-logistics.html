@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kepler Logistics | Orbital Mechanics Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Rajdhani:wght@500;700&display=swap');
+
+        :root {
+            --bg-dark: #0a0c10;
+            --panel-bg: rgba(13, 17, 23, 0.95);
+            --accent-primary: #ffb703;
+            --danger: #ef476f;
+            --success: #06d6a0;
+            --oberth: #a2d2ff;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: #e0e0e0;
+            font-family: 'JetBrains Mono', monospace;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .font-header { font-family: 'Rajdhani', sans-serif; }
+
+        .scanlines::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            z-index: 5;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        .hud-panel {
+            background: var(--panel-bg);
+            border: 1px solid #333;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        input[type=range] { -webkit-appearance: none; background: transparent; width: 100%; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 16px; width: 8px;
+            background: var(--accent-primary); cursor: pointer; margin-top: -6px;
+            box-shadow: 0 0 10px var(--accent-primary);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px; background: #222; border: 1px solid #444;
+        }
+        
+        #gameCanvas { cursor: grab; }
+        #gameCanvas:active { cursor: grabbing; }
+
+        #target-arrow {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-bottom: 20px solid var(--danger);
+            pointer-events: none;
+            z-index: 40;
+            display: none;
+        }
+
+        .oberth-glow {
+            text-shadow: 0 0 8px var(--oberth);
+            color: var(--oberth);
+        }
+    </style>
+</head>
+<body class="w-screen h-screen relative scanlines">
+
+    <div id="target-arrow"></div>
+    <canvas id="gameCanvas" class="absolute top-0 left-0 w-full h-full z-0"></canvas>
+
+    <!-- Top HUD -->
+    <div class="absolute top-0 left-0 w-full p-4 flex justify-between items-start z-10 pointer-events-none">
+        <div class="hud-panel p-3 border-l-4 border-yellow-500 pointer-events-auto">
+            <h1 class="font-header text-2xl font-bold text-yellow-500 tracking-widest uppercase">Kepler Logistics</h1>
+            <div id="mission-id" class="text-xs text-gray-400 font-bold">MISSION ID: [REDACTED]</div>
+            <div id="mission-name" class="text-xs text-white uppercase mt-1">...</div>
+        </div>
+
+        <div class="flex flex-col gap-2">
+            <div class="hud-panel p-3 text-right pointer-events-auto min-w-[200px]">
+                <div class="text-xs text-gray-400 uppercase tracking-wide">Delta-V Fuel</div>
+                <div id="fuel-display" class="text-xl font-bold text-cyan-400">0 m/s</div>
+                <div class="w-full bg-gray-800 h-1 mt-1">
+                    <div id="fuel-bar" class="bg-cyan-400 h-full transition-all" style="width: 100%"></div>
+                </div>
+                <div id="oberth-status" class="text-[9px] mt-1 text-gray-500 uppercase tracking-tighter">Gravity Assist: <span id="oberth-val">1.0x</span></div>
+            </div>
+            
+            <div class="hud-panel p-3 pointer-events-auto bg-black/60 border-danger/40">
+                <div class="text-[10px] text-gray-500 uppercase">Intercept Telemetry</div>
+                <div class="flex justify-between gap-4">
+                    <div class="text-left">
+                        <div class="text-[9px] text-gray-400">DISTANCE</div>
+                        <div id="dist-readout" class="text-md font-bold text-white">---</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-[9px] text-gray-400">TIME TO CONTACT</div>
+                        <div id="time-readout" class="text-md font-bold text-white">---</div>
+                    </div>
+                </div>
+                <div id="intercept-status" class="text-[9px] font-bold text-red-500 mt-1">NO INTERCEPT</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Left Controls -->
+    <div class="absolute bottom-8 left-8 w-80 z-20">
+        <div class="hud-panel p-4 flex flex-col gap-4" id="controls-panel">
+            <div class="flex justify-between items-center border-b border-gray-700 pb-2">
+                <h2 class="font-header text-lg text-white">Flight Systems</h2>
+                <span id="status-indicator" class="text-[10px] px-2 py-0.5 bg-gray-800 text-gray-400 border border-gray-600 rounded uppercase">Ready</span>
+            </div>
+
+            <div class="control-group">
+                <div class="flex justify-between text-xs mb-1 text-gray-400">
+                    <span>EJECTION ANGLE</span>
+                    <span id="angle-val" class="text-yellow-500">270°</span>
+                </div>
+                <input type="range" id="angle-slider" min="0" max="360" step="1" value="270">
+            </div>
+
+            <div class="control-group">
+                <div class="flex justify-between text-xs mb-1 text-gray-400">
+                    <span>INITIAL IMPULSE</span>
+                    <span id="power-val" class="text-yellow-500">500</span>
+                </div>
+                <input type="range" id="power-slider" min="0" max="1500" step="5" value="500">
+            </div>
+
+            <div class="flex gap-2 mt-2">
+                <button id="sim-btn" class="flex-1 bg-cyan-900 hover:bg-cyan-700 text-white py-3 font-bold text-sm tracking-widest border border-cyan-500 transition-colors">
+                    EXECUTE
+                </button>
+                <button id="reset-btn" class="px-4 bg-gray-800 hover:bg-gray-700 text-white border border-gray-500">
+                    <i class="fas fa-redo"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Narrative / Modal -->
+    <div id="modal-overlay" class="absolute inset-0 bg-black/95 z-50 flex items-center justify-center backdrop-blur-md hidden">
+        <div class="hud-panel max-w-xl w-full p-8 border border-yellow-500/50 relative overflow-hidden">
+            <div class="absolute top-0 right-0 p-4 opacity-10">
+                <i class="fas fa-biohazard text-6xl"></i>
+            </div>
+            <h2 id="modal-title" class="font-header text-3xl text-yellow-500 mb-2 uppercase tracking-tighter">Mission Log</h2>
+            <div id="memo-label" class="text-[10px] text-danger mb-4 font-bold border-b border-danger/30 pb-2">SECURITY CLEARANCE REQUIRED</div>
+            <div id="modal-content" class="text-gray-300 text-sm leading-relaxed mb-8 space-y-4"></div>
+            <button id="modal-btn" class="w-full bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-4 uppercase tracking-[0.2em]">
+                Acknowledge & Proceed
+            </button>
+        </div>
+    </div>
+
+    <!-- Final Cutscene -->
+    <div id="ending-overlay" class="fixed inset-0 z-[100] bg-white hidden flex items-center justify-center transition-opacity duration-1000">
+        <div class="text-black text-center">
+            <h1 class="font-header text-6xl font-bold uppercase tracking-tighter mb-4">Connection Terminated</h1>
+            <p class="font-mono text-sm">Corporate HQ Asset Destroyed. Contract Nullified.</p>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const G = 0.5;
+        const PREDICTION_STEPS = 4500;
+        
+        const els = {
+            angle: document.getElementById('angle-slider'),
+            power: document.getElementById('power-slider'),
+            angleVal: document.getElementById('angle-val'),
+            powerVal: document.getElementById('power-val'),
+            simBtn: document.getElementById('sim-btn'),
+            resetBtn: document.getElementById('reset-btn'),
+            status: document.getElementById('status-indicator'),
+            fuelBar: document.getElementById('fuel-bar'),
+            fuelDisplay: document.getElementById('fuel-display'),
+            distReadout: document.getElementById('dist-readout'),
+            timeReadout: document.getElementById('time-readout'),
+            interceptStatus: document.getElementById('intercept-status'),
+            oberthVal: document.getElementById('oberth-val'),
+            missionName: document.getElementById('mission-name'),
+            missionId: document.getElementById('mission-id'),
+            modal: document.getElementById('modal-overlay'),
+            modalTitle: document.getElementById('modal-title'),
+            modalContent: document.getElementById('modal-content'),
+            modalBtn: document.getElementById('modal-btn'),
+            arrow: document.getElementById('target-arrow')
+        };
+
+        let gameState = { running: false, levelIdx: 0, fuel: 2500, t: 0 };
+        let camera = { x: 0, y: 0, zoom: 0.6, targetZoom: 0.6, dragging: false, lastMouse: {x:0, y:0} };
+
+        const storyline = [
+            "Good start, pilot. Deliver these medical crates. Just keep the temperature steady.",
+            "DECRYPTED: The crates aren't medical. They are surveillance sensors. Why watch the miners?",
+            "Redirecting mission. We need to collect mineral samples from the asteroid belt. Stay sharp.",
+            "DECRYPTED: Those 'samples' were high-grade fuel pellets. Kepler is stockpiling energy.",
+            "Deliver these engine parts to the Lunar station. They're falling behind schedule.",
+            "Memo: Several pilots have gone missing in this sector. Proceed with extreme caution.",
+            "Cargo: Cryo-pods. Destination: Titan Labs. No manifests were provided for the contents.",
+            "DECRYPTED: Kepler is ignoring safety protocols. The pods contain unauthorized biological research.",
+            "Move these cooling units to the Venus platform. The sun is getting hotter, or our tech is failing.",
+            "You're being watched. A company drone has been trailing your ship for three sectors.",
+            "The Inter-Planetary Court has opened an investigation. Kepler HQ says 'business as usual'.",
+            "REBELLION COMMS: We've intercepted their flight logs. They are building a weapon, not a colony.",
+            "DECRYPTED: Project 'Solar Flare'. They plan to ignite the gas giants for energy harvesting.",
+            "Deliver this 'special' cargo. It's an override key for the orbital defense network.",
+            "The rebellion has swapped the key. It's now a virus. Get it to the gate.",
+            "Warning: Fleet interceptors are searching for you. Maintain radio silence.",
+            "The HQ planet is in sight. It's a gilded cage for the ultra-wealthy. Time to open the doors.",
+            "One final launch window. The defense grid is down. Fly true.",
+            "Target identified: Central Core. Everything you've seen leads to this moment.",
+            "PROMPT: EXECUTE JUDGMENT. The system is watching. Make them see the truth."
+        ];
+
+        class Vector {
+            constructor(x, y) { this.x = x; this.y = y; }
+            add(v) { return new Vector(this.x + v.x, this.y + v.y); }
+            sub(v) { return new Vector(this.x - v.x, this.y - v.y); }
+            mult(n) { return new Vector(this.x * n, this.y * n); }
+            mag() { return Math.sqrt(this.x * this.x + this.y * this.y); }
+            norm() { let m = this.mag(); return m === 0 ? new Vector(0,0) : new Vector(this.x/m, this.y/m); }
+            dist(v) { return Math.sqrt(Math.pow(this.x - v.x, 2) + Math.pow(this.y - v.y, 2)); }
+        }
+
+        class CelestialBody {
+            constructor(name, x, y, mass, radius, color, isStatic = false, velocity = new Vector(0,0), type = "rock") {
+                this.name = name; this.pos = new Vector(x, y); this.mass = mass;
+                this.radius = radius; this.color = color; this.isStatic = isStatic;
+                this.vel = velocity; this.trail = []; this.type = type;
+                this.seed = Math.random() * 1000;
+            }
+            update() {
+                if (!this.isStatic) {
+                    const sun = bodies[0];
+                    const d = this.pos.dist(sun.pos);
+                    this.vel = this.vel.add(sun.pos.sub(this.pos).norm().mult(G * sun.mass / (d * d)));
+                    this.pos = this.pos.add(this.vel);
+                }
+                if (gameState.t % 15 === 0) {
+                    this.trail.push({x: this.pos.x, y: this.pos.y});
+                    if (this.trail.length > 40) this.trail.shift();
+                }
+            }
+            draw(ctx) {
+                // Outer Atmosphere Glow
+                const grad = ctx.createRadialGradient(this.pos.x, this.pos.y, this.radius * 0.8, this.pos.x, this.pos.y, this.radius * 2.2);
+                grad.addColorStop(0, this.color);
+                grad.addColorStop(1, 'transparent');
+                
+                ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, this.radius * 2.2, 0, Math.PI*2);
+                ctx.fillStyle = grad; ctx.globalAlpha = 0.2; ctx.fill(); ctx.globalAlpha = 1.0;
+
+                // Orbit Trail
+                ctx.beginPath(); this.trail.forEach(p => ctx.lineTo(p.x, p.y));
+                ctx.strokeStyle = this.color; ctx.globalAlpha = 0.15; ctx.stroke(); ctx.globalAlpha = 1.0;
+                
+                // Texture patterns
+                ctx.save();
+                ctx.translate(this.pos.x, this.pos.y);
+                ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI*2);
+                ctx.clip();
+                ctx.fillStyle = this.color; ctx.fillRect(-this.radius, -this.radius, this.radius*2, this.radius*2);
+                
+                // Add "texture" based on type
+                ctx.globalAlpha = 0.3;
+                if (this.type === "gas") {
+                    for(let i=-2; i<2; i++) {
+                        ctx.fillStyle = "#fff";
+                        ctx.fillRect(-this.radius, i * (this.radius/2), this.radius*2, 2);
+                    }
+                } else if (this.type === "rock") {
+                    ctx.fillStyle = "#000";
+                    for(let i=0; i<5; i++) {
+                        ctx.beginPath();
+                        ctx.arc(Math.sin(this.seed+i)*this.radius*0.5, Math.cos(this.seed*i)*this.radius*0.5, this.radius*0.2, 0, Math.PI*2);
+                        ctx.fill();
+                    }
+                }
+                // Shade
+                const shade = ctx.createRadialGradient(-this.radius/3, -this.radius/3, 0, 0, 0, this.radius);
+                shade.addColorStop(0, "rgba(255,255,255,0.2)");
+                shade.addColorStop(1, "rgba(0,0,0,0.6)");
+                ctx.globalAlpha = 1.0;
+                ctx.fillStyle = shade;
+                ctx.fillRect(-this.radius, -this.radius, this.radius*2, this.radius*2);
+                ctx.restore();
+
+                // Rings (Saturn style)
+                if (this.type === "ringed") {
+                    ctx.beginPath();
+                    ctx.ellipse(this.pos.x, this.pos.y, this.radius * 2.5, this.radius * 0.5, Math.PI/6, 0, Math.PI*2);
+                    ctx.strokeStyle = this.color; ctx.lineWidth = 3; ctx.globalAlpha = 0.3; ctx.stroke(); ctx.globalAlpha = 1.0;
+                }
+                
+                ctx.fillStyle = "#fff"; ctx.font = "bold 10px Rajdhani";
+                ctx.fillText(this.name.toUpperCase(), this.pos.x + this.radius + 6, this.pos.y + 4);
+            }
+        }
+
+        class Ship {
+            constructor(x, y) { this.pos = new Vector(x, y); this.vel = new Vector(0, 0); this.active = true; this.trail = []; }
+            update(bodies) {
+                if (!this.active) return;
+                let gravity = new Vector(0,0);
+                bodies.forEach(b => {
+                    const d = this.pos.dist(b.pos);
+                    if (d < b.radius + 2) this.crash(b);
+                    gravity = gravity.add(b.pos.sub(this.pos).norm().mult((G * b.mass) / (d * d)));
+                });
+                this.vel = this.vel.add(gravity);
+                this.pos = this.pos.add(this.vel);
+                if (gameState.t % 2 === 0) this.trail.push({x: this.pos.x, y: this.pos.y});
+            }
+            draw(ctx) {
+                if (!this.active) return;
+                ctx.beginPath(); this.trail.forEach(p => ctx.lineTo(p.x, p.y));
+                ctx.strokeStyle = "rgba(255,255,255,0.1)"; ctx.stroke();
+                ctx.save(); ctx.translate(this.pos.x, this.pos.y);
+                ctx.rotate(Math.atan2(this.vel.y, this.vel.x));
+                ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(-4, 4); ctx.lineTo(-4, -4);
+                ctx.fillStyle = (gameState.levelIdx === 19) ? "#f00" : "#fff"; ctx.fill(); 
+                ctx.restore();
+            }
+            crash(b) {
+                this.active = false;
+                if (b.name === levels[gameState.levelIdx].target) endGame(true);
+                else endGame(false, `COLLISION: ${b.name.toUpperCase()}`);
+            }
+        }
+
+        let bodies = [];
+        let ship;
+
+        const planetTypes = ["rock", "gas", "ringed", "rock", "gas"];
+        const planetNames = ["Mars", "Venus", "Jupiter", "Saturn", "Neptune", "Europa", "Titan", "Ceres", "Vesta", "Eris", "Pluto", "Mercury"];
+
+        const levels = Array.from({length: 20}, (_, i) => ({
+            name: i === 19 ? "PROJECT JUDGMENT" : `MISSION ${100 + i}`,
+            target: i === 19 ? "Kepler HQ" : planetNames[i % planetNames.length],
+            fuel: 1400 + i * 250,
+            setup: () => {
+                const dist = 400 + i * 140;
+                const orbitalSpeed = Math.sqrt(G * 4000 / dist);
+                const targetColor = i === 19 ? "#00ff00" : `hsl(${180 + (i * 45) % 180}, 70%, 50%)`;
+                const originColor = `hsl(${(i * 30) % 360}, 40%, 60%)`;
+                
+                bodies = [
+                    new CelestialBody("Sun", 0, 0, 4000 + i * 100, 50, "#FDB813", true, new Vector(0,0), "gas"),
+                    new CelestialBody("Origin", -240, 0, 100, 12, originColor, false, new Vector(0, 4.0), "rock"),
+                    new CelestialBody(i === 19 ? "Kepler HQ" : levels[i].target, dist, 0, 120 + i * 15, 12 + i, targetColor, false, new Vector(0, -orbitalSpeed), i === 19 ? "gas" : planetTypes[i % planetTypes.length])
+                ];
+
+                // Add Obstacle Planets for higher levels
+                if (i > 2) {
+                    const count = Math.min(3, Math.floor(i / 3));
+                    for(let j=0; j<count; j++) {
+                        const obsDist = 200 + (j + 1) * 150;
+                        const obsSpeed = Math.sqrt(G * 4000 / obsDist);
+                        const angle = (Math.PI * 2 / count) * j + (i * 0.5);
+                        bodies.push(new CelestialBody(
+                            "Anomaly " + (j+1),
+                            Math.cos(angle) * obsDist,
+                            Math.sin(angle) * obsDist,
+                            150 + i * 10,
+                            15,
+                            `hsl(${(angle * 50) % 360}, 30%, 40%)`,
+                            false,
+                            new Vector(-Math.sin(angle) * obsSpeed, Math.cos(angle) * obsSpeed),
+                            planetTypes[(j+1) % planetTypes.length]
+                        ));
+                    }
+                }
+
+                ship = new Ship(-240, -18); ship.vel = new Vector(0, 4.0);
+                camera.x = -150; camera.y = 0; camera.targetZoom = Math.max(0.12, 0.6 - i * 0.02);
+            }
+        }));
+
+        function calculateOberth() {
+            let maxGrav = 0;
+            bodies.forEach(b => {
+                const d = ship.pos.dist(b.pos);
+                maxGrav = Math.max(maxGrav, (G * b.mass) / (d * d));
+            });
+            return 1.0 + Math.min(1.8, maxGrav * 12);
+        }
+
+        function calculatePrediction() {
+            const boost = calculateOberth();
+            let pShip = new Ship(ship.pos.x, ship.pos.y);
+            pShip.vel = new Vector(ship.vel.x, ship.vel.y);
+            const a = (parseInt(els.angle.value) * Math.PI) / 180;
+            const p = (parseInt(els.power.value) * boost) / 200;
+            pShip.vel = pShip.vel.add(new Vector(Math.cos(a), Math.sin(a)).mult(p));
+
+            let pBodies = bodies.map(b => new CelestialBody(b.name, b.pos.x, b.pos.y, b.mass, b.radius, b.color, b.isStatic, new Vector(b.vel.x, b.vel.y), b.type));
+            let path = [], tPath = [], intercept = null, minDist = Infinity, interceptTime = 0;
+
+            const targetName = levels[gameState.levelIdx].target;
+
+            for(let i=0; i<PREDICTION_STEPS; i++) {
+                pBodies.forEach(b => {
+                    if(!b.isStatic) {
+                        const sun = pBodies[0];
+                        const d = b.pos.dist(sun.pos);
+                        b.vel = b.vel.add(sun.pos.sub(b.pos).norm().mult(G * sun.mass / (d*d)));
+                        b.pos = b.pos.add(b.vel);
+                    }
+                });
+
+                let grav = new Vector(0,0);
+                pBodies.forEach(b => {
+                    const d = pShip.pos.dist(b.pos);
+                    grav = grav.add(b.pos.sub(pShip.pos).norm().mult((G * b.mass) / (d*d)));
+                    if(b.name === targetName) {
+                        if(d < minDist) { minDist = d; interceptTime = i; }
+                        if(d < b.radius + 12 && !intercept) intercept = {x: b.pos.x, y: b.pos.y};
+                    }
+                });
+                pShip.vel = pShip.vel.add(grav); pShip.pos = pShip.pos.add(pShip.vel);
+                if(i % 25 === 0) {
+                    path.push({x: pShip.pos.x, y: pShip.pos.y});
+                    const t = pBodies.find(b => b.name === targetName);
+                    tPath.push({x: t.pos.x, y: t.pos.y});
+                }
+                if(minDist < 5) break;
+            }
+            return { path, tPath, intercept, minDist, interceptTime, boost };
+        }
+
+        function drawWorld() {
+            ctx.fillStyle = "#0a0c10"; ctx.fillRect(0,0,canvas.width,canvas.height);
+            
+            // Draw Starfield (static background)
+            ctx.fillStyle = "white";
+            for(let i=0; i<50; i++) {
+                ctx.globalAlpha = 0.2;
+                ctx.beginPath(); ctx.arc((i*137)%canvas.width, (i*251)%canvas.height, 1, 0, Math.PI*2); ctx.fill();
+            }
+            ctx.globalAlpha = 1.0;
+
+            ctx.save(); ctx.translate(canvas.width/2, canvas.height/2);
+            ctx.scale(camera.zoom, camera.zoom); ctx.translate(-camera.x, -camera.y);
+
+            if(!gameState.running) {
+                const data = calculatePrediction();
+                els.distReadout.innerText = (data.minDist * 10).toFixed(0) + " KM";
+                els.timeReadout.innerText = data.interceptTime + " T";
+                els.oberthVal.innerText = data.boost.toFixed(2) + "x";
+                if(data.boost > 1.2) els.oberthVal.classList.add('oberth-glow');
+                else els.oberthVal.classList.remove('oberth-glow');
+
+                if(data.intercept) {
+                    els.interceptStatus.innerText = "INTERCEPT ACQUIRED";
+                    els.interceptStatus.className = "text-green-400 font-bold mt-1";
+                    ctx.strokeStyle = "#06d6a0"; ctx.lineWidth = 1/camera.zoom;
+                    ctx.beginPath(); ctx.arc(data.intercept.x, data.intercept.y, 18, 0, Math.PI*2); ctx.stroke();
+                } else {
+                    els.interceptStatus.innerText = "NO INTERCEPT";
+                    els.interceptStatus.className = "text-red-500 font-bold mt-1";
+                }
+                ctx.setLineDash([5,5]); ctx.strokeStyle = "rgba(255,255,255,0.15)"; ctx.beginPath();
+                data.path.forEach(p => ctx.lineTo(p.x, p.y)); ctx.stroke();
+                ctx.strokeStyle = "rgba(239,71,111,0.08)"; ctx.beginPath();
+                data.tPath.forEach(p => ctx.lineTo(p.x, p.y)); ctx.stroke(); ctx.setLineDash([]);
+            }
+
+            bodies.forEach(b => b.draw(ctx));
+            ship.draw(ctx); ctx.restore();
+            
+            const target = bodies.find(b => b.name === levels[gameState.levelIdx].target);
+            if (target) {
+                const screenX = (target.pos.x - camera.x) * camera.zoom + canvas.width / 2;
+                const screenY = (target.pos.y - camera.y) * camera.zoom + canvas.height / 2;
+                if (screenX < 0 || screenX > canvas.width || screenY < 0 || screenY > canvas.height) {
+                    els.arrow.style.display = "block";
+                    const angle = Math.atan2(screenY - canvas.height / 2, screenX - canvas.width / 2);
+                    const x = Math.max(40, Math.min(canvas.width - 40, canvas.width / 2 + Math.cos(angle) * (canvas.width/2 - 40)));
+                    const y = Math.max(40, Math.min(canvas.height - 40, canvas.height / 2 + Math.sin(angle) * (canvas.height/2 - 40)));
+                    els.arrow.style.left = `${x - 10}px`; els.arrow.style.top = `${y - 10}px`;
+                    els.arrow.style.transform = `rotate(${angle + Math.PI/2}rad)`;
+                    els.arrow.style.borderBottomColor = target.color;
+                } else { els.arrow.style.display = "none"; }
+            }
+        }
+
+        function resetLevel() {
+            gameState.running = false; gameState.t = 0;
+            const lvl = levels[gameState.levelIdx];
+            gameState.fuel = lvl.fuel;
+            els.missionName.innerText = lvl.name;
+            els.missionId.innerText = `MISSION ID: ${Math.random().toString(16).substr(2, 6).toUpperCase()}`;
+            els.status.innerText = "Ready";
+            els.status.className = "text-[10px] px-2 py-0.5 bg-gray-800 text-gray-400 border border-gray-600 rounded uppercase";
+            els.modal.classList.add('hidden');
+            lvl.setup();
+            updateFuelUI();
+        }
+
+        function launch() {
+            const boost = calculateOberth();
+            const a = (parseInt(els.angle.value) * Math.PI) / 180;
+            const p = (parseInt(els.power.value) * boost) / 200;
+            ship.vel = ship.vel.add(new Vector(Math.cos(a), Math.sin(a)).mult(p));
+            gameState.fuel -= parseInt(els.power.value);
+            gameState.running = true;
+            els.status.innerText = "In Flight";
+            els.status.className = "text-[10px] px-2 py-0.5 bg-cyan-900 text-cyan-200 border border-cyan-700 rounded uppercase";
+            updateFuelUI();
+        }
+
+        function endGame(success, msg) {
+            gameState.running = false;
+            if (success && gameState.levelIdx === 19) {
+                document.getElementById('ending-overlay').classList.remove('hidden'); return;
+            }
+            els.modal.classList.remove('hidden');
+            if (success) {
+                els.modalTitle.innerText = "Mission Success";
+                els.modalContent.innerHTML = `<p class='italic text-yellow-500 font-bold'>Target Reached.</p><p>${storyline[gameState.levelIdx]}</p>`;
+                els.modalBtn.onclick = () => { gameState.levelIdx++; resetLevel(); };
+            } else {
+                els.modalTitle.innerText = "Mission Loss";
+                els.modalContent.innerHTML = `<p class='text-red-500 font-bold'>${msg || "Connection Lost."}</p><p class='text-xs mt-2'>Retry the calculation. The fuel cells have been replenished.</p>`;
+                els.modalBtn.onclick = resetLevel;
+            }
+        }
+
+        function updateFuelUI() {
+            const lvl = levels[gameState.levelIdx];
+            els.fuelBar.style.width = (gameState.fuel / lvl.fuel * 100) + "%";
+            els.fuelDisplay.innerText = gameState.fuel + " m/s";
+        }
+
+        function loop() {
+            if(gameState.running) {
+                gameState.t++;
+                for(let i=0; i<8; i++) {
+                    bodies.forEach(b => b.update());
+                    ship.update(bodies);
+                }
+            }
+            camera.zoom += (camera.targetZoom - camera.zoom) * 0.05;
+            drawWorld();
+            requestAnimationFrame(loop);
+        }
+
+        canvas.addEventListener('mousedown', e => { camera.dragging = true; camera.lastMouse = {x:e.clientX, y:e.clientY}; });
+        window.addEventListener('mousemove', e => {
+            if(camera.dragging) {
+                camera.x -= (e.clientX - camera.lastMouse.x) / camera.zoom;
+                camera.y -= (e.clientY - camera.lastMouse.y) / camera.zoom;
+                camera.lastMouse = {x:e.clientX, y:e.clientY};
+            }
+        });
+        window.addEventListener('mouseup', () => camera.dragging = false);
+        canvas.addEventListener('wheel', e => { e.preventDefault(); camera.targetZoom *= e.deltaY > 0 ? 0.85 : 1.15; }, {passive:false});
+
+        els.angle.oninput = () => els.angleVal.innerText = els.angle.value + "°";
+        els.power.oninput = () => els.powerVal.innerText = els.power.value;
+        els.simBtn.onclick = () => gameState.running ? resetLevel() : launch();
+        els.resetBtn.onclick = resetLevel;
+
+        window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+        resetLevel(); loop();
+    })();
+    </script>
+</body>
+</html>
