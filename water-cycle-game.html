@@ -58,6 +58,41 @@
         .stat-value { font-size: 1.4rem; font-weight: 700; color: #2980b9; }
         .stat-label { font-size: 0.8rem; color: #7f8c8d; text-transform: uppercase; font-weight: bold; }
 
+        /* INFO PANEL (New) */
+        #info-panel {
+            position: absolute;
+            bottom: 120px; /* Above controls/bottom */
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.85);
+            color: #fff;
+            padding: 15px 25px;
+            border-radius: 30px;
+            font-size: 1.1rem;
+            text-align: center;
+            max-width: 80%;
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
+            border: 2px solid #FFD700;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+            z-index: 100;
+            backdrop-filter: blur(5px);
+        }
+        #info-panel.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(-10px);
+        }
+        .info-title {
+            color: #FFD700;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
         /* Controls for Lab Mode */
         #lab-controls {
             position: absolute;
@@ -248,6 +283,12 @@
                 </div>
             </div>
             
+            <!-- Info Panel -->
+            <div id="info-panel">
+                <span class="info-title" id="info-title">Process</span>
+                <span id="info-text">Description goes here...</span>
+            </div>
+
             <div class="stat-box">
                 <div class="stat-label">Soil Moisture</div>
                 <div class="stat-value" id="water-level">Normal</div>
@@ -275,8 +316,8 @@
 
     <script>
         /**
-         * Water Cycle Game Engine v4
-         * Updated: Trees die only on Heat AND Dryness
+         * Water Cycle Game Engine v5
+         * Updated: Educational Info Panel System
          */
 
         const canvas = document.getElementById('gameCanvas');
@@ -291,6 +332,11 @@
         const scoreBox = document.getElementById('score-box');
         const highScoreEl = document.getElementById('high-score-val');
         
+        // Info Panel Elements
+        const infoPanel = document.getElementById('info-panel');
+        const infoTitle = document.getElementById('info-title');
+        const infoText = document.getElementById('info-text');
+
         // Lab Sliders
         const sHeat = document.getElementById('heat-slider');
         const sWind = document.getElementById('wind-slider');
@@ -321,6 +367,60 @@
         const SUN = { x: 0, y: 0, r: 50, color: '#FDB813' };
         const MOUNTAIN = { peaks: [], color: '#8D6E63' };
 
+        // FACTS DATABASE
+        const FACTS = {
+            EVAPORATION: [
+                "Evaporation: Heat turns liquid water into invisible gas (water vapor)!",
+                "The Sun warms the ocean, causing water to rise into the air.",
+                "Evaporation separates fresh water from salt water."
+            ],
+            CONDENSATION: [
+                "Condensation: Water vapor cools down high up to form clouds!",
+                "Clouds are actually made of tiny liquid water droplets.",
+                "Condensation happens when warm gas meets cool air."
+            ],
+            PRECIPITATION: [
+                "Precipitation: When clouds get heavy, water falls as rain!",
+                "Rain brings fresh water back down to the Earth.",
+                "Gravity pulls the water droplets down when they are too heavy."
+            ],
+            COLLECTION: [
+                "Infiltration: Rainwater soaks into the soil to feed plants.",
+                "Groundwater is water stored beneath the Earth's surface.",
+                "Collection is water gathering in rivers, lakes, and oceans."
+            ],
+            GROWTH: [
+                "Photosynthesis: Plants use water and sunlight to make food!",
+                "Roots absorb water from the soil to help the tree grow.",
+                "Trees release oxygen for us to breathe!"
+            ]
+        };
+
+        let lastFactTime = 0;
+        let factTimeout = null;
+
+        function triggerFact(type) {
+            const now = Date.now();
+            // Don't show facts too often (every 6 seconds max)
+            if (now - lastFactTime > 6000) {
+                const list = FACTS[type];
+                const text = list[Math.floor(Math.random() * list.length)];
+                
+                infoTitle.innerText = type;
+                infoText.innerText = text;
+                
+                infoPanel.classList.add('visible');
+                
+                // Hide after 5 seconds
+                if(factTimeout) clearTimeout(factTimeout);
+                factTimeout = setTimeout(() => {
+                    infoPanel.classList.remove('visible');
+                }, 5000);
+
+                lastFactTime = now;
+            }
+        }
+
         // Biome Configs
         const BIOME_DATA = {
             PLAINS: {
@@ -337,18 +437,18 @@
                 skyTop: "#e67e22", skyBot: "#f1c40f",
                 groundColor: "#e6b87d",
                 oceanColor: "#2980b9",
-                moistureDecay: 0.06, // Dries very fast
-                growthRate: 0.002, // Slow growth
+                moistureDecay: 0.06, 
+                growthRate: 0.002, 
                 startingMoisture: 30,
-                rainValue: 1.5, // Rain is precious
+                rainValue: 1.5, 
                 treeType: 'CACTUS'
             },
             JUNGLE: {
                 skyTop: "#00695c", skyBot: "#80cbc4",
                 groundColor: "#3e2723",
                 oceanColor: "#004d40",
-                moistureDecay: 0.02, // Dries slow
-                growthRate: 0.005, // Fast growth
+                moistureDecay: 0.02, 
+                growthRate: 0.005, 
                 startingMoisture: 70,
                 rainValue: 1.0,
                 treeType: 'PALM'
@@ -372,10 +472,9 @@
 
         function selectBiome(b) {
             BIOME = b;
-            // Update UI buttons
             document.querySelectorAll('.biome-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(`btn-${b}`).classList.add('active');
-            generateTerrain(); // Preview terrain in background if we wanted, but map hidden by menu
+            generateTerrain();
         }
 
         function generateTerrain() {
@@ -391,7 +490,6 @@
                     {x: width, y: height * 0.5}, {x: width, y: height}
                 ];
             } else if (BIOME === 'DESERT') {
-                // Flatter, dunes
                 MOUNTAIN.peaks = [
                     {x: 0, y: height}, {x: width * 0.4, y: height}, 
                     {x: width * 0.5, y: height * 0.8}, 
@@ -401,12 +499,11 @@
                     {x: width, y: height * 0.75}, {x: width, y: height}
                 ];
             } else if (BIOME === 'JUNGLE') {
-                // Jagged
                 MOUNTAIN.peaks = [
                     {x: 0, y: height}, {x: width * 0.4, y: height},
                     {x: width * 0.5, y: height * 0.6},
                     {x: width * 0.6, y: height * 0.8},
-                    {x: width * 0.7, y: height * 0.3}, // High peak
+                    {x: width * 0.7, y: height * 0.3},
                     {x: width * 0.8, y: height * 0.7},
                     {x: width * 0.9, y: height * 0.5},
                     {x: width, y: height}
@@ -420,16 +517,14 @@
             setTimeout(() => menuScreen.style.display = 'none', 300);
             backBtn.style.display = 'block';
 
-            // Reset Game State
             particles = [];
             clouds = [];
             trees = [];
             
-            // Set biome specifics
             soilMoisture = BIOME_DATA[BIOME].startingMoisture;
             humidity = 0;
             
-            resize(); // Force regen terrain for biome
+            resize(); 
 
             if (MODE === 'LAB') {
                 labControls.style.display = 'flex';
@@ -439,7 +534,6 @@
                 labControls.style.display = 'none';
                 scoreBox.style.display = 'block';
                 sunIntensity = 0;
-                // Give player a fair start: 3 seeds
                 generateTrees(3); 
             }
 
@@ -452,6 +546,7 @@
             setTimeout(() => menuScreen.style.opacity = 1, 50);
             backBtn.style.display = 'none';
             labControls.style.display = 'none';
+            infoPanel.classList.remove('visible'); // Hide info
             
             if (trees.length > highScore) {
                 highScore = trees.length;
@@ -461,7 +556,6 @@
         }
 
         function generateTrees(count) {
-            // Find land range
             let startX = width * 0.5;
             if(BIOME === 'DESERT') startX = width * 0.4;
             
@@ -474,7 +568,7 @@
 
         function getTerrainHeightAt(x) {
             const peaks = MOUNTAIN.peaks;
-            if(x < peaks[1].x) return height; // Water
+            if(x < peaks[1].x) return height; 
             
             for(let i=0; i<peaks.length-1; i++) {
                 if(x >= peaks[i].x && x <= peaks[i+1].x) {
@@ -519,13 +613,15 @@
                     if (this.y < height * 0.2) {
                         this.life = 0; 
                         humidity += 2; 
+                        // Trigger Condensation fact implicitly when clouds form later
                     }
                 } else if (this.type === 'rain') {
                     const groundY = getTerrainHeightAt(this.x);
                     if (this.y >= groundY) {
                         this.life = 0;
-                        // Add moisture based on Biome Multiplier
                         soilMoisture = Math.min(soilMoisture + BIOME_DATA[BIOME].rainValue, 100);
+                        // INFO: Trigger Collection
+                        if(Math.random() < 0.05) triggerFact('COLLECTION');
                     }
                 }
             }
@@ -547,10 +643,9 @@
             }
 
             update() {
-                this.x += (windSpeed * 0.05) + 0.3; // Always move slightly right
+                this.x += (windSpeed * 0.05) + 0.3; 
                 if(this.x > width + 100) this.x = -100;
 
-                // Lab Mode Auto Rain
                 if(MODE === 'LAB' && this.x > width * 0.5 && this.waterContent > 0) {
                     this.rain();
                 }
@@ -562,6 +657,8 @@
                     for(let i=0; i<3; i++) {
                         particles.push(new Particle('rain', this.x + (Math.random()-0.5)*60, this.y + 20));
                     }
+                    // INFO: Trigger Precipitation
+                    if(Math.random() < 0.02) triggerFact('PRECIPITATION');
                     return true;
                 }
                 return false;
@@ -590,7 +687,6 @@
 
             update() {
                 if(this.dead) {
-                    // Revival check
                     if (soilMoisture > 65 && Math.random() < 0.01) {
                         this.dead = false;
                         this.health = 50; 
@@ -613,21 +709,16 @@
 
                 const moistureNeed = BIOME === 'DESERT' ? 15 : 25;
 
-                // HEALTH LOGIC
-                // 1. Growth Zone
                 if (soilMoisture > moistureNeed && soilMoisture < 95) {
-                    if (this.size < 1.0) this.size += BIOME_DATA[BIOME].growthRate;
+                    if (this.size < 1.0) {
+                        this.size += BIOME_DATA[BIOME].growthRate;
+                        // INFO: Trigger Growth occasionally
+                        if(Math.random() < 0.005) triggerFact('GROWTH');
+                    }
                     this.age++;
                 } 
-                // 2. Danger Zone (Death Condition)
-                // Dies ONLY if (TOO HOT) AND (TOO DRY)
                 else if (sunIntensity > 60 && soilMoisture < moistureNeed) {
-                    this.health -= 0.5; // Burning and thirsting
-                }
-                // 3. Dormant Zone (Just dry or Just hot)
-                else {
-                    // Do nothing (don't grow, don't die)
-                    // Maybe slight graphical effect later
+                    this.health -= 0.5; 
                 }
 
                 if (this.health <= 0) {
@@ -672,18 +763,14 @@
             if (MODE === 'LAB') {
                 sunIntensity = parseInt(sHeat.value);
                 windSpeed = parseInt(sWind.value);
-                // Heat impacts evaporation logic below
             } else if (MODE === 'GAME') {
                 sunIntensity = Math.max(0, sunIntensity - 0.5);
                 windSpeed = 10;
             }
 
-            // SOIL DECAY with HEAT MULTIPLIER
-            // The hotter it is, the faster soil dries
-            let heatFactor = 1 + (sunIntensity / 40); // At 80 intensity, decay is 3x faster
+            let heatFactor = 1 + (sunIntensity / 40);
             soilMoisture = Math.max(0, soilMoisture - (data.moistureDecay * heatFactor));
 
-            // HOPE MECHANIC
             const aliveTrees = trees.filter(t => !t.dead).length;
             if (aliveTrees === 0 && frame % 200 === 0 && MODE === 'GAME') {
                 generateTrees(1);
@@ -695,6 +782,8 @@
                 const vaporChance = sunIntensity / 200; 
                 if (Math.random() < vaporChance) {
                     particles.push(new Particle('vapor', Math.random() * (width*0.5), height*0.65));
+                    // INFO: Trigger Evaporation
+                    if(Math.random() < 0.05) triggerFact('EVAPORATION');
                 }
             }
 
@@ -705,6 +794,8 @@
                 const cx = MODE === 'LAB' ? 0 : 50; 
                 clouds.push(new Cloud(cx, height * 0.2));
                 if(MODE === 'GAME') spawnFloatText("Cloud!", 100, height*0.2);
+                // INFO: Trigger Condensation
+                triggerFact('CONDENSATION');
             }
 
             // 4. SPAWN NEW TREES
@@ -725,7 +816,6 @@
                 }
             }
 
-            // Update Objects
             particles.forEach((p, i) => {
                 p.update();
                 if(p.life <= 0) particles.splice(i, 1);
@@ -734,7 +824,6 @@
             clouds.forEach(c => c.update());
             trees.forEach(t => t.update());
 
-            // UI Text
             if (frame % 10 === 0) {
                 treeCountEl.innerText = trees.filter(t => !t.dead).length;
                 
@@ -750,7 +839,6 @@
         function draw() {
             ctx.clearRect(0, 0, width, height);
 
-            // Sky Gradient
             const skyGrad = ctx.createLinearGradient(0, 0, 0, height);
             if(sunIntensity > 80) {
                 skyGrad.addColorStop(0, "#f1c40f");
@@ -761,7 +849,6 @@
             ctx.fillStyle = skyGrad;
             ctx.fillRect(0, 0, width, height);
 
-            // Sun
             ctx.save();
             ctx.translate(SUN.x, SUN.y);
             const pulse = 1 + (sunIntensity/200);
@@ -772,35 +859,29 @@
             ctx.beginPath();
             ctx.arc(0, 0, SUN.r, 0, Math.PI*2);
             ctx.fill();
-            // Happy Face
             ctx.fillStyle = "#333";
             ctx.beginPath(); ctx.arc(-15, -10, 5, 0, Math.PI*2); ctx.arc(15, -10, 5, 0, Math.PI*2); ctx.fill();
             ctx.beginPath(); ctx.arc(0, 10, 10, 0, Math.PI); ctx.stroke();
             ctx.restore();
 
-            // Mountain / Ground
             ctx.fillStyle = MOUNTAIN.color;
             ctx.beginPath();
             ctx.moveTo(MOUNTAIN.peaks[0].x, MOUNTAIN.peaks[0].y);
             MOUNTAIN.peaks.forEach(p => ctx.lineTo(p.x, p.y));
             ctx.fill();
 
-            // Moisture Overlay
             ctx.fillStyle = `rgba(0, 0, 100, ${soilMoisture/300})`;
             ctx.beginPath();
             ctx.moveTo(MOUNTAIN.peaks[0].x, MOUNTAIN.peaks[0].y);
             MOUNTAIN.peaks.forEach(p => ctx.lineTo(p.x, p.y));
             ctx.fill();
 
-            // Trees
             trees.forEach(t => t.draw());
 
-            // Ocean
             ctx.fillStyle = BIOME_DATA[BIOME].oceanColor;
             let oceanW = MOUNTAIN.peaks[1].x;
             ctx.fillRect(0, height*0.65, oceanW, height*0.35);
             
-            // Particles & Clouds
             particles.forEach(p => p.draw());
             clouds.forEach(c => c.draw());
         }
@@ -816,7 +897,6 @@
         function handleInput(x, y) {
             if(MODE !== 'GAME') return; 
 
-            // Click Sun
             const dSun = Math.hypot(x - SUN.x, y - SUN.y);
             if (dSun < SUN.r + 20) {
                 sunIntensity = Math.min(sunIntensity + 15, 100);
@@ -824,7 +904,6 @@
                 return;
             }
 
-            // Click Clouds
             let hitCloud = false;
             clouds.forEach(c => {
                 const dCloud = Math.hypot(x - c.x, y - c.y);
