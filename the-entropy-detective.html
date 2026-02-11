@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Entropy Detective</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #050505;
+            --term-green: #00ff41;
+            --term-amber: #ffb000;
+            --term-cyan: #00f3ff;
+            --glass: rgba(20, 20, 20, 0.9);
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: #e0e0e0;
+            font-family: 'Share Tech Mono', monospace;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .crt-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 255, 0, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        .noir-text { font-family: 'Special Elite', cursive; }
+
+        .btn-noir {
+            background: #111;
+            border: 1px solid var(--term-cyan);
+            color: var(--term-cyan);
+            padding: 8px 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+        }
+
+        .btn-noir:hover:not(:disabled) {
+            background: var(--term-cyan);
+            color: #000;
+            box-shadow: 0 0 15px var(--term-cyan);
+        }
+
+        .btn-noir:disabled {
+            border-color: #444;
+            color: #444;
+            cursor: not-allowed;
+        }
+
+        .object-highlight {
+            border: 1px solid var(--term-amber) !important;
+            background: rgba(255, 176, 0, 0.1) !important;
+        }
+
+        #visualizer-canvas {
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, #111 0%, #050505 100%);
+        }
+
+        .verified-badge {
+            font-size: 10px;
+            padding: 2px 4px;
+            background: #004400;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+        }
+
+        .scan-line {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: var(--term-cyan);
+            opacity: 0.5;
+            box-shadow: 0 0 10px var(--term-cyan);
+            animation: scan-move 4s linear infinite;
+        }
+
+        @keyframes scan-move {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="crt-overlay"></div>
+
+    <header class="p-4 border-b border-gray-800 flex justify-between items-center bg-black z-10">
+        <div class="flex items-center gap-3">
+            <div class="w-3 h-3 bg-red-600 rounded-full animate-pulse shadow-[0_0_8px_red]"></div>
+            <h1 class="text-2xl text-cyan-400 tracking-tighter uppercase font-bold" style="text-shadow: 0 0 8px cyan;">ENTROPY_OS</h1>
+        </div>
+        <div class="text-xs text-gray-500 font-mono">ENCRYPTED_LINK: <span id="case-id" class="text-cyan-600">...</span></div>
+    </header>
+
+    <main class="flex-1 flex flex-col md:flex-row overflow-hidden z-10 relative">
+        <section class="flex-1 flex flex-col relative border-r border-gray-800">
+            <div id="scene-container" class="flex-1 relative bg-black overflow-hidden">
+                <canvas id="visualizer-canvas"></canvas>
+                <div class="scan-line"></div>
+                <div id="scene-overlays" class="absolute inset-0 pointer-events-none"></div>
+                <div class="absolute top-4 left-4 bg-black/80 px-3 py-1 border-l-2 border-amber-500 backdrop-blur-sm">
+                    <h2 id="location-name" class="text-amber-500 text-xs tracking-widest font-bold">GRID_SECTOR: UNKNOWN</h2>
+                </div>
+            </div>
+
+            <div class="h-40 bg-[#080808] border-t border-gray-800 p-4 font-mono text-xs overflow-y-auto" id="log-container">
+                <div id="game-log" class="text-gray-400 space-y-1"></div>
+            </div>
+        </section>
+
+        <aside class="w-full md:w-80 bg-[#0c0c0c] flex flex-col border-l border-gray-800" id="sidebar">
+            <div class="flex border-b border-gray-800 bg-black">
+                <button onclick="switchTab('tools')" class="flex-1 p-3 text-center text-cyan-400 border-b-2 border-cyan-400 text-xs font-bold" id="tab-tools">ANALYSIS</button>
+                <button onclick="switchTab('data')" class="flex-1 p-3 text-center text-gray-500 text-xs font-bold" id="tab-data">INTEL</button>
+            </div>
+
+            <div id="panel-tools" class="p-4 flex-1 overflow-y-auto">
+                <div class="mb-4 border border-gray-800 p-3 bg-black/50 rounded">
+                    <h3 class="text-[10px] text-gray-500 mb-1 uppercase font-bold tracking-tighter">Current Mandate</h3>
+                    <p id="objective-text" class="text-green-500 text-xs leading-tight">Initializing connection...</p>
+                </div>
+
+                <div class="mb-6">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-cyan-500 text-[10px] uppercase font-bold tracking-widest">Thermo-Visor</h3>
+                        <div id="verified-scan" class="hidden verified-badge">LINKED</div>
+                    </div>
+                    <div id="scanner-readout" class="bg-black border border-gray-700 p-3 font-mono text-[11px] text-amber-500 h-24 mb-2 overflow-hidden">
+                        <div class="animate-pulse">_AWAIT_TARGET_SELECTION</div>
+                    </div>
+                    <button id="scan-btn" onclick="runScan()" class="btn-noir w-full" disabled>DECRYPT THERMAL DATA</button>
+                </div>
+
+                <div class="mb-6 border-t border-gray-900 pt-4">
+                    <h3 class="text-cyan-500 mb-2 text-[10px] uppercase font-bold tracking-widest">Calculus Engine</h3>
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <div>
+                            <label class="text-gray-600 text-[9px] uppercase font-bold">Mass (kg)</label>
+                            <input type="text" id="calc-m" class="w-full bg-black border border-gray-800 text-gray-500 p-1 text-[11px]" readonly>
+                        </div>
+                        <div>
+                            <label class="text-gray-600 text-[9px] uppercase font-bold">Spec. Heat (c)</label>
+                            <input type="number" id="calc-c" class="w-full bg-gray-950 border border-cyan-900 text-white p-1 text-[11px] focus:border-cyan-400 outline-none">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="text-gray-600 text-[9px] uppercase font-bold">Temp Delta (T_f - T_i)</label>
+                            <div class="flex gap-1">
+                                <input type="text" id="calc-tf" class="w-1/2 bg-black border border-gray-800 text-gray-500 p-1 text-[11px]" readonly>
+                                <span class="pt-1 text-gray-700">-</span>
+                                <input type="text" id="calc-ti" class="w-1/2 bg-black border border-gray-800 text-gray-500 p-1 text-[11px]" readonly>
+                            </div>
+                        </div>
+                    </div>
+                    <button id="calc-btn" onclick="calculateEnergy()" class="btn-noir w-full" disabled>PROCESS</button>
+                    <div id="calc-result" class="mt-2 text-center text-green-400 font-bold h-6 text-xs italic"></div>
+                </div>
+
+                <div class="border-t border-gray-900 pt-4">
+                    <h3 class="text-cyan-500 mb-2 text-[10px] uppercase font-bold tracking-widest">Final Deduction</h3>
+                    <input type="number" id="solution-input" class="w-full bg-black border border-gray-800 text-white p-2 mb-2 text-xs font-mono" placeholder="Target Joules...">
+                    <button id="submit-btn" onclick="submitSolution()" class="btn-noir w-full border-green-900 text-green-500" disabled>SUBMIT_CASE</button>
+                </div>
+            </div>
+
+            <div id="panel-data" class="p-4 flex-1 overflow-y-auto hidden">
+                <h3 class="text-cyan-500 text-[10px] uppercase font-bold mb-4">Material Database</h3>
+                <table class="w-full text-[11px] text-left text-gray-400">
+                    <thead class="text-gray-600 border-b border-gray-800">
+                        <tr><th class="pb-2">ID</th><th class="pb-2">c (J/kg°C)</th></tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-900">
+                        <tr><td class="py-2">Water</td><td class="text-amber-600">4186</td></tr>
+                        <tr><td class="py-2">Aluminum</td><td class="text-amber-600">900</td></tr>
+                        <tr><td class="py-2">Glass</td><td class="text-amber-600">840</td></tr>
+                        <tr><td class="py-2">Iron/Steel</td><td class="text-amber-600">450</td></tr>
+                        <tr><td class="py-2">Copper</td><td class="text-amber-600">385</td></tr>
+                        <tr><td class="py-2">Lead</td><td class="text-amber-600">128</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </aside>
+    </main>
+
+    <div id="modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/95 hidden backdrop-blur-md">
+        <div class="bg-[#0a0a0a] border border-cyan-800 p-8 max-w-lg w-full shadow-[0_0_50px_rgba(0,0,0,1)]">
+            <h2 id="modal-title" class="text-xl font-bold text-cyan-400 mb-4 tracking-tighter uppercase underline decoration-cyan-900">INCIDENT_REPORT</h2>
+            <div id="modal-content" class="text-gray-400 font-mono text-xs mb-8 leading-relaxed"></div>
+            <button onclick="closeModal()" class="btn-noir w-full">ACKNOWLEDGE</button>
+        </div>
+    </div>
+
+    <script>
+        const state = {
+            level: 0,
+            selectedObj: null,
+            scannedObj: null, 
+            lastCalculatedValue: null,
+            lastCalculatedObjId: null,
+            ambientTemp: 20
+        };
+
+        const materialData = {
+            'Water': 4186, 'Aluminum': 900, 'Glass': 840, 'Iron/Steel': 450, 'Copper': 385, 'Lead': 128
+        };
+
+        const levels = [
+            {
+                id: 'CS-01',
+                title: 'Operation: Clean Slate',
+                location: 'SECTOR 0: BOOT_CAMP',
+                intro: "Training active. The Entropist hides energy signatures in plain sight. Find the 54,000J spike among these prototypes. Ambient: 20°C.",
+                ambient: 20,
+                objects: [
+                    { id: 'sph-01', name: 'Alu-Core', x: 40, y: 40, w: 80, h: 80, mass: 2, mat: 'Aluminum', temp: 50 },
+                    { id: 'sph-02', name: 'Lead-Sinker', x: 10, y: 10, w: 60, h: 60, mass: 5, mat: 'Lead', temp: 25 },
+                    { id: 'sph-03', name: 'Glass-Eye', x: 70, y: 20, w: 50, h: 50, mass: 1, mat: 'Glass', temp: 30 }
+                ],
+                solution: 54000
+            },
+            {
+                id: 'CS-02',
+                title: 'Operation: Deep Freeze',
+                location: 'SECTOR 4: CRYOGENIC_LAB',
+                intro: "Thermal disturbance detected. A specific object released exactly -180,000 Joules. Ambient: 22°C.",
+                ambient: 22,
+                objects: [
+                    { id: 'f-01', name: 'Glass Vessel', x: 15, y: 30, w: 40, h: 60, mass: 0.5, mat: 'Glass', temp: -100 },
+                    { id: 'f-02', name: 'Lead Anchor', x: 50, y: 70, w: 80, h: 50, mass: 10, mat: 'Lead', temp: -118.6 },
+                    { id: 'f-03', name: 'Water Pipe', x: 75, y: 30, w: 30, h: 100, mass: 1, mat: 'Water', temp: 15 },
+                    { id: 'f-04', name: 'Copper Line', x: 40, y: 20, w: 100, h: 10, mass: 2, mat: 'Copper', temp: -10 }
+                ],
+                solution: -180000,
+                tolerance: 500
+            },
+            {
+                id: 'CS-03',
+                title: 'Operation: Data Burn',
+                location: 'SECTOR 9: DATA_HUB',
+                intro: "Server room overheated. A component absorbed 135,000 Joules. Ambient: 25°C.",
+                ambient: 25,
+                objects: [
+                    { id: 's-01', name: 'Heatsink A', x: 30, y: 40, w: 50, h: 50, mass: 3, mat: 'Aluminum', temp: 75 },
+                    { id: 's-02', name: 'Power Bus', x: 60, y: 50, w: 120, h: 10, mass: 8, mat: 'Copper', temp: 40 },
+                    { id: 's-03', name: 'Glass Panel', x: 10, y: 10, w: 100, h: 150, mass: 5, mat: 'Glass', temp: 30 }
+                ],
+                solution: 135000,
+                tolerance: 10
+            },
+            {
+                id: 'CS-04',
+                title: 'Operation: Sky High',
+                location: 'SECTOR 12: DOWNTOWN',
+                intro: "Construction sabotage. Locate the 2,250,000J signature. Ambient: 15°C.",
+                ambient: 15,
+                objects: [
+                    { id: 'b-01', name: 'Iron Beam', x: 10, y: 20, w: 200, h: 15, mass: 500, mat: 'Iron/Steel', temp: 25 },
+                    { id: 'b-02', name: 'Copper Coil', x: 60, y: 60, w: 50, h: 50, mass: 100, mat: 'Copper', temp: 80 },
+                    { id: 'b-03', name: 'Lead Counterweight', x: 10, y: 70, w: 40, h: 40, mass: 1000, mat: 'Lead', temp: 16 }
+                ],
+                solution: 2250000,
+                tolerance: 1000
+            },
+            {
+                id: 'CS-05',
+                title: 'Operation: Bitter Water',
+                location: 'SECTOR 3: WATER_PLANT',
+                intro: "Target signature: 8,372,000J. The Entropist is dumping heat into the system. Ambient: 18°C.",
+                ambient: 18,
+                objects: [
+                    { id: 'w-01', name: 'Small Vat', x: 40, y: 30, w: 100, h: 100, mass: 500, mat: 'Water', temp: 21 },
+                    { id: 'w-02', name: 'Main Reservoir', x: 20, y: 50, w: 150, h: 150, mass: 1000, mat: 'Water', temp: 20 },
+                    { id: 'w-03', name: 'Steel Sluice', x: 70, y: 10, w: 30, h: 120, mass: 2000, mat: 'Iron/Steel', temp: 19 }
+                ],
+                solution: 8372000,
+                tolerance: 5000 
+            }
+        ];
+
+        function init() {
+            loadLevel(0);
+        }
+
+        function loadLevel(idx) {
+            state.level = idx;
+            state.selectedObj = null;
+            state.scannedObj = null;
+            state.lastCalculatedValue = null;
+            state.lastCalculatedObjId = null;
+
+            // Clear Log
+            document.getElementById('game-log').innerHTML = '';
+            log(`SESSION_INITIALIZED: ${levels[idx].id}`, 'system');
+            log(`ESTABLISHING_LOCATION_DATA...`, 'system');
+
+            const lvl = levels[idx];
+            state.ambientTemp = lvl.ambient;
+
+            document.getElementById('case-id').innerText = lvl.id;
+            document.getElementById('location-name').innerText = `GRID_SECTOR: ${lvl.location}`;
+            document.getElementById('objective-text').innerText = `IDENTIFY ANOMALY: ${lvl.solution.toLocaleString()} JOULES.`;
+            
+            resetUI();
+            showModal(lvl.title, lvl.intro);
+            setTimeout(renderScene, 50);
+        }
+
+        function resetUI() {
+            document.getElementById('scan-btn').disabled = true;
+            document.getElementById('calc-btn').disabled = true;
+            document.getElementById('submit-btn').disabled = true;
+            document.getElementById('verified-scan').classList.add('hidden');
+            document.getElementById('scanner-readout').innerHTML = '<div class="animate-pulse">_AWAIT_TARGET_SELECTION</div>';
+            document.getElementById('calc-m').value = '';
+            document.getElementById('calc-tf').value = '';
+            document.getElementById('calc-ti').value = '';
+            document.getElementById('calc-c').value = '';
+            document.getElementById('calc-result').innerText = '';
+            document.getElementById('solution-input').value = '';
+        }
+
+        function renderScene() {
+            const container = document.getElementById('scene-overlays');
+            container.innerHTML = '';
+            const canvas = document.getElementById('visualizer-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+
+            // Background
+            ctx.fillStyle = '#050505';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Grid Lines
+            ctx.strokeStyle = '#111';
+            ctx.lineWidth = 1;
+            for(let i=0; i<canvas.width; i+=40) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,canvas.height); ctx.stroke(); }
+            for(let i=0; i<canvas.height; i+=40) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(canvas.width,i); ctx.stroke(); }
+
+            levels[state.level].objects.forEach(obj => {
+                const x = (obj.x / 100) * canvas.width;
+                const y = (obj.y / 100) * canvas.height;
+                const w = (obj.w / 400) * canvas.width;
+                const h = (obj.h / 400) * canvas.height;
+
+                const isScanned = state.scannedObj?.id === obj.id;
+
+                // Wireframe look
+                ctx.strokeStyle = isScanned ? '#00f3ff' : '#222';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(x, y, w, h);
+                
+                // Crosshair markers
+                ctx.beginPath();
+                ctx.moveTo(x-5, y); ctx.lineTo(x+5, y);
+                ctx.moveTo(x, y-5); ctx.lineTo(x, y+5);
+                ctx.stroke();
+
+                ctx.fillStyle = isScanned ? '#003344' : '#0a0a0a';
+                ctx.fillRect(x,y,w,h);
+                
+                ctx.fillStyle = isScanned ? '#00f3ff' : '#444';
+                ctx.font = '9px monospace';
+                ctx.fillText(isScanned ? obj.id : 'REDACTED', x, y - 8);
+
+                const el = document.createElement('div');
+                el.className = 'absolute border border-transparent hover:border-cyan-900 cursor-crosshair pointer-events-auto transition-all';
+                el.style.left = x + 'px'; el.style.top = y + 'px'; el.style.width = w + 'px'; el.style.height = h + 'px';
+                el.onclick = () => select(obj, el);
+                container.appendChild(el);
+            });
+        }
+
+        function select(obj, el) {
+            document.querySelectorAll('#scene-overlays div').forEach(d => d.classList.remove('object-highlight'));
+            el.classList.add('object-highlight');
+            state.selectedObj = obj;
+            document.getElementById('scan-btn').disabled = false;
+            
+            if (state.scannedObj?.id !== obj.id) {
+                document.getElementById('submit-btn').disabled = true;
+                document.getElementById('verified-scan').classList.add('hidden');
+                document.getElementById('scanner-readout').innerHTML = `<div class="text-amber-700 underline font-bold">LOCKED: ${obj.id}</div>[DATA_ENCRYPTED]`;
+            } else {
+                updateScannerDisplay(obj);
+            }
+
+            log(`TARGET_LOCK: ${obj.id}`, 'system');
+        }
+
+        function runScan() {
+            if (!state.selectedObj) return;
+            
+            log(`RUNNING_DECRYPTION_ON: ${state.selectedObj.id}...`, 'system');
+            
+            // Simulating a brief delay
+            setTimeout(() => {
+                state.scannedObj = state.selectedObj; 
+                const obj = state.scannedObj;
+                
+                updateScannerDisplay(obj);
+
+                document.getElementById('calc-m').value = obj.mass;
+                document.getElementById('calc-tf').value = obj.temp;
+                document.getElementById('calc-ti').value = state.ambientTemp;
+                document.getElementById('calc-btn').disabled = false;
+                
+                renderScene();
+                log(`DECRYPTION_SUCCESS: Material and mass identified.`, 'success');
+            }, 300);
+        }
+
+        function updateScannerDisplay(obj) {
+            document.getElementById('scanner-readout').innerHTML = `
+                <span class="text-cyan-400 font-bold">ENTRY: ${obj.id}</span><br>
+                CLASSIFICATION: ${obj.name}<br>
+                MAT_TYPE: ${obj.mat}<br>
+                MASS_VAL: ${obj.mass}kg<br>
+                THERM_VAL: ${obj.temp}°C
+            `;
+            document.getElementById('verified-scan').classList.remove('hidden');
+            document.getElementById('submit-btn').disabled = false;
+        }
+
+        function calculateEnergy() {
+            if (!state.scannedObj) return;
+            const cInput = parseFloat(document.getElementById('calc-c').value);
+            const correctC = materialData[state.scannedObj.mat];
+            
+            if (!cInput) {
+                log("FAIL: Specific Heat (c) coefficient missing.", "error");
+                return;
+            }
+
+            const q = state.scannedObj.mass * cInput * (state.scannedObj.temp - state.ambientTemp);
+            state.lastCalculatedValue = Math.round(q);
+            state.lastCalculatedObjId = state.scannedObj.id;
+            
+            document.getElementById('calc-result').innerText = `RESULT >> ${state.lastCalculatedValue.toLocaleString()} J`;
+            document.getElementById('submit-btn').disabled = false;
+
+            if (Math.abs(cInput - correctC) > 1) {
+                log("WARNING: Thermal coefficient mismatch detected.", "error");
+            } else {
+                log("ANALYSIS: Signature processed and verified.", "success");
+            }
+        }
+
+        function submitSolution() {
+            const input = parseFloat(document.getElementById('solution-input').value);
+            const currentLevel = levels[state.level];
+
+            if (!state.scannedObj || state.lastCalculatedObjId !== state.scannedObj.id) {
+                log("FAIL: No processed thermal data for current lock.", "error");
+                return;
+            }
+
+            const targetC = materialData[state.scannedObj.mat];
+            const actualQ = state.scannedObj.mass * targetC * (state.scannedObj.temp - currentLevel.ambient);
+            
+            const matchesGoal = Math.abs(actualQ - currentLevel.solution) <= (currentLevel.tolerance || 100);
+            const matchesInput = Math.abs(input - actualQ) < 10;
+
+            if (matchesGoal && matchesInput) {
+                log("SIGNATURE_MATCH_CONFIRMED. SECTOR_SECURED.", "success");
+                setTimeout(() => {
+                    if (state.level < levels.length - 1) loadLevel(state.level + 1);
+                    else showModal("FINAL_LOG", "THE ENTROPIST HAS BEEN NEUTRALIZED. GRID STABILIZED. YOU ARE DISMISSED, DETECTIVE.");
+                }, 1500);
+            } else {
+                log("DEDUCTION_FAILURE: Value does not match anomaly profile.", "error");
+            }
+        }
+
+        function log(m, t) {
+            const lb = document.getElementById('game-log');
+            const d = document.createElement('div');
+            d.className = t === 'error' ? 'text-red-700' : t === 'success' ? 'text-green-500' : 'text-cyan-800';
+            d.innerHTML = `[${new Date().toLocaleTimeString('en-GB', {hour12:false})}] > ${m}`;
+            lb.appendChild(d);
+            lb.scrollTop = lb.scrollHeight;
+        }
+
+        function switchTab(t) {
+            document.getElementById('panel-tools').classList.toggle('hidden', t !== 'tools');
+            document.getElementById('panel-data').classList.toggle('hidden', t !== 'data');
+            document.getElementById('tab-tools').className = `flex-1 p-3 text-center text-xs font-bold ${t==='tools' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-gray-600'}`;
+            document.getElementById('tab-data').className = `flex-1 p-3 text-center text-xs font-bold ${t==='data' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-gray-600'}`;
+        }
+
+        function showModal(t, c) {
+            document.getElementById('modal-title').innerText = t;
+            document.getElementById('modal-content').innerHTML = c;
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+
+        window.onresize = renderScene;
+        window.onload = init;
+    </script>
+</body>
+</html>
