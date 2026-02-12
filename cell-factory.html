@@ -7,13 +7,14 @@
     <style>
         :root {
             --bg-color: #0b0b15;
-            --panel-bg: rgba(15, 23, 42, 0.95);
+            --panel-bg: rgba(15, 23, 42, 0.98);
             --text-color: #e94560;
             --accent-color: #1e293b;
             --highlight: #4ecca3;
             --gold: #ffd700;
             --shield: #38bdf8;
             --danger: #ef4444;
+            --purple: #a855f7;
         }
 
         body {
@@ -46,8 +47,8 @@
         }
 
         #ui-panel {
-            width: 320px;
-            flex: 0 0 320px;
+            width: 340px;
+            flex: 0 0 340px;
             background-color: var(--panel-bg);
             border-left: 2px solid #334155;
             padding: 15px;
@@ -102,6 +103,10 @@
             padding-right: 5px;
             margin-top: 10px;
         }
+        
+        .controls-container::-webkit-scrollbar { width: 6px; }
+        .controls-container::-webkit-scrollbar-track { background: #1e293b; }
+        .controls-container::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
 
         .category-header {
             font-size: 11px; color: #94a3b8; text-transform: uppercase; 
@@ -149,16 +154,8 @@
         }
 
         #click-cd-bar {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            width: 150px;
-            height: 10px;
-            background: #1e293b;
-            border: 1px solid #334155;
-            border-radius: 5px;
-            overflow: hidden;
-            z-index: 50;
+            position: fixed; bottom: 20px; left: 20px; width: 150px; height: 10px;
+            background: #1e293b; border: 1px solid #334155; border-radius: 5px; overflow: hidden; z-index: 50;
         }
         #click-cd-fill { height: 100%; width: 100%; background: var(--highlight); transition: width 0.1s linear; }
 
@@ -170,7 +167,6 @@
         }
         
         .menu-center { align-items: center; justify-content: center; text-align: center; }
-        
         .fs-title { font-size: 3.5em; color: var(--highlight); text-shadow: 0 0 20px rgba(78, 204, 163, 0.4); margin-bottom: 15px; }
         
         .menu-btn-main {
@@ -181,6 +177,57 @@
         }
 
         .hidden { display: none !important; }
+
+        /* Complex Tree Styles */
+        .shop-tabs { display: flex; justify-content: center; background: #0f172a; padding: 10px; border-bottom: 1px solid #334155; }
+        .tab-btn { background: transparent; border: none; color: #94a3b8; font-size: 16px; font-weight: bold; padding: 10px 20px; cursor: pointer; border-bottom: 2px solid transparent; }
+        .tab-btn.active { color: white; border-bottom-color: var(--highlight); }
+        
+        .tree-scroll-area { flex: 1; overflow: auto; padding: 40px; display: flex; justify-content: center; background: radial-gradient(circle at center, #1e293b 0%, #0b0b15 100%); }
+        
+        /* Recursive Flex Layout */
+        .tf-tree { display: flex; flex-direction: column; align-items: center; }
+        .tf-node-content { 
+            background: #1e293b; border: 2px solid #475569; padding: 10px; width: 160px; border-radius: 8px; 
+            text-align: center; position: relative; z-index: 2; cursor: default; margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: transform 0.2s;
+        }
+        .tf-node-content:hover { transform: scale(1.05); }
+        .tf-node-content.bought { border-color: var(--gold); background: #322a10; }
+        .tf-node-content.locked { opacity: 0.6; filter: grayscale(1); }
+        .tf-children { display: flex; flex-direction: row; gap: 30px; justify-content: center; position: relative; }
+        
+        /* Connectors */
+        .tf-children::before {
+            content: ''; position: absolute; top: -15px; left: 50%; width: 2px; height: 15px; background: #475569;
+        }
+        .tf-tree.root > .tf-node-content { margin-top: 0; }
+        .tf-tree.root > .tf-children::before { display: none; }
+        
+        /* Connector Crossbar */
+        .tf-child-connector {
+            display: flex; flex-direction: column; align-items: center; position: relative;
+        }
+        .tf-child-connector::before {
+            content: ''; position: absolute; top: -15px; left: 0; right: 0; height: 2px; background: #475569;
+        }
+        .tf-child-connector:first-child::before { left: 50%; }
+        .tf-child-connector:last-child::before { right: 50%; }
+        .tf-child-connector:only-child::before { display: none; }
+        .tf-child-connector::after {
+            content: ''; position: absolute; top: -15px; left: 50%; width: 2px; height: 15px; background: #475569;
+        }
+
+        .node-name { font-weight: bold; font-size: 12px; color: #f1f5f9; }
+        .node-desc { font-size: 10px; color: #94a3b8; margin: 4px 0; min-height: 24px; }
+        .buy-node { 
+            width: 100%; background: #334155; border: none; color: white; padding: 6px; 
+            font-size: 11px; cursor: pointer; border-radius: 4px; font-weight: bold;
+        }
+        .buy-node:hover:not(:disabled) { background: var(--highlight); color: #0b0b15; }
+        .buy-node:disabled { opacity: 0.5; cursor: not-allowed; }
+        .bought-badge { color: var(--gold); font-size: 11px; font-weight: bold; padding: 6px; }
+
     </style>
 </head>
 <body>
@@ -195,58 +242,152 @@
         </div>
 
         <div id="main-menu" class="fs-menu menu-center">
-            <h1 class="fs-title">CELL FACTORY<br><span style="font-size:0.4em; color:white;">NUCLEUS DEFENSE</span></h1>
+            <h1 class="fs-title">CELL FACTORY<br><span style="font-size:0.4em; color:white;">EVOLVED DEFENSE</span></h1>
             <p style="color: #94a3b8; max-width: 500px; line-height: 1.5; font-size: 14px;">
-                Strategic biological defense. Click to manually dissolve viruses, but beware the cooldown.
+                Protect the <b>Nucleus</b>. The cell wall is your shield. Viruses adapt and fight back.
+                <br>Build complex organelles and unlock deep genetic upgrades.
             </p>
             <div style="margin-top: 25px;">
-                <button class="menu-btn-main" onclick="game.startGame()">START DEFENSE</button>
+                <button class="menu-btn-main" onclick="game.startGame()">START</button>
+                <button class="menu-btn-main btn-sec" onclick="game.openShop()">GENETICS</button>
+            </div>
+        </div>
+
+        <div id="shop-screen" class="fs-menu hidden">
+            <div style="background: #0f172a; padding: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155;">
+                <button class="menu-btn-main" style="padding: 8px 20px; font-size: 1em; margin:0;" onclick="game.closeShop()">BACK</button>
+                <h2 style="margin:0; color:var(--gold);">EP: <span id="shop-ep">0</span></h2>
+            </div>
+            <div class="shop-tabs">
+                <button class="tab-btn active" onclick="game.switchTab('defense')">DEFENSE</button>
+                <button class="tab-btn" onclick="game.switchTab('offense')">OFFENSE</button>
+                <button class="tab-btn" onclick="game.switchTab('economy')">ECONOMY</button>
+            </div>
+            <div class="tree-scroll-area" id="tree-container">
+                <!-- Tree render here -->
             </div>
         </div>
 
         <div id="game-over-screen" class="fs-menu hidden menu-center">
-            <h1 style="color: var(--danger); font-size: 3em;">NUCLEUS DESTROYED</h1>
-            <p>Your genetic sequence has been compromised.</p>
+            <h1 style="color: var(--danger); font-size: 3em;">CELLULAR DEATH</h1>
             <div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 12px; margin: 20px 0; min-width: 300px;">
                 <h2 style="margin:5px 0;">Score: <span id="final-score" style="color: var(--highlight);">0</span></h2>
-                <h3 style="color: #94a3b8; margin:5px 0;">Wave Survival: <span id="final-wave">0</span></h3>
+                <h3 style="color: #94a3b8; margin:5px 0;">Wave: <span id="final-wave">0</span></h3>
+                <div style="font-size: 1.4em; color: var(--gold); margin-top: 15px;">+<span id="earned-ep">0</span> EP Earned</div>
             </div>
-            <button class="menu-btn-main" onclick="location.reload()">RE-INITIALIZE</button>
+            <button class="menu-btn-main" onclick="location.reload()">REPLICATE</button>
         </div>
     </div>
 
     <div id="ui-panel" class="hidden">
         <h1>Cell OS</h1>
-        
         <div class="health-box">
             <div style="display:flex; justify-content:space-between; font-size:11px;">
-                <span class="res-label">CELL WALL INTEGRITY</span>
+                <span class="res-label">MEMBRANE</span>
                 <span id="health-txt" style="color:var(--highlight); font-weight:bold;">150/150</span>
             </div>
-            <div class="bar-container">
-                <div id="health-bar" class="bar-fill" style="background: var(--highlight); width: 100%;"></div>
-            </div>
+            <div class="bar-container"><div id="health-bar" class="bar-fill" style="background: var(--highlight); width: 100%;"></div></div>
         </div>
-
         <div class="resource-grid">
             <div><span class="res-label">ATP</span><span id="atp-txt" class="res-item" style="color: var(--gold)">100</span></div>
             <div><span class="res-label">Proteins</span><span id="prot-txt" class="res-item" style="color: #f472b6">0</span></div>
             <div><span class="res-label">AA</span><span id="aa-txt" class="res-item" style="color: #4ecca3">10</span></div>
             <div><span class="res-label">Wave</span><span id="wave-txt" class="res-item">1</span></div>
         </div>
-
         <div class="controls-container" id="build-list"></div>
     </div>
 
     <script>
+        const STORAGE_KEY = 'cell_factory_v5_ultimate';
+        
+        // --- Game Database ---
         const DB = {
             buildings: {
-                mitochondria: { name: "Mitochondria", desc: "ATP Production.", cost: 40, time: 80, cat: "Energy" },
-                chloroplast: { name: "Chloroplast", desc: "Passive ATP income.", cost: 150, time: 180, cat: "Energy" },
-                ribosome: { name: "Ribosome", desc: "AA to Protein.", cost: 80, time: 120, cat: "Production" },
-                lysosome: { name: "Lysosome", desc: "Internal Defender.", cost: 100, time: 150, cat: "Defense" },
-                centriole: { name: "Centriole", desc: "Genetic Guardian.", cost: 200, time: 200, cat: "Defense" },
+                mitochondria: { name: "Mitochondria", desc: "ATP Production.", cost: 40, time: 80, cat: "Energy", hp: 30 },
+                chloroplast: { name: "Chloroplast", desc: "Passive ATP.", cost: 150, time: 180, cat: "Energy", hp: 40, unlock: 'eco-chloro' },
+                ribosome: { name: "Ribosome", desc: "AA to Protein.", cost: 80, time: 120, cat: "Production", hp: 25 },
+                golgi: { name: "Golgi App.", desc: "2x Protein Value.", cost: 400, time: 250, cat: "Production", hp: 50, unlock: 'eco-golgi' },
+                lysosome: { name: "Lysosome", desc: "Defender.", cost: 100, time: 150, cat: "Defense", hp: 40 },
+                peroxisome: { name: "Peroxisome", desc: "Toxic Aura (AoE).", cost: 200, time: 200, cat: "Defense", hp: 60, unlock: 'off-perox' },
+                centriole: { name: "Centriole", desc: "Ranged Turret.", cost: 250, time: 220, cat: "Defense", hp: 50, unlock: 'off-cent' },
+                vacuole: { name: "Vacuole", desc: "+Resource Cap.", cost: 120, time: 100, cat: "Utility", hp: 100, unlock: 'eco-vacuole' },
+                er: { name: "Endo. Reticulum", desc: "Auto-collects.", cost: 350, time: 300, cat: "Utility", hp: 60, unlock: 'eco-er' },
+                nucleolus: { name: "Nucleolus", desc: "Build Speed +20%.", cost: 500, time: 400, cat: "Utility", hp: 80, unlock: 'eco-nucleolus' },
                 repair: { name: "Repair Wall", desc: "Heal 50 Wall HP.", cost: 30, time: 0, cat: "Actions", instant: true }
+            },
+            
+            // Nested Tree Structure
+            trees: {
+                defense: {
+                    id: 'def-root', name: 'Membrane I', desc: 'Wall HP +50', cost: 100,
+                    children: [
+                        {
+                            id: 'def-thorn', name: 'Thorns I', desc: 'Wall deals 2 DMG', cost: 250,
+                            children: [
+                                { id: 'def-thorn2', name: 'Thorns II', desc: 'Wall deals 5 DMG', cost: 500, children:[] }
+                            ]
+                        },
+                        {
+                            id: 'def-armor', name: 'Hardening', desc: 'Armor +1 (Reduce DMG)', cost: 400,
+                            children: [
+                                { id: 'def-armor2', name: 'Calcification', desc: 'Armor +2', cost: 800, children:[] },
+                                { id: 'def-regen', name: 'Active Transport', desc: 'Wall Regen 0.1/s', cost: 600, children: [] }
+                            ]
+                        }
+                    ]
+                },
+                offense: {
+                    id: 'off-root', name: 'Receptors', desc: 'Click Dmg +5', cost: 100,
+                    children: [
+                        {
+                            id: 'off-lyso', name: 'Enzymes', desc: 'Lysosome Dmg +1', cost: 200,
+                            children: [
+                                { 
+                                    id: 'off-perox', name: 'Peroxisome', desc: 'Unlock New Defender', cost: 400, 
+                                    children: [
+                                        { id: 'off-aoe', name: 'Gas Cloud', desc: 'Peroxisome Range +20%', cost: 600, children: [] }
+                                    ]
+                                },
+                                { id: 'off-lyso-spd', name: 'Motility', desc: 'Lysosome Speed +30%', cost: 300, children: [] }
+                            ]
+                        },
+                        {
+                            id: 'off-cent', name: 'Sentry', desc: 'Unlock Centriole', cost: 300,
+                            children: [
+                                { id: 'off-rate', name: 'Rapid Fire', desc: 'Centriole Rate +20%', cost: 500, children: [] },
+                                { id: 'off-loot', name: 'Scavenger', desc: 'Chance for Double Loot', cost: 700, children: [] }
+                            ]
+                        }
+                    ]
+                },
+                economy: {
+                    id: 'eco-root', name: 'Glycolysis', desc: 'Mito Speed +20%', cost: 100,
+                    children: [
+                        {
+                            id: 'eco-chloro', name: 'Photosynthesis', desc: 'Unlock Chloroplast', cost: 250,
+                            children: [
+                                { id: 'eco-solar', name: 'Solar Flare', desc: 'Chloroplast Burst Chance', cost: 500, children: [] }
+                            ]
+                        },
+                        {
+                            id: 'eco-er', name: 'Transport', desc: 'Unlock ER (Auto-Loot)', cost: 300,
+                            children: [
+                                { 
+                                    id: 'eco-golgi', name: 'Packaging', desc: 'Unlock Golgi', cost: 500, 
+                                    children: [
+                                        { id: 'eco-prot', name: 'Protein Folding', desc: 'Protein Value +50%', cost: 800, children: []}
+                                    ]
+                                },
+                                {
+                                    id: 'eco-vacuole', name: 'Storage', desc: 'Unlock Vacuole', cost: 400,
+                                    children: [
+                                        { id: 'eco-nucleolus', name: 'Genetics', desc: 'Unlock Nucleolus', cost: 1000, children: [] }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
             }
         };
 
@@ -262,10 +403,14 @@
                 this.orbs = [];
                 this.mouse = { x: 0, y: 0 };
                 
-                // Clicking logic
-                this.clickDmg = 5;
-                this.clickMaxCooldown = 30; // ~0.5s at 60fps
+                // Config
+                this.clickDmg = 8;
+                this.clickMaxCooldown = 15;
                 this.clickCooldown = 0;
+                this.atpPerKill = 3;
+                this.activeTab = 'defense';
+
+                this.saveData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { ep: 0, unlocks: [] };
 
                 window.addEventListener('resize', () => this.resize());
                 this.canvas.addEventListener('mousemove', e => this.handleMouse(e));
@@ -276,11 +421,11 @@
             }
 
             resize() {
-                const rect = this.container.getBoundingClientRect();
-                this.canvas.width = rect.width;
-                this.canvas.height = rect.height;
-                this.cx = this.canvas.width / 2;
-                this.cy = this.canvas.height / 2;
+                const r = this.container.getBoundingClientRect();
+                this.canvas.width = r.width;
+                this.canvas.height = r.height;
+                this.cx = this.canvas.width/2;
+                this.cy = this.canvas.height/2;
                 this.radius = Math.min(this.canvas.width, this.canvas.height) * 0.38;
                 if(this.nucleus) { this.nucleus.x = this.cx; this.nucleus.y = this.cy; }
             }
@@ -296,18 +441,29 @@
             }
 
             initSession() {
-                this.res = { atp: 100, aa: 10, prot: 0, wallHp: 150, maxWallHp: 150 };
+                const ul = this.saveData.unlocks;
+                const baseWall = 150 + (ul.includes('def-root') ? 50 : 0);
+                
+                this.res = { atp: 100, aa: 10, prot: 0, wallHp: baseWall, maxWallHp: baseWall };
+                this.stats = {
+                    mitoSpeed: ul.includes('eco-root') ? 1.2 : 1.0,
+                    clickBonus: ul.includes('off-root') ? 5 : 0,
+                    lysoDmg: ul.includes('off-lyso') ? 2 : 1,
+                    lysoSpeed: ul.includes('off-lyso-spd') ? 1.3 : 1.0,
+                    buildSpeed: 1.0,
+                    proteinMult: ul.includes('eco-prot') ? 1.5 : 1,
+                    wallRegen: ul.includes('def-regen') ? 0.1 : 0,
+                    thorns: ul.includes('def-thorn') ? (ul.includes('def-thorn2') ? 5 : 2) : 0,
+                    armor: ul.includes('def-armor') ? (ul.includes('def-armor2') ? 2 : 1) : 0,
+                    scavenger: ul.includes('off-loot'),
+                    solarBurst: ul.includes('eco-solar'),
+                    toxinRange: ul.includes('off-aoe') ? 1.2 : 1.0,
+                    centrioleRate: ul.includes('off-rate') ? 40 : 50,
+                    autoCollect: false
+                };
+
                 this.entities = []; this.particles = []; this.projectiles = []; this.orbs = [];
-                
-                // Wave System
-                this.wave = 1;
-                this.waveState = 'spawning'; // 'spawning' or 'clearing'
-                this.virusesInWave = 0;
-                this.spawnedInWave = 0;
-                this.waveSpawnTimer = 0;
-                this.waveSpawnDelay = 60; // Start at 1s
-                
-                this.aaTimer = 0;
+                this.wave = 1; this.waveTimer = 0; 
                 this.nucleus = new Nucleus(this.cx, this.cy);
                 this.addEnt(this.nucleus);
                 this.refreshBuildMenu();
@@ -316,135 +472,255 @@
 
             prepWave() {
                 this.waveState = 'spawning';
-                this.virusesInWave = 5 + (this.wave * 3);
-                this.spawnedInWave = 0;
-                this.waveSpawnDelay = Math.max(15, 60 - (this.wave * 4)); // Get faster every wave
-                this.spawnMsg(`WAVE ${this.wave} DETECTED`);
-            }
-
-            refreshBuildMenu() {
-                const container = document.getElementById('build-list');
-                container.innerHTML = '';
-                const cats = {};
-                for (const [key, data] of Object.entries(DB.buildings)) {
-                    if (!cats[data.cat]) cats[data.cat] = [];
-                    cats[data.cat].push({key, ...data});
-                }
-                for (const [catName, items] of Object.entries(cats)) {
-                    const header = document.createElement('div');
-                    header.className = 'category-header'; header.innerText = catName;
-                    container.appendChild(header);
-                    items.forEach(item => {
-                        const btn = document.createElement('button');
-                        btn.className = 'build-btn'; btn.id = `btn-${item.key}`;
-                        btn.onclick = () => this.buy(item.key);
-                        btn.innerHTML = `<div class="btn-info"><span class="btn-name">${item.name}</span><span class="btn-desc">${item.desc}</span></div><div class="btn-cost">${item.cost} ATP</div>`;
-                        container.appendChild(btn);
-                    });
-                }
-            }
-
-            buy(key) {
-                const item = DB.buildings[key];
-                if (this.res.atp >= item.cost) {
-                    if (item.instant) { 
-                        if (key === 'repair' && this.res.wallHp < this.res.maxWallHp) {
-                            this.res.atp -= item.cost;
-                            this.res.wallHp = Math.min(this.res.maxWallHp, this.res.wallHp + 50);
-                            this.spawnPart(this.cx, this.cy, '#4ecca3', 15);
-                        }
-                        return;
-                    }
-                    this.res.atp -= item.cost;
-                    const angle = Math.random() * Math.PI * 2;
-                    const r = Math.random() * (this.radius * 0.7);
-                    this.addEnt(new Construction(this.cx + Math.cos(angle) * r, this.cy + Math.sin(angle) * r, key, item.time));
-                }
+                this.spawnCount = 0;
+                this.totalToSpawn = 5 + Math.floor(this.wave * 2.5);
+                this.spawnTimer = 0;
+                this.spawnDelay = Math.max(20, 60 - (this.wave * 2)); 
+                this.spawnMsg(`WAVE ${this.wave}`);
             }
 
             update() {
-                // Clicking Cooldown
                 if (this.clickCooldown > 0) this.clickCooldown--;
-                document.getElementById('click-cd-fill').style.width = ((this.clickMaxCooldown - this.clickCooldown) / this.clickMaxCooldown * 100) + '%';
+                document.getElementById('click-cd-fill').style.width = (100 - (this.clickCooldown/this.clickMaxCooldown)*100)+'%';
 
-                this.aaTimer++; if (this.aaTimer > 300) { this.res.aa++; this.aaTimer = 0; }
+                // Wall Regen
+                if (this.res.wallHp > 0 && this.res.wallHp < this.res.maxWallHp) 
+                    this.res.wallHp += this.stats.wallRegen;
+
                 this.entities = this.entities.filter(e => !e.dead);
                 this.entities.forEach(e => e.update(this));
                 this.projectiles = this.projectiles.filter(p => !p.dead);
                 this.projectiles.forEach(p => p.update(this));
                 this.particles = this.particles.filter(p => p.life > 0);
                 this.particles.forEach(p => p.update());
-                
-                this.manageWave();
 
-                this.orbs.forEach((o, i) => {
-                    if (Math.hypot(this.mouse.x - o.x, this.mouse.y - o.y) < 45) {
-                        if(o.type === 'atp') { this.res.atp += o.val; this.spawnText(o.x, o.y, `+${o.val}`, '#ffd700'); }
-                        if(o.type === 'prot') { this.res.prot += o.val; this.spawnText(o.x, o.y, `+${o.val}`, '#f472b6'); }
-                        this.orbs.splice(i, 1);
-                    }
-                });
-                this.updateUI();
-            }
-
-            manageWave() {
+                // Spawning
                 if (this.waveState === 'spawning') {
-                    this.waveSpawnTimer++;
-                    if (this.waveSpawnTimer >= this.waveSpawnDelay) {
+                    this.spawnTimer++;
+                    if (this.spawnTimer > this.spawnDelay) {
                         this.spawnVirus();
-                        this.spawnedInWave++;
-                        this.waveSpawnTimer = 0;
-                        if (this.spawnedInWave >= this.virusesInWave) {
-                            this.waveState = 'clearing';
-                        }
+                        this.spawnCount++;
+                        this.spawnTimer = 0;
+                        if (this.spawnCount >= this.totalToSpawn) this.waveState = 'clearing';
                     }
                 } else if (this.waveState === 'clearing') {
-                    const activeViruses = this.entities.filter(e => e.isEnemy).length;
-                    if (activeViruses === 0) {
+                    if (!this.entities.some(e => e.isEnemy)) {
                         this.wave++;
                         this.prepWave();
                     }
                 }
+
+                // Orbs
+                this.orbs.forEach((o, i) => {
+                    const d = Math.hypot(this.mouse.x - o.x, this.mouse.y - o.y);
+                    if (d < 45 || this.stats.autoCollect) {
+                        if (this.stats.autoCollect) {
+                            o.x += (this.cx - o.x) * 0.1; o.y += (this.cy - o.y) * 0.1;
+                            if (Math.hypot(this.cx - o.x, this.cy - o.y) < 20) this.collectOrb(o, i);
+                        } else {
+                            this.collectOrb(o, i);
+                        }
+                    }
+                });
+
+                this.updateUI();
+            }
+
+            collectOrb(o, i) {
+                if (o.type === 'atp') { this.res.atp += o.val; this.spawnText(o.x, o.y, `+${Math.floor(o.val)}`, '#ffd700'); }
+                if (o.type === 'prot') { this.res.prot += o.val; this.spawnText(o.x, o.y, `+${Math.floor(o.val)}`, '#f472b6'); }
+                this.orbs.splice(i, 1);
             }
 
             spawnVirus() {
                 const angle = Math.random() * Math.PI * 2;
-                const dist = this.radius + 350;
-                this.addEnt(new Virus(this.cx + Math.cos(angle) * dist, this.cy + Math.sin(angle) * dist, 1 + this.wave * 0.15));
+                const d = this.radius + 400;
+                const x = this.cx + Math.cos(angle) * d;
+                const y = this.cy + Math.sin(angle) * d;
+                
+                let type = 'standard';
+                const r = Math.random();
+                if (this.wave > 9 && r < 0.05) type = 'titan';
+                else if (this.wave > 7 && r < 0.1) type = 'sniper';
+                else if (this.wave > 6 && r < 0.15) type = 'weaver';
+                else if (this.wave > 5 && r < 0.2) type = 'vampire';
+                else if (this.wave > 4 && r < 0.2) type = 'ghost';
+                else if (this.wave > 3 && r < 0.25) type = 'infector';
+                else if (this.wave > 2 && r < 0.3) type = 'breacher';
+                else if (this.wave > 1 && r < 0.4) type = 'speedster';
+                else if (this.wave > 1 && r < 0.5) type = 'tank';
+                else if (this.wave > 2 && r < 0.6) type = 'swarm';
+
+                if (type === 'swarm') for(let i=0;i<3;i++) this.addEnt(new Virus(x+Math.random()*20, y+Math.random()*20, type, this.wave));
+                else this.addEnt(new Virus(x, y, type, this.wave));
             }
 
-            spawnMsg(t) {
-                const el = document.getElementById('message-area');
-                el.innerText = t;
-                el.style.opacity = 1;
-                setTimeout(() => el.style.opacity = 0, 2000);
+            handleClick() {
+                if (this.clickCooldown > 0) return;
+                let hit = false;
+                const dmg = this.clickDmg + this.stats.clickBonus;
+                this.entities.filter(e => e.isEnemy).forEach(e => {
+                    if (Math.hypot(e.x - this.mouse.x, e.y - this.mouse.y) < e.r + 20) {
+                        e.takeDamage(dmg, this);
+                        this.spawnPart(this.mouse.x, this.mouse.y, 'white', 5);
+                        hit = true;
+                    }
+                });
+                if (hit) this.clickCooldown = this.clickMaxCooldown;
+            }
+
+            refreshBuildMenu() {
+                const c = document.getElementById('build-list'); c.innerHTML = '';
+                const cats = {};
+                for (const [k, v] of Object.entries(DB.buildings)) {
+                    if (v.unlock && !this.saveData.unlocks.includes(v.unlock)) continue;
+                    if (!cats[v.cat]) cats[v.cat] = []; cats[v.cat].push({k, ...v});
+                }
+                for (const [cat, items] of Object.entries(cats)) {
+                    const h = document.createElement('div'); h.className = 'category-header'; h.innerText = cat; c.appendChild(h);
+                    items.forEach(i => {
+                        const b = document.createElement('button'); b.className = 'build-btn'; b.id = `btn-${i.k}`;
+                        b.onclick = () => this.buy(i.k);
+                        b.innerHTML = `<div class="btn-info"><span class="btn-name">${i.name}</span><span class="btn-desc">${i.desc}</span></div><div class="btn-cost">${i.cost}</div>`;
+                        c.appendChild(b);
+                    });
+                }
+            }
+
+            buy(k) {
+                const b = DB.buildings[k];
+                if (this.res.atp >= b.cost) {
+                    if (b.instant) {
+                        if (k === 'repair' && this.res.wallHp < this.res.maxWallHp) {
+                            this.res.atp -= b.cost; this.res.wallHp = Math.min(this.res.maxWallHp, this.res.wallHp + 50);
+                            this.spawnPart(this.cx, this.cy, '#4ecca3', 10);
+                        }
+                    } else {
+                        this.res.atp -= b.cost;
+                        const ang = Math.random() * Math.PI * 2, r = Math.random() * (this.radius * 0.7);
+                        this.addEnt(new Construction(this.cx + Math.cos(ang)*r, this.cy + Math.sin(ang)*r, k, b.time / this.stats.buildSpeed));
+                    }
+                }
+            }
+
+            // --- Recursive Tree Logic ---
+            openShop() {
+                document.getElementById('main-menu').classList.add('hidden');
+                document.getElementById('shop-screen').classList.remove('hidden');
+                this.switchTab('defense');
+            }
+            
+            switchTab(tab) {
+                this.activeTab = tab;
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                event.target.classList.add('active');
+                
+                const container = document.getElementById('tree-container');
+                container.innerHTML = '';
+                
+                // Render tree for active tab
+                const root = DB.trees[tab];
+                container.appendChild(this.renderNode(root));
+                
+                document.getElementById('shop-ep').innerText = this.saveData.ep;
+            }
+
+            renderNode(nodeData) {
+                const wrapper = document.createElement('div');
+                wrapper.className = `tf-tree ${!nodeData.parent ? 'root' : ''}`;
+
+                const content = document.createElement('div');
+                const bought = this.saveData.unlocks.includes(nodeData.id);
+                const parentBought = !nodeData.parent || this.saveData.unlocks.includes(nodeData.parent);
+                
+                content.className = `tf-node-content ${bought ? 'bought' : !parentBought ? 'locked' : ''}`;
+                content.innerHTML = `
+                    <div class="node-name">${nodeData.name}</div>
+                    <div class="node-desc">${nodeData.desc}</div>
+                    ${bought 
+                        ? '<div class="bought-badge">ACQUIRED</div>' 
+                        : `<button class="buy-node" ${!parentBought ? 'disabled' : ''} onclick="game.unlock('${nodeData.id}')">${nodeData.cost} EP</button>`
+                    }
+                `;
+                wrapper.appendChild(content);
+
+                if (nodeData.children && nodeData.children.length > 0) {
+                    const childrenContainer = document.createElement('div');
+                    childrenContainer.className = 'tf-children';
+                    nodeData.children.forEach(child => {
+                        const conn = document.createElement('div');
+                        conn.className = 'tf-child-connector';
+                        conn.appendChild(this.renderNode(child));
+                        childrenContainer.appendChild(conn);
+                    });
+                    wrapper.appendChild(childrenContainer);
+                }
+                
+                return wrapper;
+            }
+            
+            unlock(id) {
+                // Find node by ID
+                const findNode = (n, tid) => {
+                    if (n.id === tid) return n;
+                    if (n.children) {
+                        for (let c of n.children) {
+                            const found = findNode(c, tid);
+                            if (found) return found;
+                        }
+                    }
+                    return null;
+                };
+                
+                const node = findNode(DB.trees[this.activeTab], id);
+                
+                if (this.saveData.ep >= node.cost) {
+                    this.saveData.ep -= node.cost;
+                    this.saveData.unlocks.push(id);
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.saveData));
+                    // Re-render
+                    this.switchTab(this.activeTab);
+                    document.querySelector(`.tab-btn:nth-child(${this.activeTab=='defense'?1:this.activeTab=='offense'?2:3})`).classList.add('active');
+                }
+            }
+            
+            closeShop() {
+                document.getElementById('main-menu').classList.remove('hidden');
+                document.getElementById('shop-screen').classList.add('hidden');
             }
 
             gameOver() {
                 this.isRunning = false;
                 document.getElementById('game-over-screen').classList.remove('hidden');
                 document.getElementById('ui-panel').classList.add('hidden');
-                document.getElementById('final-score').innerText = Math.floor(this.res.prot * 10);
+                const score = Math.floor(this.res.prot * 10);
+                const earned = Math.floor(score / 20) + (this.wave * 10);
+                this.saveData.ep += earned;
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(this.saveData));
+                document.getElementById('final-score').innerText = score;
                 document.getElementById('final-wave').innerText = this.wave;
+                document.getElementById('earned-ep').innerText = earned;
             }
 
-            handleClick() {
-                if (this.clickCooldown > 0) return;
-                
-                const enemies = this.entities.filter(e => e.isEnemy);
-                let hit = false;
-                for(let e of enemies) {
-                    if (Math.hypot(e.x - this.mouse.x, e.y - this.mouse.y) < e.r + 30) {
-                        e.takeDamage(this.clickDmg, this);
-                        this.spawnPart(this.mouse.x, this.mouse.y, 'white', 5);
-                        hit = true;
-                        break; 
-                    }
-                }
-                
-                if (hit) {
-                    this.clickCooldown = this.clickMaxCooldown;
-                }
+            draw() {
+                this.ctx.clearRect(0,0,this.canvas.width,this.canvas.height);
+                // Wall
+                this.ctx.beginPath(); this.ctx.arc(this.cx,this.cy,this.radius,0,Math.PI*2);
+                this.ctx.fillStyle='#1e1e2e'; this.ctx.fill();
+                this.ctx.lineWidth=8;
+                const hp = this.res.wallHp/this.res.maxWallHp;
+                this.ctx.strokeStyle = hp > 0 ? `rgba(78, 204, 163, ${0.2+hp})` : 'rgba(239,68,68,0.3)';
+                if(hp<=0) this.ctx.setLineDash([5,10]);
+                this.ctx.stroke(); this.ctx.setLineDash([]);
+
+                this.entities.forEach(e => e.draw(this.ctx));
+                this.projectiles.forEach(p => p.draw(this.ctx));
+                this.orbs.forEach(o => {
+                    this.ctx.beginPath(); this.ctx.arc(o.x,o.y,5,0,Math.PI*2);
+                    this.ctx.fillStyle = o.type==='atp'?'#ffd700':o.type==='prot'?'#f472b6':'#4ecca3';
+                    this.ctx.fill();
+                });
+                this.particles.forEach(p => p.draw(this.ctx));
             }
 
             updateUI() {
@@ -453,173 +729,184 @@
                 document.getElementById('prot-txt').innerText = Math.floor(this.res.prot);
                 document.getElementById('wave-txt').innerText = this.wave;
                 document.getElementById('health-txt').innerText = `${Math.ceil(this.res.wallHp)}/${this.res.maxWallHp}`;
-                document.getElementById('health-bar').style.width = (Math.max(0, this.res.wallHp) / this.res.maxWallHp * 100) + '%';
-                for (const key in DB.buildings) {
-                    const btn = document.getElementById(`btn-${key}`);
-                    if (btn) btn.disabled = this.res.atp < DB.buildings[key].cost;
+                document.getElementById('health-bar').style.width = (Math.max(0,this.res.wallHp)/this.res.maxWallHp*100)+'%';
+                for(const k in DB.buildings) {
+                    const b = document.getElementById(`btn-${k}`);
+                    if(b) b.disabled = this.res.atp < DB.buildings[k].cost;
                 }
             }
 
-            draw() {
-                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-                
-                // Cytoplasm
-                this.ctx.beginPath(); 
-                this.ctx.arc(this.cx, this.cy, this.radius, 0, Math.PI * 2);
-                this.ctx.fillStyle = 'rgba(30, 30, 46, 0.4)'; 
-                this.ctx.fill();
-                
-                // Wall
-                this.ctx.beginPath();
-                this.ctx.arc(this.cx, this.cy, this.radius, 0, Math.PI * 2);
-                this.ctx.lineWidth = 10;
-                const wallBroken = this.res.wallHp <= 0;
-                this.ctx.strokeStyle = wallBroken ? 'rgba(239, 68, 68, 0.15)' : '#4ecca3';
-                if(wallBroken) this.ctx.setLineDash([10, 15]);
-                this.ctx.stroke();
-                this.ctx.setLineDash([]);
-
-                this.entities.forEach(e => e.draw(this.ctx));
-                this.projectiles.forEach(p => p.draw(this.ctx));
-                this.orbs.forEach(o => {
-                    this.ctx.beginPath(); 
-                    this.ctx.arc(o.x, o.y, o.r + Math.sin(Date.now()/150)*2, 0, Math.PI*2);
-                    this.ctx.fillStyle = o.type === 'atp' ? '#ffd700' : '#f472b6';
-                    this.ctx.fill();
-                    this.ctx.shadowBlur = 10; this.ctx.shadowColor = this.ctx.fillStyle;
-                    this.ctx.stroke(); this.ctx.shadowBlur = 0;
-                });
-                this.particles.forEach(p => p.draw(this.ctx));
-            }
-
-            loop() { if (this.isRunning) { this.update(); this.draw(); } requestAnimationFrame(this.loop); }
+            loop() { if(this.isRunning){this.update();this.draw();} requestAnimationFrame(this.loop); }
             addEnt(e) { this.entities.push(e); }
-            spawnText(x, y, t, c) { this.particles.push(new FloatingText(x, y, t, c)); }
-            spawnPart(x, y, c, n) { for(let i=0;i<n;i++) this.particles.push(new Particle(x, y, c)); }
-            handleMouse(e) { 
-                const r = this.canvas.getBoundingClientRect(); 
-                this.mouse = { x: e.clientX - r.left, y: e.clientY - r.top }; 
-            }
+            spawnText(x,y,t,c) { this.particles.push(new FloatingText(x,y,t,c)); }
+            spawnPart(x,y,c,n) { for(let i=0;i<n;i++) this.particles.push(new Particle(x,y,c)); }
+            spawnMsg(t) { const m = document.getElementById('message-area'); m.innerText=t; m.style.opacity=1; setTimeout(()=>m.style.opacity=0, 2000); }
+            handleMouse(e) { const r = this.canvas.getBoundingClientRect(); this.mouse = {x:e.clientX-r.left, y:e.clientY-r.top}; }
         }
 
         class Entity {
-            constructor(x, y, c, r) { this.x=x; this.y=y; this.c=c; this.r=r; this.dead=false; this.isEnemy=false; }
+            constructor(x,y,c,r,hp) { this.x=x;this.y=y;this.c=c;this.r=r;this.hp=hp;this.maxHp=hp;this.dead=false;this.isEnemy=false; }
+            takeDamage(n) { this.hp-=n; if(this.hp<=0) this.dead=true; }
             update(g) {}
             draw(ctx) { ctx.beginPath(); ctx.arc(this.x,this.y,this.r,0,Math.PI*2); ctx.fillStyle=this.c; ctx.fill(); }
         }
 
         class Construction extends Entity {
-            constructor(x, y, key, time) { super(x, y, '#475569', 8); this.key = key; this.time = time; }
-            update(g) { 
-                this.time--; 
-                if (this.time <= 0) { 
-                    this.dead = true; 
-                    let o;
-                    if(this.key==='mitochondria') o = new Mitochondria(this.x,this.y);
-                    if(this.key==='chloroplast') o = new Chloroplast(this.x,this.y);
-                    if(this.key==='ribosome') o = new Ribosome(this.x,this.y);
-                    if(this.key==='lysosome') o = new Lysosome(this.x,this.y);
-                    if(this.key==='centriole') o = new Centriole(this.x,this.y);
-                    if(o) g.addEnt(o);
-                } 
+            constructor(x, y, key, time) { super(x, y, '#475569', 8, 10); this.key = key; this.time = time; }
+            update(g) { this.time--; if (this.time <= 0) { this.dead = true; 
+                let o;
+                if(this.key==='mitochondria') o=new Mitochondria(this.x,this.y);
+                if(this.key==='chloroplast') o=new Chloroplast(this.x,this.y);
+                if(this.key==='ribosome') o=new Ribosome(this.x,this.y);
+                if(this.key==='lysosome') o=new Lysosome(this.x,this.y);
+                if(this.key==='centriole') o=new Centriole(this.x,this.y);
+                if(this.key==='peroxisome') o=new Peroxisome(this.x,this.y);
+                if(this.key==='golgi') o=new Golgi(this.x,this.y);
+                if(this.key==='vacuole') o=new Vacuole(this.x,this.y);
+                if(this.key==='er') o=new ER(this.x,this.y);
+                if(this.key==='nucleolus') o=new Nucleolus(this.x,this.y);
+                if(o) g.addEnt(o); } 
             }
+            draw(ctx) { ctx.strokeStyle='white'; ctx.strokeRect(this.x-8,this.y-8,16,16); ctx.fillStyle='#4ecca3'; ctx.fillRect(this.x-8,this.y+10,16*(1-this.time/100),2); }
         }
 
         class Nucleus extends Entity {
-            constructor(x,y) { super(x,y, '#ef4444', 35); }
-            draw(ctx) {
-                const grad = ctx.createRadialGradient(this.x, this.y, 5, this.x, this.y, this.r);
-                grad.addColorStop(0, '#ff6b6b'); grad.addColorStop(1, '#880000');
-                ctx.fillStyle = grad;
-                ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI*2); ctx.fill();
-                // DNA helix look
-                ctx.strokeStyle = "rgba(255,255,255,0.2)"; ctx.lineWidth = 1;
-                ctx.beginPath();
-                for(let i=0; i<Math.PI*2; i+=0.4) {
-                    ctx.moveTo(this.x + Math.cos(i)*10, this.y + Math.sin(i)*10);
-                    ctx.lineTo(this.x + Math.cos(i+0.4)*25, this.y + Math.sin(i+0.4)*25);
-                }
-                ctx.stroke();
-            }
+            constructor(x,y) { super(x,y,'#ef4444',30, 500); }
+            draw(ctx) { ctx.beginPath(); ctx.arc(this.x,this.y,30,0,Math.PI*2); ctx.fillStyle='#ef4444'; ctx.fill(); ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.lineWidth=3; ctx.stroke(); }
         }
 
-        class Mitochondria extends Entity {
-            constructor(x,y) { super(x,y,'#ffd700',14); this.t=0; }
-            update(g) { this.t++; if(this.t > 150) { this.t=0; g.orbs.push({x:this.x,y:this.y,val:25,type:'atp',r:7}); } }
+        // Organelles
+        class Mitochondria extends Entity { constructor(x,y) { super(x,y,'#ffd700',12, DB.buildings.mitochondria.hp); this.t=0; } update(g) { this.t++; if(this.t>150/g.stats.mitoSpeed) { this.t=0; g.orbs.push({x:this.x,y:this.y,val:25,type:'atp'}); } } }
+        class Chloroplast extends Entity { constructor(x,y) { super(x,y,'#22c55e',14, DB.buildings.chloroplast.hp); this.t=0; } update(g) { this.t++; if(this.t>180) { this.t=0; let val=5; if(g.stats.solarBurst && Math.random()<0.1) val=15; g.res.atp+=val; g.spawnText(this.x,this.y,`+${val}`,'#ffd700'); } } }
+        class Ribosome extends Entity { constructor(x,y) { super(x,y,'#d946ef',8, DB.buildings.ribosome.hp); this.t=0; } update(g) { if(g.res.aa>=3) { this.t++; if(this.t>120) { this.t=0; g.res.aa-=3; g.orbs.push({x:this.x,y:this.y,val:1*g.stats.proteinMult,type:'prot'}); } } } }
+        class Golgi extends Entity { constructor(x,y) { super(x,y,'#f97316',16, DB.buildings.golgi.hp); this.applied=false; } update(g) { if(!this.applied) { g.stats.proteinMult *= 2; this.applied=true; } } }
+        class Vacuole extends Entity { constructor(x,y) { super(x,y,'#38bdf8',18, DB.buildings.vacuole.hp); } }
+        class ER extends Entity { constructor(x,y) { super(x,y,'#a855f7',15, DB.buildings.er.hp); this.applied=false; } update(g) { if(!this.applied) { g.stats.autoCollect = true; this.applied=true; } } }
+        class Nucleolus extends Entity { constructor(x,y) { super(x,y,'#ec4899',10, DB.buildings.nucleolus.hp); this.applied=false; } update(g) { if(!this.applied) { g.stats.buildSpeed *= 1.2; this.applied=true; } } }
+        
+        // Defenses
+        class Lysosome extends Entity { 
+            constructor(x,y) { super(x,y,'#fbbf24',10, DB.buildings.lysosome.hp); this.spd=1.5; } 
+            update(g) {
+                // Priority: Breached or attacking wall
+                let target = g.entities.find(e => e.isEnemy && Math.hypot(e.x-g.cx, e.y-g.cy) < g.radius - 10);
+                if (!target && g.res.wallHp < g.res.maxWallHp) target = g.entities.find(e => e.isEnemy && Math.hypot(e.x-g.cx, e.y-g.cy) < g.radius + 10);
+                
+                if(target) {
+                    const ang = Math.atan2(target.y-this.y, target.x-this.x);
+                    this.x += Math.cos(ang)*this.spd*g.stats.lysoSpeed; this.y += Math.sin(ang)*this.spd*g.stats.lysoSpeed;
+                    if(Math.hypot(target.x-this.x, target.y-this.y) < this.r+target.r) target.takeDamage(g.stats.lysoDmg, g);
+                }
+            } 
         }
-        class Chloroplast extends Entity {
-            constructor(x,y) { super(x,y,'#22c55e',15); this.t=0; }
-            update(g) { this.t++; if(this.t > 100) { this.t=0; g.res.atp+=5; g.spawnText(this.x,this.y,"+5", '#ffd700'); } }
-        }
-        class Ribosome extends Entity {
-            constructor(x,y) { super(x,y,'#d946ef',10); this.t=0; }
-            update(g) { if(g.res.aa>=3) { this.t++; if(this.t>120) { this.t=0; g.res.aa-=3; g.orbs.push({x:this.x,y:this.y,val:1,type:'prot',r:8}); } } }
-        }
-        class Lysosome extends Entity {
-            constructor(x,y) { super(x,y,'#f97316',12); }
-            update(g) { 
-                const target = g.entities.find(e => e.isEnemy && Math.hypot(e.x-this.x, e.y-this.y) < 150);
-                if(target) { 
-                    const ang = Math.atan2(target.y-this.y, target.x-this.x); 
-                    this.x += Math.cos(ang)*2.2; this.y += Math.sin(ang)*2.2; 
-                    if(Math.hypot(target.x-this.x, target.y-this.y) < this.r+target.r) target.takeDamage(1.2, g); 
+        class Centriole extends Entity { constructor(x,y) { super(x,y,'#6366f1',14, DB.buildings.centriole.hp); this.t=0; } update(g) { this.t++; if(this.t>g.stats.centrioleRate) { const target=g.entities.find(e=>e.isEnemy && Math.hypot(e.x-this.x, e.y-this.y)<250); if(target) { this.t=0; g.projectiles.push(new Projectile(this.x,this.y,target)); } } } }
+        class Peroxisome extends Entity { constructor(x,y) { super(x,y,'#14b8a6',14, DB.buildings.peroxisome.hp); } update(g) { g.entities.forEach(e => { if(e.isEnemy && Math.hypot(e.x-this.x, e.y-this.y)<60*g.stats.toxinRange) e.takeDamage(0.2, g); }); } draw(ctx){ super.draw(ctx); ctx.beginPath(); ctx.arc(this.x,this.y,60,0,Math.PI*2); ctx.strokeStyle='rgba(20,184,166,0.3)'; ctx.stroke(); } }
+
+        // Virus
+        class Virus extends Entity {
+            constructor(x, y, type, wave) {
+                let c='#ef4444', r=8, hp=10, spd=0.8, dmg=0.2;
+                const scale = 1 + (wave * 0.15);
+                
+                switch(type) {
+                    case 'speedster': c='#facc15'; spd=2.0; hp=5; break;
+                    case 'tank': c='#7f1d1d'; spd=0.4; hp=40; r=12; break;
+                    case 'breacher': c='#f97316'; dmg=0.8; break;
+                    case 'infector': c='#a3e635'; break;
+                    case 'vampire': c='#be123c'; break;
+                    case 'ghost': c='rgba(255,255,255,0.4)'; spd=1.2; hp=8; break;
+                    case 'swarm': c='#fbbf24'; r=4; hp=2; spd=1.5; break;
+                    case 'sniper': c='#60a5fa'; spd=0.5; break; 
+                    case 'weaver': c='#c084fc'; break;
+                    case 'titan': c='#000'; r=25; hp=300; spd=0.2; dmg=2.0; break;
+                }
+                super(x, y, c, r, hp * scale);
+                this.type = type; this.spd = spd; this.dmg = dmg;
+                this.target = null;
+            }
+            
+            takeDamage(n, g) { 
+                this.hp-=n; 
+                if(this.type === 'vampire') this.hp += n*0.2;
+                if(this.hp<=0) { 
+                    this.dead=true; 
+                    let loot = g.atpPerKill;
+                    if(g.stats.scavenger && Math.random()<0.3) loot *= 2;
+                    g.res.atp += loot;
+                    g.spawnText(this.x,this.y,`+${loot}`,'#ffd700');
+                    g.spawnPart(this.x,this.y,this.c,5); 
                 } 
             }
-        }
-        class Centriole extends Entity {
-            constructor(x,y) { super(x,y,'#6366f1',16); this.t=0; }
-            update(g) { this.t++; if(this.t>40) { const target = g.entities.find(e => e.isEnemy && Math.hypot(e.x-this.x, e.y-this.y) < 350); if(target) { this.t=0; g.projectiles.push(new Projectile(this.x,this.y,target)); } } }
-        }
 
-        class Virus extends Entity {
-            constructor(x,y,s) { super(x,y,'#ef4444', 10*s); this.isEnemy=true; this.hp=15*s; this.speed=1.2; this.dmg=0.25; }
-            takeDamage(n, g) { this.hp-=n; if(this.hp<=0) { this.dead=true; g.spawnPart(this.x,this.y,this.c,10); } }
             update(g) {
-                const dx = g.cx - this.x, dy = g.cy - this.y, dist = Math.hypot(dx, dy);
+                const distToCenter = Math.hypot(g.cx-this.x, g.cy-this.y);
+                const inside = distToCenter < g.radius;
                 
-                if (g.res.wallHp > 0 && dist <= g.radius + 5) {
-                    g.res.wallHp -= this.dmg;
-                    this.x += (Math.random()-0.5)*2; this.y += (Math.random()-0.5)*2;
-                    return;
-                }
+                if (inside || g.res.wallHp <= 0) {
+                    // Attack logic
+                    if (this.type === 'infector' || this.type === 'weaver') {
+                        if (!this.target || this.target.dead) this.target = g.entities.find(e => !e.isEnemy && !(e instanceof Nucleus) && !(e instanceof Construction));
+                    } else {
+                        this.target = g.nucleus;
+                    }
 
-                this.x += (dx/dist) * this.speed;
-                this.y += (dy/dist) * this.speed;
-                if (dist < 40) g.gameOver();
-            }
-            draw(ctx) {
-                ctx.fillStyle = this.c;
-                ctx.beginPath();
-                for(let i=0; i<6; i++) {
-                    const a = i * Math.PI/3 + (Date.now()/500);
-                    const r2 = this.r * (i%2===0?1:0.7);
-                    ctx.lineTo(this.x + Math.cos(a)*r2, this.y + Math.sin(a)*r2);
+                    if (this.target) {
+                        const d = Math.hypot(this.target.x-this.x, this.target.y-this.y);
+                        if (d < this.r + this.target.r + 5) {
+                            this.target.takeDamage(this.dmg);
+                            if (this.target instanceof Nucleus && this.target.hp <= 0) g.gameOver();
+                            return; 
+                        } else {
+                            const ang = Math.atan2(this.target.y-this.y, this.target.x-this.x);
+                            this.x += Math.cos(ang)*this.spd; this.y += Math.sin(ang)*this.spd;
+                        }
+                    }
+                } else {
+                    if (distToCenter <= g.radius + this.r + 2) {
+                        // Hitting wall
+                        const dmg = Math.max(0, this.dmg - g.stats.armor);
+                        g.res.wallHp -= dmg;
+                        if (g.stats.thorns > 0) this.takeDamage(g.stats.thorns, g);
+                        if(Math.random()<0.1) this.x += (Math.random()-0.5)*5;
+                    } else {
+                        const ang = Math.atan2(g.cy-this.y, g.cx-this.x);
+                        this.x += Math.cos(ang)*this.spd; this.y += Math.sin(ang)*this.spd;
+                    }
                 }
-                ctx.closePath(); ctx.fill();
+                
+                if (this.type === 'sniper' && Math.random()<0.02) {
+                    g.projectiles.push(new Projectile(this.x, this.y, g.nucleus, true));
+                }
             }
         }
 
         class Projectile {
-            constructor(x,y,t) { this.x=x;this.y=y;this.t=t; this.dead=false; }
-            update(g) { 
-                if(this.t.dead) { this.dead=true; return; } 
-                const ang = Math.atan2(this.t.y-this.y, this.t.x-this.x); 
-                this.x+=Math.cos(ang)*9; this.y+=Math.sin(ang)*9; 
-                if(Math.hypot(this.t.x-this.x, this.t.y-this.y) < 15) { this.t.takeDamage(6,g); this.dead=true; } 
+            constructor(x,y,t, isEnemy=false) { this.x=x;this.y=y;this.t=t;this.isEnemy=isEnemy; }
+            update(g) {
+                if(!this.isEnemy && this.t.dead) { this.dead=true; return; }
+                const tx = this.isEnemy ? g.cx : this.t.x;
+                const ty = this.isEnemy ? g.cy : this.t.y;
+                const ang = Math.atan2(ty-this.y, tx-this.x);
+                this.x+=Math.cos(ang)*5; this.y+=Math.sin(ang)*5;
+                
+                if (this.isEnemy) {
+                    if (Math.hypot(g.cx-this.x, g.cy-this.y) < g.radius) { g.res.wallHp -= 5; this.dead=true; }
+                } else {
+                    if (Math.hypot(this.t.x-this.x, this.t.y-this.y) < 15) { this.t.takeDamage(5, g); this.dead=true; }
+                }
             }
-            draw(ctx) { ctx.fillStyle='#6366f1'; ctx.beginPath(); ctx.arc(this.x,this.y,4,0,Math.PI*2); ctx.fill(); }
+            draw(ctx) { ctx.fillStyle=this.isEnemy?'#ef4444':'#6366f1'; ctx.beginPath(); ctx.arc(this.x,this.y,3,0,Math.PI*2); ctx.fill(); }
         }
 
         class Particle {
-            constructor(x,y,c) { this.x=x;this.y=y;this.c=c; this.vx=(Math.random()-0.5)*5; this.vy=(Math.random()-0.5)*5; this.life=25; }
+            constructor(x,y,c) { this.x=x;this.y=y;this.c=c; this.vx=(Math.random()-0.5)*4; this.vy=(Math.random()-0.5)*4; this.life=20; }
             update() { this.x+=this.vx; this.y+=this.vy; this.life--; }
-            draw(ctx) { ctx.globalAlpha=this.life/25; ctx.fillStyle=this.c; ctx.beginPath(); ctx.arc(this.x,this.y,2,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1; }
+            draw(ctx) { ctx.globalAlpha=this.life/20; ctx.fillStyle=this.c; ctx.beginPath(); ctx.arc(this.x,this.y,2,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1; }
         }
-
         class FloatingText {
             constructor(x,y,t,c) { this.x=x;this.y=y;this.t=t;this.c=c;this.life=40; }
-            update() { this.y-=1.2; this.life--; }
-            draw(ctx) { ctx.globalAlpha=this.life/40; ctx.fillStyle=this.c; ctx.font="bold 11px sans-serif"; ctx.textAlign="center"; ctx.fillText(this.t,this.x,this.y); ctx.globalAlpha=1; }
+            update() { this.y-=1; this.life--; }
+            draw(ctx) { ctx.globalAlpha=this.life/40; ctx.fillStyle=this.c; ctx.font="bold 12px sans-serif"; ctx.textAlign="center"; ctx.fillText(this.t,this.x,this.y); ctx.globalAlpha=1; }
         }
 
         const game = new Game();
