@@ -16,6 +16,7 @@
             --danger: #ef476f;
             --success: #06d6a0;
             --oberth: #a2d2ff;
+            --warning: #ff9f1c;
         }
 
         body {
@@ -76,6 +77,11 @@
             text-shadow: 0 0 8px var(--oberth);
             color: var(--oberth);
         }
+
+        .warning-blink {
+            animation: blink 1s infinite;
+        }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     </style>
 </head>
 <body class="w-screen h-screen relative scanlines">
@@ -114,6 +120,14 @@
                     </div>
                 </div>
                 <div id="intercept-status" class="text-[9px] font-bold text-red-500 mt-1">NO INTERCEPT</div>
+            </div>
+
+            <!-- Special Conditions Warning -->
+            <div id="condition-panel" class="hud-panel p-2 pointer-events-auto border-warning hidden">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-exclamation-triangle text-warning text-xs warning-blink"></i>
+                    <div class="text-[10px] text-warning font-bold uppercase tracking-wider" id="condition-text">HEAVY PAYLOAD</div>
+                </div>
             </div>
         </div>
     </div>
@@ -203,33 +217,36 @@
             modalTitle: document.getElementById('modal-title'),
             modalContent: document.getElementById('modal-content'),
             modalBtn: document.getElementById('modal-btn'),
-            arrow: document.getElementById('target-arrow')
+            arrow: document.getElementById('target-arrow'),
+            conditionPanel: document.getElementById('condition-panel'),
+            conditionText: document.getElementById('condition-text')
         };
 
         let gameState = { running: false, levelIdx: 0, fuel: 2500, t: 0 };
         let camera = { x: 0, y: 0, zoom: 0.6, targetZoom: 0.6, dragging: false, lastMouse: {x:0, y:0} };
 
+        // Storyline & Condition Map
         const storyline = [
-            "Good start, pilot. Deliver these medical crates. Just keep the temperature steady.",
-            "DECRYPTED: The crates aren't medical. They are surveillance sensors. Why watch the miners?",
-            "Redirecting mission. We need to collect mineral samples from the asteroid belt. Stay sharp.",
-            "DECRYPTED: Those 'samples' were high-grade fuel pellets. Kepler is stockpiling energy.",
-            "Deliver these engine parts to the Lunar station. They're falling behind schedule.",
-            "Memo: Several pilots have gone missing in this sector. Proceed with extreme caution.",
-            "Cargo: Cryo-pods. Destination: Titan Labs. No manifests were provided for the contents.",
-            "DECRYPTED: Kepler is ignoring safety protocols. The pods contain unauthorized biological research.",
-            "Move these cooling units to the Venus platform. The sun is getting hotter, or our tech is failing.",
-            "You're being watched. A company drone has been trailing your ship for three sectors.",
-            "The Inter-Planetary Court has opened an investigation. Kepler HQ says 'business as usual'.",
-            "REBELLION COMMS: We've intercepted their flight logs. They are building a weapon, not a colony.",
-            "DECRYPTED: Project 'Solar Flare'. They plan to ignite the gas giants for energy harvesting.",
-            "Deliver this 'special' cargo. It's an override key for the orbital defense network.",
-            "The rebellion has swapped the key. It's now a virus. Get it to the gate.",
-            "Warning: Fleet interceptors are searching for you. Maintain radio silence.",
-            "The HQ planet is in sight. It's a gilded cage for the ultra-wealthy. Time to open the doors.",
-            "One final launch window. The defense grid is down. Fly true.",
-            "Target identified: Central Core. Everything you've seen leads to this moment.",
-            "PROMPT: EXECUTE JUDGMENT. The system is watching. Make them see the truth."
+            { text: "Good start, pilot. Deliver these medical crates. Just keep the temperature steady.", condition: null },
+            { text: "DECRYPTED: The crates aren't medical. They are surveillance sensors. Why watch the miners?", condition: null },
+            { text: "Redirecting mission. We need to collect mineral samples from the asteroid belt. Stay sharp.", condition: null },
+            { text: "DECRYPTED: Those 'samples' were high-grade fuel pellets. Kepler is stockpiling energy.", condition: null },
+            { text: "Deliver these engine parts to the Lunar station. The weight indicates heavy ordinance.", condition: "HEAVY_PAYLOAD" },
+            { text: "Memo: Several pilots have gone missing in this sector. Proceed with extreme caution.", condition: null },
+            { text: "Cargo: Cryo-pods. Destination: Titan Labs. No manifests were provided.", condition: "HEAVY_PAYLOAD" },
+            { text: "DECRYPTED: Kepler is ignoring safety protocols. The pods contain unauthorized biological research.", condition: null },
+            { text: "Move these cooling units to the Venus platform. Warning: Drone activity detected.", condition: "INTERCEPTORS" },
+            { text: "You're being watched. A company drone has been trailing your ship for three sectors.", condition: "INTERCEPTORS" },
+            { text: "The Inter-Planetary Court has opened an investigation. Kepler HQ says 'business as usual'.", condition: null },
+            { text: "REBELLION COMMS: We've intercepted their flight logs. Solar activity is peaking.", condition: "SOLAR_WIND" },
+            { text: "DECRYPTED: Project 'Solar Flare'. They plan to ignite the gas giants for energy harvesting.", condition: "SOLAR_WIND" },
+            { text: "Deliver this 'special' cargo. It's an override key. Defenses are active.", condition: "INTERCEPTORS" },
+            { text: "The rebellion has swapped the key. It's now a virus. Comms are jammed.", condition: "SENSOR_JAMMING" },
+            { text: "Warning: Fleet interceptors are searching for you. Maintain radio silence.", condition: "SENSOR_JAMMING" },
+            { text: "The HQ planet is in sight. It's a gilded cage for the ultra-wealthy. Heavy payload authorized.", condition: "HEAVY_PAYLOAD" },
+            { text: "One final launch window. The defense grid is down. Fly true.", condition: "SOLAR_WIND" },
+            { text: "Target identified: Central Core. Everything you've seen leads to this moment.", condition: "INTERCEPTORS" },
+            { text: "PROMPT: EXECUTE JUDGMENT. The system is watching. Make them see the truth.", condition: "JUDGMENT_DAY" }
         ];
 
         class Vector {
@@ -243,16 +260,18 @@
         }
 
         class CelestialBody {
-            constructor(name, x, y, mass, radius, color, isStatic = false, velocity = new Vector(0,0), type = "rock") {
+            constructor(name, x, y, mass, radius, color, isStatic = false, velocity = new Vector(0,0), type = "rock", isHostile = false) {
                 this.name = name; this.pos = new Vector(x, y); this.mass = mass;
                 this.radius = radius; this.color = color; this.isStatic = isStatic;
                 this.vel = velocity; this.trail = []; this.type = type;
                 this.seed = Math.random() * 1000;
+                this.isHostile = isHostile;
             }
             update() {
                 if (!this.isStatic) {
                     const sun = bodies[0];
                     const d = this.pos.dist(sun.pos);
+                    // Standard gravity
                     this.vel = this.vel.add(sun.pos.sub(this.pos).norm().mult(G * sun.mass / (d * d)));
                     this.pos = this.pos.add(this.vel);
                 }
@@ -262,7 +281,16 @@
                 }
             }
             draw(ctx) {
-                // Outer Atmosphere Glow
+                if (this.isHostile) {
+                     // Hostile Drone Styling
+                    ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, this.radius + 2, 0, Math.PI*2);
+                    ctx.strokeStyle = "#f00"; ctx.lineWidth = 2; ctx.stroke();
+                    ctx.fillStyle = "#f00"; ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = "#fff"; ctx.font = "10px Mono"; ctx.fillText("INTERCEPTOR", this.pos.x + 10, this.pos.y);
+                    return;
+                }
+
+                // Planet Styling
                 const grad = ctx.createRadialGradient(this.pos.x, this.pos.y, this.radius * 0.8, this.pos.x, this.pos.y, this.radius * 2.2);
                 grad.addColorStop(0, this.color);
                 grad.addColorStop(1, 'transparent');
@@ -270,45 +298,33 @@
                 ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, this.radius * 2.2, 0, Math.PI*2);
                 ctx.fillStyle = grad; ctx.globalAlpha = 0.2; ctx.fill(); ctx.globalAlpha = 1.0;
 
-                // Orbit Trail
                 ctx.beginPath(); this.trail.forEach(p => ctx.lineTo(p.x, p.y));
                 ctx.strokeStyle = this.color; ctx.globalAlpha = 0.15; ctx.stroke(); ctx.globalAlpha = 1.0;
                 
-                // Texture patterns
                 ctx.save();
                 ctx.translate(this.pos.x, this.pos.y);
                 ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI*2);
                 ctx.clip();
                 ctx.fillStyle = this.color; ctx.fillRect(-this.radius, -this.radius, this.radius*2, this.radius*2);
                 
-                // Add "texture" based on type
                 ctx.globalAlpha = 0.3;
                 if (this.type === "gas") {
                     for(let i=-2; i<2; i++) {
-                        ctx.fillStyle = "#fff";
-                        ctx.fillRect(-this.radius, i * (this.radius/2), this.radius*2, 2);
+                        ctx.fillStyle = "#fff"; ctx.fillRect(-this.radius, i * (this.radius/2), this.radius*2, 2);
                     }
                 } else if (this.type === "rock") {
                     ctx.fillStyle = "#000";
                     for(let i=0; i<5; i++) {
-                        ctx.beginPath();
-                        ctx.arc(Math.sin(this.seed+i)*this.radius*0.5, Math.cos(this.seed*i)*this.radius*0.5, this.radius*0.2, 0, Math.PI*2);
-                        ctx.fill();
+                        ctx.beginPath(); ctx.arc(Math.sin(this.seed+i)*this.radius*0.5, Math.cos(this.seed*i)*this.radius*0.5, this.radius*0.2, 0, Math.PI*2); ctx.fill();
                     }
                 }
-                // Shade
                 const shade = ctx.createRadialGradient(-this.radius/3, -this.radius/3, 0, 0, 0, this.radius);
-                shade.addColorStop(0, "rgba(255,255,255,0.2)");
-                shade.addColorStop(1, "rgba(0,0,0,0.6)");
-                ctx.globalAlpha = 1.0;
-                ctx.fillStyle = shade;
-                ctx.fillRect(-this.radius, -this.radius, this.radius*2, this.radius*2);
+                shade.addColorStop(0, "rgba(255,255,255,0.2)"); shade.addColorStop(1, "rgba(0,0,0,0.6)");
+                ctx.globalAlpha = 1.0; ctx.fillStyle = shade; ctx.fillRect(-this.radius, -this.radius, this.radius*2, this.radius*2);
                 ctx.restore();
 
-                // Rings (Saturn style)
                 if (this.type === "ringed") {
-                    ctx.beginPath();
-                    ctx.ellipse(this.pos.x, this.pos.y, this.radius * 2.5, this.radius * 0.5, Math.PI/6, 0, Math.PI*2);
+                    ctx.beginPath(); ctx.ellipse(this.pos.x, this.pos.y, this.radius * 2.5, this.radius * 0.5, Math.PI/6, 0, Math.PI*2);
                     ctx.strokeStyle = this.color; ctx.lineWidth = 3; ctx.globalAlpha = 0.3; ctx.stroke(); ctx.globalAlpha = 1.0;
                 }
                 
@@ -322,9 +338,23 @@
             update(bodies) {
                 if (!this.active) return;
                 let gravity = new Vector(0,0);
+                
+                // Apply Special Conditions
+                const condition = storyline[gameState.levelIdx].condition;
+                if (condition === "SOLAR_WIND" || condition === "JUDGMENT_DAY") {
+                    // Push away from 0,0
+                    const windDir = this.pos.norm();
+                    gravity = gravity.add(windDir.mult(0.02));
+                }
+
                 bodies.forEach(b => {
                     const d = this.pos.dist(b.pos);
-                    if (d < b.radius + 2) this.crash(b);
+                    // Collision logic
+                    if (b.isHostile) {
+                        if (d < b.radius + 5) this.crash(b);
+                    } else {
+                        if (d < b.radius + 2) this.crash(b);
+                    }
                     gravity = gravity.add(b.pos.sub(this.pos).norm().mult((G * b.mass) / (d * d)));
                 });
                 this.vel = this.vel.add(gravity);
@@ -344,6 +374,7 @@
             crash(b) {
                 this.active = false;
                 if (b.name === levels[gameState.levelIdx].target) endGame(true);
+                else if (b.isHostile) endGame(false, "INTERCEPTED BY HOSTILE DRONE");
                 else endGame(false, `COLLISION: ${b.name.toUpperCase()}`);
             }
         }
@@ -364,29 +395,34 @@
                 const targetColor = i === 19 ? "#00ff00" : `hsl(${180 + (i * 45) % 180}, 70%, 50%)`;
                 const originColor = `hsl(${(i * 30) % 360}, 40%, 60%)`;
                 
+                // Randomize Target Spawn Angle
+                const targetAngle = Math.random() * Math.PI * 2;
+                const tx = Math.cos(targetAngle) * dist;
+                const ty = Math.sin(targetAngle) * dist;
+                // Perpendicular velocity for clockwise orbit
+                const tvx = orbitalSpeed * Math.sin(targetAngle);
+                const tvy = orbitalSpeed * -Math.cos(targetAngle);
+
                 bodies = [
                     new CelestialBody("Sun", 0, 0, 4000 + i * 100, 50, "#FDB813", true, new Vector(0,0), "gas"),
                     new CelestialBody("Origin", -240, 0, 100, 12, originColor, false, new Vector(0, 4.0), "rock"),
-                    new CelestialBody(i === 19 ? "Kepler HQ" : levels[i].target, dist, 0, 120 + i * 15, 12 + i, targetColor, false, new Vector(0, -orbitalSpeed), i === 19 ? "gas" : planetTypes[i % planetTypes.length])
+                    new CelestialBody(i === 19 ? "Kepler HQ" : levels[i].target, tx, ty, 120 + i * 15, 12 + i, targetColor, false, new Vector(tvx, tvy), i === 19 ? "gas" : planetTypes[i % planetTypes.length])
                 ];
 
-                // Add Obstacle Planets for higher levels
-                if (i > 2) {
-                    const count = Math.min(3, Math.floor(i / 3));
-                    for(let j=0; j<count; j++) {
-                        const obsDist = 200 + (j + 1) * 150;
-                        const obsSpeed = Math.sqrt(G * 4000 / obsDist);
-                        const angle = (Math.PI * 2 / count) * j + (i * 0.5);
+                // Special Conditions: Interceptors
+                const condition = storyline[i].condition;
+                if (condition === "INTERCEPTORS" || condition === "JUDGMENT_DAY") {
+                    const droneCount = condition === "JUDGMENT_DAY" ? 5 : 2;
+                    for(let d=0; d<droneCount; d++) {
+                        const droneDist = 300 + (d * 100);
+                        const droneSpeed = Math.sqrt(G * 4000 / droneDist) * 1.2; // Faster than normal
+                        const da = Math.random() * Math.PI * 2;
                         bodies.push(new CelestialBody(
-                            "Anomaly " + (j+1),
-                            Math.cos(angle) * obsDist,
-                            Math.sin(angle) * obsDist,
-                            150 + i * 10,
-                            15,
-                            `hsl(${(angle * 50) % 360}, 30%, 40%)`,
-                            false,
-                            new Vector(-Math.sin(angle) * obsSpeed, Math.cos(angle) * obsSpeed),
-                            planetTypes[(j+1) % planetTypes.length]
+                            "DRONE-" + d, 
+                            Math.cos(da)*droneDist, Math.sin(da)*droneDist, 
+                            20, 4, "#f00", false, 
+                            new Vector(droneSpeed*Math.sin(da), -droneSpeed*Math.cos(da)), 
+                            "rock", true
                         ));
                     }
                 }
@@ -410,15 +446,23 @@
             let pShip = new Ship(ship.pos.x, ship.pos.y);
             pShip.vel = new Vector(ship.vel.x, ship.vel.y);
             const a = (parseInt(els.angle.value) * Math.PI) / 180;
-            const p = (parseInt(els.power.value) * boost) / 200;
+            let p = (parseInt(els.power.value) * boost) / 200;
+
+            // Apply Heavy Payload Condition
+            const condition = storyline[gameState.levelIdx].condition;
+            if (condition === "HEAVY_PAYLOAD" || condition === "JUDGMENT_DAY") {
+                p *= 0.6; // 40% Thrust Reduction
+            }
+
             pShip.vel = pShip.vel.add(new Vector(Math.cos(a), Math.sin(a)).mult(p));
 
-            let pBodies = bodies.map(b => new CelestialBody(b.name, b.pos.x, b.pos.y, b.mass, b.radius, b.color, b.isStatic, new Vector(b.vel.x, b.vel.y), b.type));
+            let pBodies = bodies.map(b => new CelestialBody(b.name, b.pos.x, b.pos.y, b.mass, b.radius, b.color, b.isStatic, new Vector(b.vel.x, b.vel.y), b.type, b.isHostile));
             let path = [], tPath = [], intercept = null, minDist = Infinity, interceptTime = 0;
 
             const targetName = levels[gameState.levelIdx].target;
+            const maxSteps = (condition === "SENSOR_JAMMING") ? 1000 : PREDICTION_STEPS; // Reduced range
 
-            for(let i=0; i<PREDICTION_STEPS; i++) {
+            for(let i=0; i<maxSteps; i++) {
                 pBodies.forEach(b => {
                     if(!b.isStatic) {
                         const sun = pBodies[0];
@@ -429,9 +473,15 @@
                 });
 
                 let grav = new Vector(0,0);
+                // Prediction also needs to account for solar wind
+                if (condition === "SOLAR_WIND" || condition === "JUDGMENT_DAY") {
+                    const windDir = pShip.pos.norm();
+                    grav = grav.add(windDir.mult(0.02));
+                }
+
                 pBodies.forEach(b => {
                     const d = pShip.pos.dist(b.pos);
-                    grav = grav.add(b.pos.sub(pShip.pos).norm().mult((G * b.mass) / (d*d)));
+                    grav = grav.add(b.pos.sub(pShip.pos).norm().mult((G * b.mass) / (d * d)));
                     if(b.name === targetName) {
                         if(d < minDist) { minDist = d; interceptTime = i; }
                         if(d < b.radius + 12 && !intercept) intercept = {x: b.pos.x, y: b.pos.y};
@@ -451,7 +501,6 @@
         function drawWorld() {
             ctx.fillStyle = "#0a0c10"; ctx.fillRect(0,0,canvas.width,canvas.height);
             
-            // Draw Starfield (static background)
             ctx.fillStyle = "white";
             for(let i=0; i<50; i++) {
                 ctx.globalAlpha = 0.2;
@@ -479,10 +528,25 @@
                     els.interceptStatus.innerText = "NO INTERCEPT";
                     els.interceptStatus.className = "text-red-500 font-bold mt-1";
                 }
-                ctx.setLineDash([5,5]); ctx.strokeStyle = "rgba(255,255,255,0.15)"; ctx.beginPath();
+                
+                // Sensor Jamming Effect
+                const condition = storyline[gameState.levelIdx].condition;
+                if (condition === "SENSOR_JAMMING") {
+                    ctx.strokeStyle = "rgba(255,0,0,0.5)"; // Glitchy red line
+                    ctx.setLineDash([2, 10]);
+                } else {
+                    ctx.strokeStyle = "rgba(255,255,255,0.15)";
+                    ctx.setLineDash([5,5]);
+                }
+                
+                ctx.beginPath();
                 data.path.forEach(p => ctx.lineTo(p.x, p.y)); ctx.stroke();
-                ctx.strokeStyle = "rgba(239,71,111,0.08)"; ctx.beginPath();
-                data.tPath.forEach(p => ctx.lineTo(p.x, p.y)); ctx.stroke(); ctx.setLineDash([]);
+                
+                if (condition !== "SENSOR_JAMMING") {
+                    ctx.strokeStyle = "rgba(239,71,111,0.08)"; ctx.beginPath();
+                    data.tPath.forEach(p => ctx.lineTo(p.x, p.y)); ctx.stroke(); 
+                }
+                ctx.setLineDash([]);
             }
 
             bodies.forEach(b => b.draw(ctx));
@@ -513,6 +577,16 @@
             els.status.innerText = "Ready";
             els.status.className = "text-[10px] px-2 py-0.5 bg-gray-800 text-gray-400 border border-gray-600 rounded uppercase";
             els.modal.classList.add('hidden');
+            
+            // Check Conditions
+            const condition = storyline[gameState.levelIdx].condition;
+            if (condition) {
+                els.conditionPanel.classList.remove('hidden');
+                els.conditionText.innerText = condition.replace(/_/g, " ");
+            } else {
+                els.conditionPanel.classList.add('hidden');
+            }
+
             lvl.setup();
             updateFuelUI();
         }
@@ -520,7 +594,13 @@
         function launch() {
             const boost = calculateOberth();
             const a = (parseInt(els.angle.value) * Math.PI) / 180;
-            const p = (parseInt(els.power.value) * boost) / 200;
+            let p = (parseInt(els.power.value) * boost) / 200;
+            
+            const condition = storyline[gameState.levelIdx].condition;
+            if (condition === "HEAVY_PAYLOAD" || condition === "JUDGMENT_DAY") {
+                p *= 0.6;
+            }
+
             ship.vel = ship.vel.add(new Vector(Math.cos(a), Math.sin(a)).mult(p));
             gameState.fuel -= parseInt(els.power.value);
             gameState.running = true;
@@ -537,7 +617,7 @@
             els.modal.classList.remove('hidden');
             if (success) {
                 els.modalTitle.innerText = "Mission Success";
-                els.modalContent.innerHTML = `<p class='italic text-yellow-500 font-bold'>Target Reached.</p><p>${storyline[gameState.levelIdx]}</p>`;
+                els.modalContent.innerHTML = `<p class='italic text-yellow-500 font-bold'>Target Reached.</p><p>${storyline[gameState.levelIdx].text}</p>`;
                 els.modalBtn.onclick = () => { gameState.levelIdx++; resetLevel(); };
             } else {
                 els.modalTitle.innerText = "Mission Loss";
