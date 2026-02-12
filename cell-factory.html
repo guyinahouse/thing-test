@@ -142,6 +142,31 @@
         .btn-desc { font-size: 10px; color: #94a3b8; }
         .btn-cost { text-align: right; font-size: 12px; color: var(--gold); font-weight: bold; }
 
+        #ui-bottom {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #334155;
+        }
+
+        .extract-btn {
+            width: 100%;
+            background: #991b1b;
+            color: white;
+            border: 1px solid #f87171;
+            padding: 10px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .extract-btn:hover {
+            background: #dc2626;
+            box-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
+        }
+
         #message-area {
             position: absolute;
             top: 20px; left: 50%; transform: translateX(-50%);
@@ -175,17 +200,21 @@
             border: none; cursor: pointer; font-weight: bold; margin: 8px;
             transition: transform 0.2s;
         }
+        .menu-btn-main:hover { transform: scale(1.05); }
 
         .hidden { display: none !important; }
 
         /* Complex Tree Styles */
-        .shop-tabs { display: flex; justify-content: center; background: #0f172a; padding: 10px; border-bottom: 1px solid #334155; }
+        .shop-tabs { display: flex; justify-content: center; background: #0f172a; padding: 10px; border-bottom: 1px solid #334155; flex-shrink: 0;}
         .tab-btn { background: transparent; border: none; color: #94a3b8; font-size: 16px; font-weight: bold; padding: 10px 20px; cursor: pointer; border-bottom: 2px solid transparent; }
         .tab-btn.active { color: white; border-bottom-color: var(--highlight); }
         
-        .tree-scroll-area { flex: 1; overflow: auto; padding: 40px; display: flex; justify-content: center; background: radial-gradient(circle at center, #1e293b 0%, #0b0b15 100%); }
+        .tree-scroll-area { 
+            flex: 1; overflow: auto; padding: 40px; 
+            background: radial-gradient(circle at center, #1e293b 0%, #0b0b15 100%);
+        }
         
-        /* Recursive Flex Layout */
+        .tf-tree-wrapper { display: flex; justify-content: center; min-width: max-content; margin: auto; }
         .tf-tree { display: flex; flex-direction: column; align-items: center; }
         .tf-node-content { 
             background: #1e293b; border: 2px solid #475569; padding: 10px; width: 160px; border-radius: 8px; 
@@ -197,14 +226,12 @@
         .tf-node-content.locked { opacity: 0.6; filter: grayscale(1); }
         .tf-children { display: flex; flex-direction: row; gap: 30px; justify-content: center; position: relative; }
         
-        /* Connectors */
         .tf-children::before {
             content: ''; position: absolute; top: -15px; left: 50%; width: 2px; height: 15px; background: #475569;
         }
         .tf-tree.root > .tf-node-content { margin-top: 0; }
         .tf-tree.root > .tf-children::before { display: none; }
         
-        /* Connector Crossbar */
         .tf-child-connector {
             display: flex; flex-direction: column; align-items: center; position: relative;
         }
@@ -227,6 +254,13 @@
         .buy-node:hover:not(:disabled) { background: var(--highlight); color: #0b0b15; }
         .buy-node:disabled { opacity: 0.5; cursor: not-allowed; }
         .bought-badge { color: var(--gold); font-size: 11px; font-weight: bold; padding: 6px; }
+
+        #extract-modal {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: #0f172a; padding: 25px; border: 2px solid var(--highlight);
+            border-radius: 12px; z-index: 200; text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        }
 
     </style>
 </head>
@@ -254,7 +288,7 @@
         </div>
 
         <div id="shop-screen" class="fs-menu hidden">
-            <div style="background: #0f172a; padding: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155;">
+            <div style="background: #0f172a; padding: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; flex-shrink: 0;">
                 <button class="menu-btn-main" style="padding: 8px 20px; font-size: 1em; margin:0;" onclick="game.closeShop()">BACK</button>
                 <h2 style="margin:0; color:var(--gold);">EP: <span id="shop-ep">0</span></h2>
             </div>
@@ -263,19 +297,32 @@
                 <button class="tab-btn" onclick="game.switchTab('offense')">OFFENSE</button>
                 <button class="tab-btn" onclick="game.switchTab('economy')">ECONOMY</button>
             </div>
-            <div class="tree-scroll-area" id="tree-container">
-                <!-- Tree render here -->
+            <div class="tree-scroll-area">
+                <div class="tf-tree-wrapper" id="tree-container">
+                    <!-- Tree render here -->
+                </div>
             </div>
         </div>
 
         <div id="game-over-screen" class="fs-menu hidden menu-center">
-            <h1 style="color: var(--danger); font-size: 3em;">CELLULAR DEATH</h1>
+            <h1 id="go-title" style="color: var(--danger); font-size: 3em;">CELLULAR DEATH</h1>
             <div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 12px; margin: 20px 0; min-width: 300px;">
                 <h2 style="margin:5px 0;">Score: <span id="final-score" style="color: var(--highlight);">0</span></h2>
                 <h3 style="color: #94a3b8; margin:5px 0;">Wave: <span id="final-wave">0</span></h3>
                 <div style="font-size: 1.4em; color: var(--gold); margin-top: 15px;">+<span id="earned-ep">0</span> EP Earned</div>
             </div>
-            <button class="menu-btn-main" onclick="location.reload()">REPLICATE</button>
+            <!-- Soft reload to save state effectively -->
+            <button class="menu-btn-main" onclick="game.returnToMenu()">RETURN TO MENU</button>
+        </div>
+
+        <!-- Extract Modal -->
+        <div id="extract-modal" class="hidden">
+            <h2 style="color: white; margin-top: 0;">Initiate Extraction?</h2>
+            <p style="color: #94a3b8; font-size: 14px;">This will end your current run immediately.<br>You will secure all EP earned so far.</p>
+            <div style="margin-top:20px; display:flex; gap:10px; justify-content:center;">
+                <button class="menu-btn-main" onclick="game.confirmExtract()">EXTRACT</button>
+                <button class="menu-btn-main" style="background:#475569; color:white;" onclick="game.cancelExtract()">CANCEL</button>
+            </div>
         </div>
     </div>
 
@@ -294,20 +341,25 @@
             <div><span class="res-label">AA</span><span id="aa-txt" class="res-item" style="color: #4ecca3">10</span></div>
             <div><span class="res-label">Wave</span><span id="wave-txt" class="res-item">1</span></div>
         </div>
+        
         <div class="controls-container" id="build-list"></div>
+
+        <div id="ui-bottom">
+            <button class="extract-btn" onclick="game.requestExtract()">Extract (End Run)</button>
+        </div>
     </div>
 
     <script>
-        const STORAGE_KEY = 'cell_factory_v5_ultimate';
+        const STORAGE_KEY = 'cell_factory_v6_expanded';
         
         // --- Game Database ---
         const DB = {
             buildings: {
-                mitochondria: { name: "Mitochondria", desc: "ATP Production.", cost: 40, time: 80, cat: "Energy", hp: 30 },
-                chloroplast: { name: "Chloroplast", desc: "Passive ATP.", cost: 150, time: 180, cat: "Energy", hp: 40, unlock: 'eco-chloro' },
+                mitochondria: { name: "Mitochondria", desc: "ATP Prod. (Minor Stacking Penalty)", cost: 40, time: 80, cat: "Energy", hp: 30 },
+                chloroplast: { name: "Chloroplast", desc: "Passive ATP bursts.", cost: 150, time: 180, cat: "Energy", hp: 40, unlock: 'eco-chloro' },
                 ribosome: { name: "Ribosome", desc: "AA to Protein.", cost: 80, time: 120, cat: "Production", hp: 25 },
                 golgi: { name: "Golgi App.", desc: "2x Protein Value.", cost: 400, time: 250, cat: "Production", hp: 50, unlock: 'eco-golgi' },
-                lysosome: { name: "Lysosome", desc: "Defender.", cost: 100, time: 150, cat: "Defense", hp: 40 },
+                lysosome: { name: "Lysosome", desc: "Patrolling Defender.", cost: 100, time: 150, cat: "Defense", hp: 40 },
                 peroxisome: { name: "Peroxisome", desc: "Toxic Aura (AoE).", cost: 200, time: 200, cat: "Defense", hp: 60, unlock: 'off-perox' },
                 centriole: { name: "Centriole", desc: "Ranged Turret.", cost: 250, time: 220, cat: "Defense", hp: 50, unlock: 'off-cent' },
                 vacuole: { name: "Vacuole", desc: "+Resource Cap.", cost: 120, time: 100, cat: "Utility", hp: 100, unlock: 'eco-vacuole' },
@@ -316,46 +368,76 @@
                 repair: { name: "Repair Wall", desc: "Heal 50 Wall HP.", cost: 30, time: 0, cat: "Actions", instant: true }
             },
             
-            // Nested Tree Structure
+            // Expanded Tree Structure
             trees: {
                 defense: {
                     id: 'def-root', name: 'Membrane I', desc: 'Wall HP +50', cost: 100,
                     children: [
                         {
+                            id: 'def-mem2', name: 'Membrane II', desc: 'Wall HP +100', cost: 300,
+                            children: [{ id: 'def-mem3', name: 'Membrane III', desc: 'Wall HP +200', cost: 700, children:[] }]
+                        },
+                        {
                             id: 'def-thorn', name: 'Thorns I', desc: 'Wall deals 2 DMG', cost: 250,
                             children: [
-                                { id: 'def-thorn2', name: 'Thorns II', desc: 'Wall deals 5 DMG', cost: 500, children:[] }
+                                { 
+                                    id: 'def-thorn2', name: 'Thorns II', desc: 'Wall deals 5 DMG', cost: 500, 
+                                    children:[{ id: 'def-thorn3', name: 'Spiked Shell', desc: 'Wall deals 10 DMG', cost: 1000, children:[] }] 
+                                }
                             ]
                         },
                         {
                             id: 'def-armor', name: 'Hardening', desc: 'Armor +1 (Reduce DMG)', cost: 400,
                             children: [
-                                { id: 'def-armor2', name: 'Calcification', desc: 'Armor +2', cost: 800, children:[] },
-                                { id: 'def-regen', name: 'Active Transport', desc: 'Wall Regen 0.1/s', cost: 600, children: [] }
+                                { 
+                                    id: 'def-armor2', name: 'Calcification', desc: 'Armor +2', cost: 800, 
+                                    children:[{ id: 'def-armor3', name: 'Diamond Wall', desc: 'Armor +4', cost: 1500, children:[] }] 
+                                },
+                                { 
+                                    id: 'def-regen', name: 'Active Transport', desc: 'Wall Regen 0.1/s', cost: 600, 
+                                    children: [{ id: 'def-regen2', name: 'Rapid Repair', desc: 'Wall Regen 0.25/s', cost: 1200, children:[] }] 
+                                }
                             ]
                         }
                     ]
                 },
                 offense: {
-                    id: 'off-root', name: 'Receptors', desc: 'Click Dmg +5', cost: 100,
+                    id: 'off-root', name: 'Receptors I', desc: 'Click Dmg +5', cost: 100,
                     children: [
+                        { id: 'off-rec2', name: 'Receptors II', desc: 'Click Dmg +10', cost: 300, children: [] },
                         {
-                            id: 'off-lyso', name: 'Enzymes', desc: 'Lysosome Dmg +1', cost: 200,
+                            id: 'off-lyso', name: 'Enzymes I', desc: 'Lysosome Dmg x2', cost: 200,
                             children: [
                                 { 
-                                    id: 'off-perox', name: 'Peroxisome', desc: 'Unlock New Defender', cost: 400, 
+                                    id: 'off-lyso-range', name: 'Chemotaxis', desc: 'Lysosome Patrol Radius +75%', cost: 350, 
                                     children: [
-                                        { id: 'off-aoe', name: 'Gas Cloud', desc: 'Peroxisome Range +20%', cost: 600, children: [] }
+                                        { id: 'off-apex', name: 'Apex Predator', desc: 'Lysosome Dmg x4', cost: 800, children: [] }
                                     ]
                                 },
-                                { id: 'off-lyso-spd', name: 'Motility', desc: 'Lysosome Speed +30%', cost: 300, children: [] }
+                                { 
+                                    id: 'off-lyso-spd', name: 'Motility', desc: 'Lysosome Speed +30%', cost: 300, 
+                                    children: [{ id: 'off-lyso-spd2', name: 'Hyper-Motility', desc: 'Lysosome Speed +60%', cost: 600, children: [] }] 
+                                },
+                                { 
+                                    id: 'off-perox', name: 'Peroxisome', desc: 'Unlock Toxic Defender', cost: 400, 
+                                    children: [
+                                        { id: 'off-aoe', name: 'Gas Cloud', desc: 'Peroxisome Range +20%', cost: 600, 
+                                          children: [{ id: 'off-aoe2', name: 'Toxic Nova', desc: 'Peroxisome Range +50%', cost: 1000, children: [] }] }
+                                    ]
+                                }
                             ]
                         },
                         {
                             id: 'off-cent', name: 'Sentry', desc: 'Unlock Centriole', cost: 300,
                             children: [
-                                { id: 'off-rate', name: 'Rapid Fire', desc: 'Centriole Rate +20%', cost: 500, children: [] },
-                                { id: 'off-loot', name: 'Scavenger', desc: 'Chance for Double Loot', cost: 700, children: [] }
+                                { 
+                                    id: 'off-rate', name: 'Rapid Fire', desc: 'Centriole Rate +20%', cost: 500, 
+                                    children: [{ id: 'off-rate2', name: 'Heavy Caliber', desc: 'Centriole Rate +40%', cost: 900, children: [] }] 
+                                },
+                                { 
+                                    id: 'off-loot', name: 'Scavenger', desc: '20% Chance Double Loot', cost: 700, 
+                                    children: [{ id: 'off-loot2', name: 'Bounty Hunter', desc: '40% Chance Double Loot', cost: 1200, children: [] }] 
+                                }
                             ]
                         }
                     ]
@@ -364,9 +446,18 @@
                     id: 'eco-root', name: 'Glycolysis', desc: 'Mito Speed +20%', cost: 100,
                     children: [
                         {
+                            id: 'eco-krebs', name: 'Krebs Cycle', desc: 'Halves Mito Stacking Penalty', cost: 300,
+                            children: [
+                                { id: 'eco-oxi', name: 'Oxi-Phosphorylation', desc: 'Base Mito ATP 15 -> 25', cost: 800, children: [] }
+                            ]
+                        },
+                        {
                             id: 'eco-chloro', name: 'Photosynthesis', desc: 'Unlock Chloroplast', cost: 250,
                             children: [
-                                { id: 'eco-solar', name: 'Solar Flare', desc: 'Chloroplast Burst Chance', cost: 500, children: [] }
+                                { 
+                                    id: 'eco-solar', name: 'Solar Flare', desc: 'Chloroplast Burst Chance', cost: 500, 
+                                    children: [{ id: 'eco-solar2', name: 'Eternal Sun', desc: 'Higher Burst Chance', cost: 900, children: [] }] 
+                                }
                             ]
                         },
                         {
@@ -375,13 +466,17 @@
                                 { 
                                     id: 'eco-golgi', name: 'Packaging', desc: 'Unlock Golgi', cost: 500, 
                                     children: [
-                                        { id: 'eco-prot', name: 'Protein Folding', desc: 'Protein Value +50%', cost: 800, children: []}
+                                        { id: 'eco-prot', name: 'Protein Folding', desc: 'Protein Value +50%', cost: 800, 
+                                          children: [{ id: 'eco-prot2', name: 'Advanced Packaging', desc: 'Protein Value +100%', cost: 1500, children: [] }] }
                                     ]
                                 },
                                 {
                                     id: 'eco-vacuole', name: 'Storage', desc: 'Unlock Vacuole', cost: 400,
                                     children: [
-                                        { id: 'eco-nucleolus', name: 'Genetics', desc: 'Unlock Nucleolus', cost: 1000, children: [] }
+                                        { 
+                                            id: 'eco-nucleolus', name: 'Genetics', desc: 'Unlock Nucleolus', cost: 1000, 
+                                            children: [{ id: 'eco-epi', name: 'Epigenetics', desc: 'Build Speed +40%', cost: 2000, children: [] }] 
+                                        }
                                     ]
                                 }
                             ]
@@ -402,6 +497,7 @@
                 this.projectiles = [];
                 this.orbs = [];
                 this.mouse = { x: 0, y: 0 };
+                this.isRunning = false;
                 
                 // Config
                 this.clickDmg = 8;
@@ -409,8 +505,9 @@
                 this.clickCooldown = 0;
                 this.atpPerKill = 3;
                 this.activeTab = 'defense';
+                this.mitoCount = 0;
 
-                this.saveData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { ep: 0, unlocks: [] };
+                this.loadData();
 
                 window.addEventListener('resize', () => this.resize());
                 this.canvas.addEventListener('mousemove', e => this.handleMouse(e));
@@ -418,6 +515,19 @@
                 
                 this.loop = this.loop.bind(this);
                 this.resize();
+            }
+
+            loadData() {
+                try {
+                    this.saveData = JSON.parse(localStorage.getItem(STORAGE_KEY));
+                    if (!this.saveData || typeof this.saveData.ep !== 'number') throw new Error("Invalid Save");
+                } catch (e) {
+                    this.saveData = { ep: 0, unlocks: [] };
+                }
+            }
+
+            save() {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(this.saveData));
             }
 
             resize() {
@@ -435,30 +545,48 @@
                 document.getElementById('ui-panel').classList.remove('hidden');
                 document.getElementById('click-cd-bar').classList.remove('hidden');
                 this.initSession();
-                this.isRunning = true;
-                this.resize();
-                requestAnimationFrame(this.loop);
+                
+                if (!this.isRunning) {
+                    this.isRunning = true;
+                    this.resize();
+                    this.loop();
+                }
             }
 
             initSession() {
                 const ul = this.saveData.unlocks;
-                const baseWall = 150 + (ul.includes('def-root') ? 50 : 0);
+                
+                let baseWall = 150;
+                if (ul.includes('def-root')) baseWall += 50;
+                if (ul.includes('def-mem2')) baseWall += 100;
+                if (ul.includes('def-mem3')) baseWall += 200;
                 
                 this.res = { atp: 100, aa: 10, prot: 0, wallHp: baseWall, maxWallHp: baseWall };
+                
+                // Significantly Reduced Stacking Penalty (1.05 down from 1.15, and 1.02 down from 1.08)
                 this.stats = {
                     mitoSpeed: ul.includes('eco-root') ? 1.2 : 1.0,
-                    clickBonus: ul.includes('off-root') ? 5 : 0,
-                    lysoDmg: ul.includes('off-lyso') ? 2 : 1,
-                    lysoSpeed: ul.includes('off-lyso-spd') ? 1.3 : 1.0,
-                    buildSpeed: 1.0,
-                    proteinMult: ul.includes('eco-prot') ? 1.5 : 1,
-                    wallRegen: ul.includes('def-regen') ? 0.1 : 0,
-                    thorns: ul.includes('def-thorn') ? (ul.includes('def-thorn2') ? 5 : 2) : 0,
-                    armor: ul.includes('def-armor') ? (ul.includes('def-armor2') ? 2 : 1) : 0,
-                    scavenger: ul.includes('off-loot'),
-                    solarBurst: ul.includes('eco-solar'),
-                    toxinRange: ul.includes('off-aoe') ? 1.2 : 1.0,
-                    centrioleRate: ul.includes('off-rate') ? 40 : 50,
+                    mitoPenaltyMult: ul.includes('eco-krebs') ? 1.02 : 1.05, 
+                    mitoBaseATP: ul.includes('eco-oxi') ? 25 : 15,
+                    
+                    clickBonus: ul.includes('off-rec2') ? 15 : (ul.includes('off-root') ? 5 : 0),
+                    
+                    lysoRange: ul.includes('off-lyso-range') ? 350 : 200,
+                    lysoDmg: ul.includes('off-apex') ? 4 : (ul.includes('off-lyso') ? 2 : 1),
+                    lysoSpeed: ul.includes('off-lyso-spd2') ? 1.6 : (ul.includes('off-lyso-spd') ? 1.3 : 1.0),
+                    
+                    buildSpeed: ul.includes('eco-epi') ? 1.4 : 1.0,
+                    proteinMult: ul.includes('eco-prot2') ? 2.0 : (ul.includes('eco-prot') ? 1.5 : 1.0),
+                    
+                    wallRegen: ul.includes('def-regen2') ? 0.25 : (ul.includes('def-regen') ? 0.1 : 0),
+                    thorns: ul.includes('def-thorn3') ? 10 : (ul.includes('def-thorn2') ? 5 : (ul.includes('def-thorn') ? 2 : 0)),
+                    armor: ul.includes('def-armor3') ? 4 : (ul.includes('def-armor2') ? 2 : (ul.includes('def-armor') ? 1 : 0)),
+                    
+                    scavengerChance: ul.includes('off-loot2') ? 0.4 : (ul.includes('off-loot') ? 0.2 : 0),
+                    solarBurstChance: ul.includes('eco-solar2') ? 0.2 : (ul.includes('eco-solar') ? 0.1 : 0),
+                    
+                    toxinRange: ul.includes('off-aoe2') ? 1.5 : (ul.includes('off-aoe') ? 1.2 : 1.0),
+                    centrioleRate: ul.includes('off-rate2') ? 30 : (ul.includes('off-rate') ? 40 : 50),
                     autoCollect: false
                 };
 
@@ -483,9 +611,10 @@
                 if (this.clickCooldown > 0) this.clickCooldown--;
                 document.getElementById('click-cd-fill').style.width = (100 - (this.clickCooldown/this.clickMaxCooldown)*100)+'%';
 
-                // Wall Regen
                 if (this.res.wallHp > 0 && this.res.wallHp < this.res.maxWallHp) 
                     this.res.wallHp += this.stats.wallRegen;
+
+                this.mitoCount = this.entities.filter(e => e instanceof Mitochondria).length;
 
                 this.entities = this.entities.filter(e => !e.dead);
                 this.entities.forEach(e => e.update(this));
@@ -556,7 +685,7 @@
             }
 
             handleClick() {
-                if (this.clickCooldown > 0) return;
+                if (!this.isRunning || this.clickCooldown > 0) return;
                 let hit = false;
                 const dmg = this.clickDmg + this.stats.clickBonus;
                 this.entities.filter(e => e.isEnemy).forEach(e => {
@@ -648,6 +777,7 @@
                     const childrenContainer = document.createElement('div');
                     childrenContainer.className = 'tf-children';
                     nodeData.children.forEach(child => {
+                        child.parent = nodeData.id; 
                         const conn = document.createElement('div');
                         conn.className = 'tf-child-connector';
                         conn.appendChild(this.renderNode(child));
@@ -660,7 +790,6 @@
             }
             
             unlock(id) {
-                // Find node by ID
                 const findNode = (n, tid) => {
                     if (n.id === tid) return n;
                     if (n.children) {
@@ -677,8 +806,7 @@
                 if (this.saveData.ep >= node.cost) {
                     this.saveData.ep -= node.cost;
                     this.saveData.unlocks.push(id);
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.saveData));
-                    // Re-render
+                    this.save();
                     this.switchTab(this.activeTab);
                     document.querySelector(`.tab-btn:nth-child(${this.activeTab=='defense'?1:this.activeTab=='offense'?2:3})`).classList.add('active');
                 }
@@ -689,17 +817,57 @@
                 document.getElementById('shop-screen').classList.add('hidden');
             }
 
-            gameOver() {
-                this.isRunning = false;
-                document.getElementById('game-over-screen').classList.remove('hidden');
+            // UI Actions for Extracting
+            requestExtract() { document.getElementById('extract-modal').classList.remove('hidden'); }
+            cancelExtract() { document.getElementById('extract-modal').classList.add('hidden'); }
+            confirmExtract() {
+                this.cancelExtract();
+                this.endRun(true);
+            }
+
+            // Universal end game handler to ensure it only fires once and properly saves state
+            endRun(isExtraction = false) {
+                if (!this.isRunning) return; 
+                this.isRunning = false; // Immediately stops updates
+                
                 document.getElementById('ui-panel').classList.add('hidden');
+                document.getElementById('click-cd-bar').classList.add('hidden');
+                
                 const score = Math.floor(this.res.prot * 10);
                 const earned = Math.floor(score / 20) + (this.wave * 10);
-                this.saveData.ep += earned;
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(this.saveData));
+                
+                // Apply and commit save instantly
+                this.saveData.ep = (this.saveData.ep || 0) + earned;
+                this.save();
+                
+                const overScreen = document.getElementById('game-over-screen');
+                overScreen.classList.remove('hidden');
+                
+                const titleEl = document.getElementById('go-title');
+                if (isExtraction) {
+                    titleEl.innerText = "EXTRACTION SUCCESSFUL";
+                    titleEl.style.color = "var(--highlight)";
+                } else {
+                    titleEl.innerText = "CELLULAR DEATH";
+                    titleEl.style.color = "var(--danger)";
+                }
+
                 document.getElementById('final-score').innerText = score;
                 document.getElementById('final-wave').innerText = this.wave;
                 document.getElementById('earned-ep').innerText = earned;
+            }
+
+            // Safely returns to menu without reloading iframe and wiping out save instances
+            returnToMenu() {
+                document.getElementById('game-over-screen').classList.add('hidden');
+                document.getElementById('main-menu').classList.remove('hidden');
+                
+                // Clear state
+                this.entities = [];
+                this.particles = [];
+                this.projectiles = [];
+                this.orbs = [];
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
             }
 
             draw() {
@@ -736,7 +904,12 @@
                 }
             }
 
-            loop() { if(this.isRunning){this.update();this.draw();} requestAnimationFrame(this.loop); }
+            loop() { 
+                if(!this.isRunning) return; 
+                this.update();
+                this.draw(); 
+                requestAnimationFrame(this.loop); 
+            }
             addEnt(e) { this.entities.push(e); }
             spawnText(x,y,t,c) { this.particles.push(new FloatingText(x,y,t,c)); }
             spawnPart(x,y,c,n) { for(let i=0;i<n;i++) this.particles.push(new Particle(x,y,c)); }
@@ -776,8 +949,35 @@
         }
 
         // Organelles
-        class Mitochondria extends Entity { constructor(x,y) { super(x,y,'#ffd700',12, DB.buildings.mitochondria.hp); this.t=0; } update(g) { this.t++; if(this.t>150/g.stats.mitoSpeed) { this.t=0; g.orbs.push({x:this.x,y:this.y,val:25,type:'atp'}); } } }
-        class Chloroplast extends Entity { constructor(x,y) { super(x,y,'#22c55e',14, DB.buildings.chloroplast.hp); this.t=0; } update(g) { this.t++; if(this.t>180) { this.t=0; let val=5; if(g.stats.solarBurst && Math.random()<0.1) val=15; g.res.atp+=val; g.spawnText(this.x,this.y,`+${val}`,'#ffd700'); } } }
+        class Mitochondria extends Entity { 
+            constructor(x,y) { super(x,y,'#ffd700',12, DB.buildings.mitochondria.hp); this.t=0; } 
+            update(g) { 
+                this.t++; 
+                const baseTime = 300; 
+                const penalty = Math.pow(g.stats.mitoPenaltyMult, Math.max(0, g.mitoCount - 1));
+                const requiredTime = (baseTime * penalty) / g.stats.mitoSpeed;
+                
+                if(this.t > requiredTime) { 
+                    this.t=0; 
+                    g.orbs.push({x:this.x, y:this.y, val:g.stats.mitoBaseATP, type:'atp'}); 
+                } 
+            } 
+        }
+        
+        class Chloroplast extends Entity { 
+            constructor(x,y) { super(x,y,'#22c55e',14, DB.buildings.chloroplast.hp); this.t=0; } 
+            update(g) { 
+                this.t++; 
+                if(this.t>180) { 
+                    this.t=0; 
+                    let val=5; 
+                    if(g.stats.solarBurstChance > 0 && Math.random() < g.stats.solarBurstChance) val=15; 
+                    g.res.atp+=val; 
+                    g.spawnText(this.x,this.y,`+${val}`,'#ffd700'); 
+                } 
+            } 
+        }
+        
         class Ribosome extends Entity { constructor(x,y) { super(x,y,'#d946ef',8, DB.buildings.ribosome.hp); this.t=0; } update(g) { if(g.res.aa>=3) { this.t++; if(this.t>120) { this.t=0; g.res.aa-=3; g.orbs.push({x:this.x,y:this.y,val:1*g.stats.proteinMult,type:'prot'}); } } } }
         class Golgi extends Entity { constructor(x,y) { super(x,y,'#f97316',16, DB.buildings.golgi.hp); this.applied=false; } update(g) { if(!this.applied) { g.stats.proteinMult *= 2; this.applied=true; } } }
         class Vacuole extends Entity { constructor(x,y) { super(x,y,'#38bdf8',18, DB.buildings.vacuole.hp); } }
@@ -786,21 +986,40 @@
         
         // Defenses
         class Lysosome extends Entity { 
-            constructor(x,y) { super(x,y,'#fbbf24',10, DB.buildings.lysosome.hp); this.spd=1.5; } 
+            constructor(x,y) { 
+                super(x,y,'#fbbf24',10, DB.buildings.lysosome.hp); 
+                this.spd = 1.5; 
+                this.anchorX = x; 
+                this.anchorY = y;
+            } 
+            
             update(g) {
-                // Priority: Breached or attacking wall
-                let target = g.entities.find(e => e.isEnemy && Math.hypot(e.x-g.cx, e.y-g.cy) < g.radius - 10);
-                if (!target && g.res.wallHp < g.res.maxWallHp) target = g.entities.find(e => e.isEnemy && Math.hypot(e.x-g.cx, e.y-g.cy) < g.radius + 10);
+                const patrolRadius = g.stats.lysoRange;
+                let target = g.entities.find(e => e.isEnemy && Math.hypot(e.x - this.anchorX, e.y - this.anchorY) < patrolRadius);
                 
                 if(target) {
                     const ang = Math.atan2(target.y-this.y, target.x-this.x);
-                    this.x += Math.cos(ang)*this.spd*g.stats.lysoSpeed; this.y += Math.sin(ang)*this.spd*g.stats.lysoSpeed;
+                    this.x += Math.cos(ang)*this.spd*g.stats.lysoSpeed; 
+                    this.y += Math.sin(ang)*this.spd*g.stats.lysoSpeed;
                     if(Math.hypot(target.x-this.x, target.y-this.y) < this.r+target.r) target.takeDamage(g.stats.lysoDmg, g);
+                } else {
+                    if (Math.hypot(this.x - this.anchorX, this.y - this.anchorY) > 5) {
+                        const ang = Math.atan2(this.anchorY-this.y, this.anchorX-this.x);
+                        this.x += Math.cos(ang)*this.spd*g.stats.lysoSpeed*0.5;
+                        this.y += Math.sin(ang)*this.spd*g.stats.lysoSpeed*0.5;
+                    }
                 }
-            } 
+            }
+            
+            draw(ctx) {
+                super.draw(ctx);
+                ctx.beginPath(); ctx.arc(this.anchorX, this.anchorY, 2, 0, Math.PI*2);
+                ctx.fillStyle = 'rgba(251, 191, 36, 0.3)'; ctx.fill();
+            }
         }
+        
         class Centriole extends Entity { constructor(x,y) { super(x,y,'#6366f1',14, DB.buildings.centriole.hp); this.t=0; } update(g) { this.t++; if(this.t>g.stats.centrioleRate) { const target=g.entities.find(e=>e.isEnemy && Math.hypot(e.x-this.x, e.y-this.y)<250); if(target) { this.t=0; g.projectiles.push(new Projectile(this.x,this.y,target)); } } } }
-        class Peroxisome extends Entity { constructor(x,y) { super(x,y,'#14b8a6',14, DB.buildings.peroxisome.hp); } update(g) { g.entities.forEach(e => { if(e.isEnemy && Math.hypot(e.x-this.x, e.y-this.y)<60*g.stats.toxinRange) e.takeDamage(0.2, g); }); } draw(ctx){ super.draw(ctx); ctx.beginPath(); ctx.arc(this.x,this.y,60,0,Math.PI*2); ctx.strokeStyle='rgba(20,184,166,0.3)'; ctx.stroke(); } }
+        class Peroxisome extends Entity { constructor(x,y) { super(x,y,'#14b8a6',14, DB.buildings.peroxisome.hp); } update(g) { g.entities.forEach(e => { if(e.isEnemy && Math.hypot(e.x-this.x, e.y-this.y)<60*g.stats.toxinRange) e.takeDamage(0.2, g); }); } draw(ctx){ super.draw(ctx); ctx.beginPath(); ctx.arc(this.x,this.y,60*game.stats.toxinRange,0,Math.PI*2); ctx.strokeStyle='rgba(20,184,166,0.3)'; ctx.stroke(); } }
 
         // Virus
         class Virus extends Entity {
@@ -823,6 +1042,7 @@
                 super(x, y, c, r, hp * scale);
                 this.type = type; this.spd = spd; this.dmg = dmg;
                 this.target = null;
+                this.isEnemy = true; 
             }
             
             takeDamage(n, g) { 
@@ -831,7 +1051,7 @@
                 if(this.hp<=0) { 
                     this.dead=true; 
                     let loot = g.atpPerKill;
-                    if(g.stats.scavenger && Math.random()<0.3) loot *= 2;
+                    if(g.stats.scavengerChance > 0 && Math.random() < g.stats.scavengerChance) loot *= 2;
                     g.res.atp += loot;
                     g.spawnText(this.x,this.y,`+${loot}`,'#ffd700');
                     g.spawnPart(this.x,this.y,this.c,5); 
@@ -843,7 +1063,6 @@
                 const inside = distToCenter < g.radius;
                 
                 if (inside || g.res.wallHp <= 0) {
-                    // Attack logic
                     if (this.type === 'infector' || this.type === 'weaver') {
                         if (!this.target || this.target.dead) this.target = g.entities.find(e => !e.isEnemy && !(e instanceof Nucleus) && !(e instanceof Construction));
                     } else {
@@ -854,7 +1073,7 @@
                         const d = Math.hypot(this.target.x-this.x, this.target.y-this.y);
                         if (d < this.r + this.target.r + 5) {
                             this.target.takeDamage(this.dmg);
-                            if (this.target instanceof Nucleus && this.target.hp <= 0) g.gameOver();
+                            if (this.target instanceof Nucleus && this.target.hp <= 0) g.endRun(false);
                             return; 
                         } else {
                             const ang = Math.atan2(this.target.y-this.y, this.target.x-this.x);
@@ -863,7 +1082,6 @@
                     }
                 } else {
                     if (distToCenter <= g.radius + this.r + 2) {
-                        // Hitting wall
                         const dmg = Math.max(0, this.dmg - g.stats.armor);
                         g.res.wallHp -= dmg;
                         if (g.stats.thorns > 0) this.takeDamage(g.stats.thorns, g);
