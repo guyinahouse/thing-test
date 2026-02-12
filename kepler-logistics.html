@@ -532,10 +532,10 @@
                 // Sensor Jamming Effect
                 const condition = storyline[gameState.levelIdx].condition;
                 if (condition === "SENSOR_JAMMING") {
-                    ctx.strokeStyle = "rgba(255,0,0,0.5)"; // Glitchy red line
+                    ctx.strokeStyle = "rgba(255,0,0,0.6)"; // Glitchy red line - slightly brighter too
                     ctx.setLineDash([2, 10]);
                 } else {
-                    ctx.strokeStyle = "rgba(255,255,255,0.15)";
+                    ctx.strokeStyle = "rgba(255,255,255,0.6)"; // Much higher opacity
                     ctx.setLineDash([5,5]);
                 }
                 
@@ -543,7 +543,8 @@
                 data.path.forEach(p => ctx.lineTo(p.x, p.y)); ctx.stroke();
                 
                 if (condition !== "SENSOR_JAMMING") {
-                    ctx.strokeStyle = "rgba(239,71,111,0.08)"; ctx.beginPath();
+                    ctx.strokeStyle = "rgba(239,71,111,0.3)"; // Increased from 0.08
+                    ctx.beginPath();
                     data.tPath.forEach(p => ctx.lineTo(p.x, p.y)); ctx.stroke(); 
                 }
                 ctx.setLineDash([]);
