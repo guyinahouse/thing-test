@@ -1,0 +1,1899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>STELLAR FORGE</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'JetBrains Mono',monospace;color:#eee;touch-action:none;}
+
+/* SELECT SCREEN */
+#select-screen{
+  position:fixed;inset:0;z-index:100;
+  background:radial-gradient(ellipse at 50% 60%,#0d0025 0%,#000 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+  padding:env(safe-area-inset-top,20px) 16px 30px;
+  padding-top:max(env(safe-area-inset-top),30px);
+  overflow-y:auto;
+}
+#select-screen h1{
+  font-family:'Orbitron',monospace;font-size:clamp(1.3rem,5vw,2rem);font-weight:900;
+  letter-spacing:.2em;color:#ffe680;text-shadow:0 0 30px #ff9900,0 0 60px #ff440066;
+  margin-bottom:3px;text-align:center;margin-top:10px;
+}
+#select-screen .sub{font-size:.6rem;color:#777;letter-spacing:.18em;margin-bottom:22px;text-align:center;}
+.star-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
+  gap:10px;width:100%;max-width:700px;
+}
+.star-card{
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);
+  border-radius:12px;padding:14px 10px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:7px;
+  transition:all .2s;position:relative;overflow:hidden;
+  -webkit-user-select:none;user-select:none;
+}
+.star-card:active{transform:scale(.97);border-color:rgba(255,255,255,.35);}
+.card-glow{position:absolute;inset:0;border-radius:12px;opacity:.12;pointer-events:none;}
+.star-orb{width:52px;height:52px;border-radius:50%;}
+.star-card h3{font-family:'Orbitron',monospace;font-size:.65rem;letter-spacing:.1em;text-align:center;}
+.star-card p{font-size:.55rem;color:#999;text-align:center;line-height:1.4;}
+.star-diff{font-size:.52rem;letter-spacing:.08em;padding:2px 8px;border-radius:10px;border:1px solid;opacity:.85;}
+
+/* GAME WRAP */
+#game-wrap{position:fixed;inset:0;display:none;}
+#game-wrap.active{display:block;}
+canvas#starfield{position:fixed;inset:0;z-index:0;}
+canvas#gc{position:fixed;inset:0;z-index:1;}
+
+/* TOP HUD */
+#top-hud{
+  position:fixed;top:0;left:0;right:0;z-index:10;
+  padding-top:max(env(safe-area-inset-top),10px);
+  padding-left:12px;padding-right:12px;padding-bottom:8px;
+  background:linear-gradient(to bottom,rgba(0,0,0,.8),transparent);
+  pointer-events:none;
+}
+.hud-r1{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+.hud-r2{display:flex;gap:8px;margin-bottom:3px;}
+.hud-r3{display:flex;align-items:center;}
+#star-name-lbl{font-family:'Orbitron',monospace;font-size:.68rem;font-weight:700;letter-spacing:.1em;}
+#mev-lbl{font-size:.6rem;color:#7df;margin-left:auto;}
+.bar-wrap{flex:1;display:flex;flex-direction:column;gap:2px;}
+.bar-lbl{font-size:.45rem;letter-spacing:.16em;color:#777;}
+.bar{height:5px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;border:1px solid rgba(255,255,255,.1);}
+.bar-fill{height:100%;border-radius:3px;transition:width .25s;}
+#size-fill{background:linear-gradient(90deg,#ff4400,#ffcc00);}
+#prog-fill{background:linear-gradient(90deg,#0af,#ffff44);}
+#stage-lbl{font-family:'Orbitron',monospace;font-size:.55rem;color:#ffaa44;letter-spacing:.08em;}
+
+/* FUSION TABLE — always visible bottom left */
+#fusion-table{
+  position:fixed;
+  bottom:max(env(safe-area-inset-bottom),10px);
+  left:8px;z-index:10;
+  width:min(195px,42vw);
+  background:rgba(0,0,10,.84);
+  border:1px solid rgba(255,150,0,.28);
+  border-radius:10px;padding:7px 7px 7px;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  pointer-events:none;
+}
+.ft-title{
+  font-family:'Orbitron',monospace;font-size:.48rem;
+  color:#ff9900;letter-spacing:.1em;margin-bottom:5px;
+  border-bottom:1px solid rgba(255,150,0,.22);padding-bottom:3px;
+}
+.ft-row{
+  display:flex;align-items:center;gap:3px;
+  margin-bottom:2.5px;font-size:.54rem;
+  opacity:.4;transition:opacity .3s,background .3s;
+  border-radius:3px;padding:1px 2px;
+}
+.ft-row.unlocked{opacity:.9;}
+.ft-row.highlight{opacity:1;background:rgba(255,210,0,.14);}
+.ft-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;box-shadow:0 0 4px currentColor;}
+.ft-plus,.ft-arr{color:#444;font-size:.5rem;}
+.ft-res{font-weight:700;}
+.ft-e{color:#6cf;font-size:.46rem;margin-left:auto;}
+
+/* NEXT SPAWN PREVIEW */
+#next-spawn{
+  position:fixed;
+  top:max(env(safe-area-inset-top),10px);
+  right:10px;
+  z-index:10;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  pointer-events:none;
+}
+#next-spawn-lbl{
+  font-size:.42rem;letter-spacing:.18em;color:#666;font-family:'JetBrains Mono',monospace;
+}
+#next-spawn-orb{
+  position:relative;width:44px;height:44px;
+}
+#next-spawn-orb canvas{position:absolute;inset:0;}
+#next-spawn-sym{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:'JetBrains Mono',monospace;font-weight:700;font-size:.75rem;
+  color:#000;
+}
+
+/* OVERLAY */
+#overlay{
+  position:fixed;inset:0;z-index:50;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:rgba(0,0,0,0);pointer-events:none;transition:background .8s;
+  padding:30px;text-align:center;
+}
+#overlay.active{background:rgba(0,0,0,.88);pointer-events:all;}
+#ov-title{
+  font-family:'Orbitron',monospace;font-size:clamp(1.8rem,7vw,3rem);
+  font-weight:900;letter-spacing:.15em;opacity:0;transition:opacity .8s;line-height:1.2;
+}
+#ov-sub{font-size:.75rem;opacity:0;transition:opacity .8s .4s;margin-top:10px;color:#aaa;letter-spacing:.06em;line-height:1.5;}
+.ov-btns{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap;justify-content:center;}
+.ov-btn{
+  font-family:'Orbitron',monospace;font-size:.65rem;letter-spacing:.1em;
+  padding:9px 20px;border:1px solid;border-radius:6px;
+  background:none;cursor:pointer;opacity:0;transition:opacity .8s .8s;color:#ffe680;
+  border-color:rgba(255,230,128,.5);-webkit-appearance:none;
+}
+.ov-btn.sec{color:#888;border-color:rgba(255,255,255,.2);}
+#overlay.active #ov-title,
+#overlay.active #ov-sub,
+#overlay.active .ov-btn{opacity:1;}
+
+#flash{position:fixed;inset:0;z-index:45;background:#fff;opacity:0;pointer-events:none;transition:opacity .08s;}
+
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-thumb{background:rgba(255,150,0,.3);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<div id="select-screen">
+  <h1>STELLAR FORGE</h1>
+  <div class="sub">CHOOSE YOUR STAR · DRAG ATOMS TO FUSE · REACH IRON</div>
+  <div class="star-grid" id="star-grid"></div>
+</div>
+
+<div id="game-wrap">
+  <canvas id="starfield"></canvas>
+  <canvas id="gc"></canvas>
+
+  <div id="top-hud">
+    <div class="hud-r1">
+      <div id="star-name-lbl">—</div>
+      <div id="mev-lbl">⚡ 0 MeV</div>
+    </div>
+    <div class="hud-r2">
+      <div class="bar-wrap">
+        <div class="bar-lbl">STAR SIZE</div>
+        <div class="bar"><div class="bar-fill" id="size-fill" style="width:100%"></div></div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-lbl">→ IRON CORE</div>
+        <div class="bar"><div class="bar-fill" id="prog-fill" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div class="hud-r3"><div id="stage-lbl">PROTOSTAR</div></div>
+  </div>
+
+  <div id="fusion-table">
+    <div class="ft-title">FUSION TABLE</div>
+    <div id="ft-rows"></div>
+  </div>
+
+  <div id="next-spawn">
+    <div id="next-spawn-lbl">NEXT</div>
+    <div id="next-spawn-orb">
+      <canvas id="arc-canvas" width="44" height="44"></canvas>
+      <div id="next-spawn-sym">?</div>
+    </div>
+  </div>
+</div>
+
+<div id="flash"></div>
+
+<div id="overlay">
+  <div id="ov-title"></div>
+  <div id="ov-sub"></div>
+  <div class="ov-btns">
+    <button class="ov-btn" onclick="restartGame()">⟳ PLAY AGAIN</button>
+    <button class="ov-btn sec" onclick="backToSelect()">← CHANGE STAR</button>
+  </div>
+</div>
+
+<script>
+// ── AUDIO ENGINE ─────────────────────────────────────────────────────────────
+let audioCtx=null;
+let masterGain=null;
+let audioReady=false;
+
+function initAudio(){
+  if(audioReady) return;
+  try{
+    audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    masterGain=audioCtx.createGain();
+    masterGain.gain.value=0.55;
+    masterGain.connect(audioCtx.destination);
+    audioReady=true;
+  }catch(e){}
+}
+
+// resume suspended context on first interaction
+document.addEventListener('touchstart',()=>{if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();},{once:true,passive:true});
+document.addEventListener('mousedown',()=>{if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();},{once:true});
+
+function makeEnv(gainNode,atk,dec,sus,rel,peak=1){
+  const t=audioCtx.currentTime;
+  gainNode.gain.setValueAtTime(0,t);
+  gainNode.gain.linearRampToValueAtTime(peak,t+atk);
+  gainNode.gain.linearRampToValueAtTime(sus*peak,t+atk+dec);
+  gainNode.gain.setValueAtTime(sus*peak,t+atk+dec);
+  gainNode.gain.linearRampToValueAtTime(0,t+atk+dec+rel);
+}
+
+// — Fusion pop: short bright tone + crackle
+function sfxFusion(elementMass=1){
+  if(!audioReady) return;
+  try{
+    // Pitch scales with element mass (heavier = deeper)
+    const baseFreq=880-elementMass*8;
+    const g=audioCtx.createGain();g.connect(masterGain);
+    makeEnv(g,.005,.08,.1,.18,.7);
+
+    const osc=audioCtx.createOscillator();
+    osc.type='sine';osc.frequency.setValueAtTime(baseFreq,audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(baseFreq*.5,audioCtx.currentTime+.25);
+    osc.connect(g);osc.start();osc.stop(audioCtx.currentTime+.3);
+
+    // crackle layer
+    const buf=audioCtx.createBuffer(1,audioCtx.sampleRate*.08,audioCtx.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2);
+    const src=audioCtx.createBufferSource();src.buffer=buf;
+    const ng=audioCtx.createGain();ng.gain.value=.18;
+    const bp=audioCtx.createBiquadFilter();bp.type='bandpass';bp.frequency.value=baseFreq*1.5;bp.Q.value=2;
+    src.connect(bp);bp.connect(ng);ng.connect(masterGain);
+    src.start();
+  }catch(e){}
+}
+
+// — Spawn blip: soft high plop
+function sfxSpawn(sym='H'){
+  if(!audioReady) return;
+  try{
+    const freq=sym==='H'?1200:900;
+    const g=audioCtx.createGain();g.connect(masterGain);
+    makeEnv(g,.003,.05,.0,.12,.3);
+    const osc=audioCtx.createOscillator();
+    osc.type='triangle';
+    osc.frequency.setValueAtTime(freq,audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(freq*.7,audioCtx.currentTime+.15);
+    osc.connect(g);osc.start();osc.stop(audioCtx.currentTime+.18);
+  }catch(e){}
+}
+
+// — Star shrink warning pulse (low throb)
+let warnPulseTimer=0;
+function sfxWarnPulse(){
+  if(!audioReady) return;
+  try{
+    const g=audioCtx.createGain();g.connect(masterGain);
+    makeEnv(g,.01,.15,.0,.3,.5);
+    const osc=audioCtx.createOscillator();
+    osc.type='sawtooth';
+    osc.frequency.value=55;
+    const lp=audioCtx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=180;
+    osc.connect(lp);lp.connect(g);
+    osc.start();osc.stop(audioCtx.currentTime+.4);
+  }catch(e){}
+}
+
+// — Drag pickup: subtle click
+function sfxPickup(){
+  if(!audioReady) return;
+  try{
+    const g=audioCtx.createGain();g.connect(masterGain);
+    makeEnv(g,.002,.04,.0,.08,.25);
+    const osc=audioCtx.createOscillator();
+    osc.type='square';osc.frequency.value=440;
+    osc.connect(g);osc.start();osc.stop(audioCtx.currentTime+.1);
+  }catch(e){}
+}
+
+// — Drop release
+function sfxDrop(){
+  if(!audioReady) return;
+  try{
+    const g=audioCtx.createGain();g.connect(masterGain);
+    makeEnv(g,.002,.03,.0,.06,.18);
+    const osc=audioCtx.createOscillator();
+    osc.type='sine';osc.frequency.value=330;
+    osc.connect(g);osc.start();osc.stop(audioCtx.currentTime+.08);
+  }catch(e){}
+}
+
+// — Collapse alarm: rising siren
+function sfxCollapseDanger(){
+  if(!audioReady) return;
+  try{
+    const g=audioCtx.createGain();g.connect(masterGain);
+    makeEnv(g,.01,.0,.8,.3,.4);
+    const osc=audioCtx.createOscillator();
+    osc.type='sawtooth';
+    osc.frequency.setValueAtTime(80,audioCtx.currentTime);
+    osc.frequency.linearRampToValueAtTime(320,audioCtx.currentTime+.4);
+    osc.frequency.linearRampToValueAtTime(80,audioCtx.currentTime+.8);
+    const lp=audioCtx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=600;
+    osc.connect(lp);lp.connect(g);
+    osc.start();osc.stop(audioCtx.currentTime+.9);
+  }catch(e){}
+}
+
+// — Iron formed: special deep chime
+function sfxIron(){
+  if(!audioReady) return;
+  try{
+    for(let i=0;i<3;i++){
+      setTimeout(()=>{
+        const g=audioCtx.createGain();g.connect(masterGain);
+        makeEnv(g,.005,.1,.3,.8,.9);
+        const f=[110,220,330][i];
+        const osc=audioCtx.createOscillator();
+        osc.type='sine';osc.frequency.value=f;
+        osc.connect(g);osc.start();osc.stop(audioCtx.currentTime+1);
+      },i*120);
+    }
+  }catch(e){}
+}
+
+// — Supernova: deep boom + rumble
+function sfxSupernova(){
+  if(!audioReady) return;
+  try{
+    // Sub boom
+    const g=audioCtx.createGain();g.connect(masterGain);
+    makeEnv(g,.01,.4,.0,.8,1.2);
+    const osc=audioCtx.createOscillator();
+    osc.type='sine';osc.frequency.setValueAtTime(60,audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(20,audioCtx.currentTime+1);
+    const dist=audioCtx.createWaveShaper();
+    const curve=new Float32Array(256);
+    for(let i=0;i<256;i++){const x=i*2/256-1;curve[i]=x*(Math.abs(x)+.3)/(x*x+.3+1);}
+    dist.curve=curve;
+    osc.connect(dist);dist.connect(g);
+    osc.start();osc.stop(audioCtx.currentTime+1.2);
+
+    // Noise whoosh
+    const buf=audioCtx.createBuffer(1,audioCtx.sampleRate*1.5,audioCtx.sampleRate);
+    const data=buf.getChannelData(0);
+    for(let i=0;i<data.length;i++) data[i]=(Math.random()*2-1)*Math.pow(1-i/data.length,1.5);
+    const ns=audioCtx.createBufferSource();ns.buffer=buf;
+    const ng=audioCtx.createGain();ng.gain.value=.5;
+    const hp=audioCtx.createBiquadFilter();hp.type='highpass';hp.frequency.value=80;
+    ns.connect(hp);hp.connect(ng);ng.connect(masterGain);
+    ns.start();
+
+    // High crack
+    setTimeout(()=>{
+      const g2=audioCtx.createGain();g2.connect(masterGain);
+      makeEnv(g2,.002,.08,.0,.3,.7);
+      const osc2=audioCtx.createOscillator();
+      osc2.type='sawtooth';osc2.frequency.value=4000;
+      osc2.frequency.exponentialRampToValueAtTime(200,audioCtx.currentTime+.4);
+      osc2.connect(g2);osc2.start();osc2.stop(audioCtx.currentTime+.45);
+    },100);
+  }catch(e){}
+}
+
+// — Shockwave whoosh
+function sfxShockwave(){
+  if(!audioReady) return;
+  try{
+    const g=audioCtx.createGain();g.connect(masterGain);
+    makeEnv(g,.01,.0,.7,.6,.6);
+    const buf=audioCtx.createBuffer(1,audioCtx.sampleRate*.7,audioCtx.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,1.2);
+    const ns=audioCtx.createBufferSource();ns.buffer=buf;
+    const bp=audioCtx.createBiquadFilter();bp.type='bandpass';bp.frequency.value=300;bp.Q.value=.5;
+    ns.connect(bp);bp.connect(g);ns.start();
+  }catch(e){}
+}
+
+// — Game over (collapse): low descending tone
+function sfxGameOver(){
+  if(!audioReady) return;
+  try{
+    for(let i=0;i<4;i++){
+      setTimeout(()=>{
+        const g=audioCtx.createGain();g.connect(masterGain);
+        makeEnv(g,.01,.0,.6,.4,.5);
+        const osc=audioCtx.createOscillator();
+        osc.type='sine';
+        const f=[220,196,165,110][i];
+        osc.frequency.value=f;
+        osc.connect(g);osc.start();osc.stop(audioCtx.currentTime+.5);
+      },i*200);
+    }
+  }catch(e){}
+}
+
+// — Stage up: ascending arpeggio
+function sfxStageUp(){
+  if(!audioReady) return;
+  try{
+    [523,659,784].forEach((f,i)=>{
+      setTimeout(()=>{
+        const g=audioCtx.createGain();g.connect(masterGain);
+        makeEnv(g,.005,.0,.4,.25,.5);
+        const osc=audioCtx.createOscillator();
+        osc.type='triangle';osc.frequency.value=f;
+        osc.connect(g);osc.start();osc.stop(audioCtx.currentTime+.3);
+      },i*100);
+    });
+  }catch(e){}
+}
+// ── STAR TYPES ──────────────────────────────────────────────────────────────
+const STAR_TYPES=[
+  {id:'red_dwarf',name:'Red Dwarf',
+   desc:'Small, forgiving, slow decay. Great for learning.',
+   color:'#ff4422',color2:'#cc1100',corona:'rgba(255,70,0,',
+   diff:'EASY',diffCol:'#44ff88',
+   shrink:.018,spawnInt:200,maxP:12,sizeR:.22,energyMult:.62,
+   surf:['#ff7755','#ee3322','#aa1100'],
+   // collapse: slow red fade inward with ember sparks
+   collapseStyle:'ember', collapseCol:'#ff4422',
+   // supernova: classic red-orange blast
+   novaFlashCol:['#ffffff','#ff8833','#ff2200'],
+   novaEjectaCols:['#ff6600','#ffcc44','#ff3300','#ffff88','#aa2200'],
+   nebulaColors:['#ff4400','#ff8800','#cc2200','#ffaa44','#882200'],
+   shockwaveCols:['#ffaa44','#ffffff','#ff6600'],
+  },
+  {id:'sun',name:'Yellow Dwarf',
+   desc:'Our Sun. Balanced — you must stay active.',
+   color:'#ffcc44',color2:'#ff8800',corona:'rgba(255,160,0,',
+   diff:'NORMAL',diffCol:'#ffcc44',
+   shrink:.032,spawnInt:170,maxP:14,sizeR:.26,energyMult:.54,
+   surf:['#ffffff','#ffffbb','#ffaa00'],
+   collapseStyle:'golden', collapseCol:'#ffcc44',
+   novaFlashCol:['#ffffff','#ffdd88','#ff9900'],
+   novaEjectaCols:['#ffcc44','#ffffff','#ff8800','#ffff88','#ffaa00'],
+   nebulaColors:['#ffcc00','#ff8800','#ffff44','#ff6600','#ffffaa'],
+   shockwaveCols:['#ffcc44','#ffffff','#ff9900'],
+  },
+  {id:'blue_giant',name:'Blue Giant',
+   desc:'Hot and massive. Shrinks 2x faster than the Sun.',
+   color:'#44aaff',color2:'#2255ff',corona:'rgba(80,160,255,',
+   diff:'HARD',diffCol:'#ff8844',
+   shrink:.062,spawnInt:115,maxP:15,sizeR:.28,energyMult:.46,
+   surf:['#ccddff','#88aaff','#4466ff'],
+   collapseStyle:'bluecrush', collapseCol:'#44aaff',
+   novaFlashCol:['#ffffff','#aaddff','#4488ff'],
+   novaEjectaCols:['#88ccff','#ffffff','#4466ff','#aaffff','#2244ff'],
+   nebulaColors:['#4488ff','#88ccff','#2255ff','#aaddff','#44ffff'],
+   shockwaveCols:['#88ccff','#ffffff','#4466ff'],
+  },
+  {id:'red_super',name:'Red Supergiant',
+   desc:'Colossal but collapses ~3x faster than the Sun.',
+   color:'#ff6633',color2:'#cc2200',corona:'rgba(255,100,30,',
+   diff:'BRUTAL',diffCol:'#ff4444',
+   shrink:.092,spawnInt:88,maxP:17,sizeR:.32,energyMult:.38,
+   surf:['#ffccaa','#ff6633','#cc2200'],
+   collapseStyle:'redgiant', collapseCol:'#ff6633',
+   novaFlashCol:['#ffffff','#ffaa66','#ff3300'],
+   novaEjectaCols:['#ff6633','#ffcc88','#ff2200','#ffaa44','#cc4400'],
+   nebulaColors:['#ff4400','#cc2200','#ff8844','#ff6622','#ffccaa'],
+   shockwaveCols:['#ff8844','#ffffff','#ff4422'],
+  },
+  {id:'magnetar',name:'Magnetar',
+   desc:'Tiny and extreme. ~4x harder than the Sun.',
+   color:'#aaffff',color2:'#55ffee',corona:'rgba(100,255,255,',
+   diff:'INSANE',diffCol:'#ff44ff',
+   shrink:.125,spawnInt:62,maxP:13,sizeR:.15,energyMult:.33,
+   surf:['#eeffff','#aaffff','#44ffee'],
+   collapseStyle:'pulsar', collapseCol:'#aaffff',
+   novaFlashCol:['#ffffff','#ccffff','#ff44ff'],
+   novaEjectaCols:['#aaffff','#ffffff','#55ffee','#ff44ff','#44ffff'],
+   nebulaColors:['#44ffee','#aaffff','#ff44ff','#88ffff','#4444ff'],
+   shockwaveCols:['#aaffff','#ffffff','#ff44ff'],
+  },
+  {id:'white_dwarf',name:'White Dwarf',
+   desc:'Cold and dense. Slow spawn but very little energy per fusion.',
+   color:'#ddeeff',color2:'#aabbff',corona:'rgba(200,215,255,',
+   diff:'HARD',diffCol:'#88aaff',
+   shrink:.048,spawnInt:185,maxP:11,sizeR:.18,energyMult:.44,
+   surf:['#ffffff','#ddeeff','#aabbff'],
+   collapseStyle:'white', collapseCol:'#ddeeff',
+   novaFlashCol:['#ffffff','#ddeeff','#aabbff'],
+   novaEjectaCols:['#ddeeff','#ffffff','#aabbff','#ccddff','#eeeeff'],
+   nebulaColors:['#aabbff','#ddeeff','#8899ff','#ccddff','#ffffff'],
+   shockwaveCols:['#ddeeff','#ffffff','#aabbff'],
+  },
+];
+
+// ── ELEMENTS ────────────────────────────────────────────────────────────────
+const EL={
+  H: {name:'Hydrogen', color:'#88ccff',r:10,mass:1, stage:0},
+  He:{name:'Helium',   color:'#ffffaa',r:13,mass:4, stage:1},
+  C: {name:'Carbon',   color:'#aaffaa',r:16,mass:12,stage:2},
+  O: {name:'Oxygen',   color:'#66ddff',r:17,mass:16,stage:2},
+  Ne:{name:'Neon',     color:'#ff88ff',r:18,mass:20,stage:3},
+  Mg:{name:'Magnesium',color:'#ccffcc',r:19,mass:24,stage:3},
+  Si:{name:'Silicon',  color:'#ffcc66',r:20,mass:28,stage:4},
+  S: {name:'Sulfur',   color:'#ffff44',r:20,mass:32,stage:4},
+  Ar:{name:'Argon',    color:'#cc88ff',r:20,mass:40,stage:4},
+  Ca:{name:'Calcium',  color:'#ffbbaa',r:21,mass:40,stage:5},
+  Cr:{name:'Chromium', color:'#aacccc',r:21,mass:52,stage:5},
+  Fe:{name:'Iron',     color:'#cc9966',r:23,mass:56,stage:6},
+};
+
+const REACTIONS=[
+  {a:'H', b:'H', r:'He',e:26},
+  {a:'H', b:'He',r:'C', e:7 },
+  {a:'He',b:'He',r:'C', e:7 },
+  {a:'He',b:'C', r:'O', e:15},
+  {a:'C', b:'C', r:'Ne',e:10},
+  {a:'C', b:'C', r:'Mg',e:8 },
+  {a:'O', b:'O', r:'Si',e:17},
+  {a:'O', b:'O', r:'S', e:10},
+  {a:'Ne',b:'He',r:'Mg',e:8 },
+  {a:'Mg',b:'Mg',r:'Si',e:17},
+  {a:'Si',b:'Si',r:'Ar',e:8 },
+  {a:'Si',b:'He',r:'S', e:10},
+  {a:'S', b:'He',r:'Ar',e:8 },
+  {a:'Ar',b:'He',r:'Ca',e:12},
+  {a:'Ca',b:'He',r:'Cr',e:10},
+  {a:'Cr',b:'He',r:'Fe',e:0 },
+  {a:'Si',b:'Si',r:'Fe',e:0 },
+];
+
+// Only base atoms can ever spawn — heavier elements come from fusion only
+const SPAWN_POOLS=[
+  ['H','H','H','He'],
+  ['H','H','He','He'],
+  ['H','H','He','He'],
+  ['H','He','He','He'],
+  ['H','He','He','He'],
+  ['He','He','He','H'],
+  ['He','He','He','H'],
+];
+
+const STAGE_NAMES=['PROTOSTAR','H BURNING','He BURNING','C BURNING','O BURNING','Si BURNING','IRON CORE'];
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+let canvas,ctx,sfCanvas,sfCtx,W,H;
+let particles=[],flashes=[],bgStars=[];
+let starRadius,maxStarRadius,minStarRadius=35;
+let totalEnergy=0,fusionProgress=0,currentStage=0,frameCount=0;
+let dragging=null,dragOffX=0,dragOffY=0;
+let gameOver=false,supernovaPhase=false;
+let selectedStar=null;
+let spawnTimer=0;
+let recentFusion=null,recentFusionTimer=0;
+let nextSpawnSym=null;
+
+// ── SELECT SCREEN ────────────────────────────────────────────────────────────
+function buildSelectScreen(){
+  const g=document.getElementById('star-grid');g.innerHTML='';
+  STAR_TYPES.forEach(st=>{
+    const c=document.createElement('div');c.className='star-card';
+    c.innerHTML=`
+      <div class="card-glow" style="background:radial-gradient(circle,${st.color},transparent 70%)"></div>
+      <div class="star-orb" style="background:radial-gradient(circle at 33% 33%,#fff 0%,${st.color} 45%,${st.color2} 100%);box-shadow:0 0 18px ${st.color},0 0 36px ${st.color}55"></div>
+      <h3 style="color:${st.color};text-shadow:0 0 10px ${st.color}">${st.name}</h3>
+      <p>${st.desc}</p>
+      <span class="star-diff" style="color:${st.diffCol};border-color:${st.diffCol}">${st.diff}</span>
+    `;
+    c.onclick=()=>startGame(st);
+    g.appendChild(c);
+  });
+}
+
+function backToSelect(){
+  document.getElementById('overlay').classList.remove('active');
+  document.getElementById('game-wrap').classList.remove('active');
+  document.getElementById('select-screen').style.display='flex';
+}
+
+function startGame(st){
+  selectedStar=st;
+  initAudio();
+  document.getElementById('select-screen').style.display='none';
+  document.getElementById('game-wrap').classList.add('active');
+  restartGame();
+}
+
+function restartGame(){
+  particles=[];flashes=[];frameCount=0;spawnTimer=0;spawnBadgeTimer=0;
+  totalEnergy=0;fusionProgress=0;currentStage=0;
+  gameOver=false;supernovaPhase=false;dragging=null;
+  recentFusion=null;recentFusionTimer=0;
+  nextSpawnSym=null;warnPulseTimer=0;
+  novaPhase=0;novaTimer=0;shockwaves=[];ejectaParticles=[];
+  nebulaFilaments=[];novaFlashAlpha=0;implodeScale=1;tremorAmp=0;
+  novaJets=[];gravitationalRings=[];neutronStarR=0;neutronStarAlpha=0;
+  novaPhase=0;novaTimer=0;shockwaveR=0;shockwaveAlpha=0;
+  ejectaParticles=[];nebulaSmears=[];novaFlashAlpha=0;implodeScale=1;
+  const st=selectedStar;
+  maxStarRadius=Math.min(W,H)*st.sizeR;
+  starRadius=maxStarRadius*.78;
+  document.getElementById('star-name-lbl').textContent=st.name.toUpperCase();
+  document.getElementById('star-name-lbl').style.color=st.color;
+  document.getElementById('star-name-lbl').style.textShadow=`0 0 10px ${st.color}`;
+  document.getElementById('mev-lbl').textContent='⚡ 0 MeV';
+  document.getElementById('stage-lbl').textContent='PROTOSTAR';
+  document.getElementById('prog-fill').style.width='0%';
+  document.getElementById('overlay').classList.remove('active');
+  buildFusionTable();
+  for(let i=0;i<3;i++) doSpawn('H');
+  doSpawn('He');
+  nextSpawnSym=pickNextSpawn();
+}
+
+// ── FUSION TABLE ─────────────────────────────────────────────────────────────
+function buildFusionTable(){
+  const c=document.getElementById('ft-rows');c.innerHTML='';
+  REACTIONS.forEach((rx,i)=>{
+    const ea=EL[rx.a],eb=EL[rx.b],er=EL[rx.r];
+    const row=document.createElement('div');
+    row.className='ft-row';row.id='ftr-'+i;
+    row.innerHTML=`
+      <div class="ft-dot" style="background:${ea.color};color:${ea.color}"></div>
+      <span style="color:${ea.color}">${rx.a}</span>
+      <span class="ft-plus">+</span>
+      <div class="ft-dot" style="background:${eb.color};color:${eb.color}"></div>
+      <span style="color:${eb.color}">${rx.b}</span>
+      <span class="ft-arr">→</span>
+      <div class="ft-dot" style="background:${er.color};color:${er.color}"></div>
+      <span class="ft-res" style="color:${er.color}">${rx.r}</span>
+      <span class="ft-e">${rx.e>0?'+'+rx.e:'⚠'}</span>
+    `;
+    c.appendChild(row);
+  });
+  refreshTable();
+}
+
+function refreshTable(){
+  const syms=new Set(particles.map(p=>p.sym));
+  REACTIONS.forEach((rx,i)=>{
+    const row=document.getElementById('ftr-'+i);if(!row)return;
+    const can=syms.has(rx.a)&&syms.has(rx.b);
+    const hi=recentFusion===i;
+    row.className='ft-row'+(can?' unlocked':'')+(hi?' highlight':'');
+  });
+}
+
+// ── SPAWN ─────────────────────────────────────────────────────────────────────
+function doSpawn(sym){
+  if(particles.length>=selectedStar.maxP) return;
+  const el=EL[sym];
+  const angle=Math.random()*Math.PI*2;
+  const dist=Math.random()*(starRadius*.58);
+  particles.push({
+    sym,el,
+    x:W/2+Math.cos(angle)*dist,
+    y:H/2+Math.sin(angle)*dist,
+    vx:(Math.random()-.5)*1.3,
+    vy:(Math.random()-.5)*1.3,
+    r:el.r,glowPulse:Math.random()*Math.PI*2,
+    id:Math.random(),
+  });
+  updateNextSpawnUI();
+  sfxSpawn(sym);
+}
+
+function pickNextSpawn(){
+  // Only H and He spawn — pick whichever makes a reaction possible
+  const symSet=new Set(particles.map(p=>p.sym));
+  const candidates=['H','He'];
+  const useful=candidates.filter(sym=>{
+    const test=new Set([...symSet,sym]);
+    return REACTIONS.some(rx=>test.has(rx.a)&&test.has(rx.b));
+  });
+  if(useful.length>0 && Math.random()<0.82){
+    return useful[Math.floor(Math.random()*useful.length)];
+  }
+  // fallback weighted toward H early, He late
+  return Math.random()<0.5?'H':'He';
+}
+
+function autoSpawn(){
+  const sym=nextSpawnSym||pickNextSpawn();
+  doSpawn(sym);
+  purgeDeadlocked();
+  nextSpawnSym=pickNextSpawn(); // pre-compute the one after
+}
+
+function purgeDeadlocked(){
+  if(particles.length<2) return;
+  const symSet=new Set(particles.map(p=>p.sym));
+  const anyReaction=REACTIONS.some(rx=>symSet.has(rx.a)&&symSet.has(rx.b));
+  if(anyReaction) return;
+  // Remove oldest atom with no reaction partner
+  const dead=particles.find(p=>
+    !REACTIONS.some(rx=>(rx.a===p.sym&&symSet.has(rx.b))||(rx.b===p.sym&&symSet.has(rx.a)))
+  );
+  if(dead) particles=particles.filter(p=>p!==dead);
+  // Force a useful spawn
+  const rem=new Set(particles.map(p=>p.sym));
+  const fixer=['H','He'].find(sym=>{
+    const t=new Set([...rem,sym]);
+    return REACTIONS.some(rx=>t.has(rx.a)&&t.has(rx.b));
+  });
+  doSpawn(fixer||'H');
+}
+
+function updateNextSpawnUI(){
+  if(!nextSpawnSym) return;
+  const el=EL[nextSpawnSym];
+  document.getElementById('next-spawn-sym').textContent=nextSpawnSym;
+  document.getElementById('next-spawn-sym').style.color=el.color;
+  // tint the orb background to match
+  document.getElementById('next-spawn-orb').style.filter=`drop-shadow(0 0 6px ${el.color})`;
+}
+
+function renderNextSpawnArc(){
+  const c=document.getElementById('arc-canvas');
+  if(!c||!selectedStar) return;
+  const cx2=c.getContext('2d');
+  const sz=44,half=sz/2,r=18;
+  cx2.clearRect(0,0,sz,sz);
+  if(!nextSpawnSym) return;
+  const el=EL[nextSpawnSym];
+  const progress=spawnTimer/selectedStar.spawnInt;
+  // background circle
+  cx2.beginPath();cx2.arc(half,half,r,0,Math.PI*2);
+  cx2.fillStyle=hexA(el.color,.18);cx2.fill();
+  cx2.beginPath();cx2.arc(half,half,r,0,Math.PI*2);
+  cx2.strokeStyle=hexA(el.color,.25);cx2.lineWidth=2;cx2.stroke();
+  // countdown arc (depletes as timer counts up)
+  const startAngle=-Math.PI/2;
+  const endAngle=startAngle+(1-progress)*Math.PI*2;
+  cx2.beginPath();cx2.arc(half,half,r,startAngle,endAngle);
+  cx2.strokeStyle=el.color;cx2.lineWidth=3;
+  cx2.lineCap='round';cx2.stroke();
+}
+
+// ── PHYSICS ───────────────────────────────────────────────────────────────────
+function updatePhysics(){
+  const cx=W/2,cy=H/2;
+  particles.forEach(p=>{
+    p.vx*=.9975;p.vy*=.9975;
+    const dx=cx-p.x,dy=cy-p.y,d=Math.sqrt(dx*dx+dy*dy);
+    if(d>5){p.vx+=(dx/d)*.018;p.vy+=(dy/d)*.018;}
+    if(p!==dragging){p.x+=p.vx;p.y+=p.vy;}
+    p.glowPulse+=.055;
+    const ddx=p.x-cx,ddy=p.y-cy,dd=Math.sqrt(ddx*ddx+ddy*ddy);
+    if(dd+p.r>starRadius){
+      const nx=ddx/dd,ny=ddy/dd,dot=p.vx*nx+p.vy*ny;
+      p.vx-=2*dot*nx*.82;p.vy-=2*dot*ny*.82;
+      const ov=dd+p.r-starRadius;p.x-=nx*ov;p.y-=ny*ov;
+    }
+  });
+  for(let i=0;i<particles.length;i++){
+    for(let j=i+1;j<particles.length;j++){
+      const a=particles[i],b=particles[j];
+      const dx=a.x-b.x,dy=a.y-b.y,d=Math.sqrt(dx*dx+dy*dy),md=a.r+b.r;
+      if(d<md){
+        const ri=REACTIONS.findIndex(r=>(r.a===a.sym&&r.b===b.sym)||(r.a===b.sym&&r.b===a.sym));
+        if(ri>=0){triggerFusion(a,b,REACTIONS[ri],ri);return;}
+        const nx=dx/d,ny=dy/d,rel=(a.vx-b.vx)*nx+(a.vy-b.vy)*ny;
+        if(rel<0){a.vx-=rel*nx;a.vy-=rel*ny;b.vx+=rel*nx;b.vy+=rel*ny;}
+        const ov=(md-d)/2;a.x+=nx*ov;a.y+=ny*ov;b.x-=nx*ov;b.y-=ny*ov;
+      }
+    }
+  }
+}
+
+function triggerFusion(a,b,rx,ri){
+  const el=EL[rx.r],mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+  spawnFlash(mx,my,el.color);
+  addEnergy(rx.e);
+  recentFusion=ri;recentFusionTimer=90;
+  particles=particles.filter(p=>p!==a&&p!==b);
+  if(rx.r==='Fe'){
+    particles.push({sym:'Fe',el,x:mx,y:my,vx:0,vy:0,r:el.r,glowPulse:0,id:Math.random()});
+    sfxIron();
+    checkWin();return;
+  }
+  const prevStage=currentStage;
+  const vx=(a.vx+b.vx)*.4+(Math.random()-.5)*1.6,vy=(a.vy+b.vy)*.4+(Math.random()-.5)*1.6;
+  particles.push({sym:rx.r,el,x:mx,y:my,vx,vy,r:el.r,glowPulse:0,id:Math.random()});
+  sfxFusion(el.mass);
+  updateStage();
+  if(currentStage>prevStage) sfxStageUp();
+  refreshTable();
+}
+
+function spawnFlash(x,y,col){
+  for(let i=0;i<14;i++){
+    const a=Math.random()*Math.PI*2,sp=1.5+Math.random()*4;
+    flashes.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:38,maxLife:38,col,r:1.5+Math.random()*2});
+  }
+}
+
+function addEnergy(e){
+  if(e>0){
+    const mult=selectedStar?selectedStar.energyMult:0.45;
+    totalEnergy+=e;
+    starRadius=Math.min(starRadius+e*mult,maxStarRadius);
+    fusionProgress=Math.min(fusionProgress+e*.27,100);
+  }
+  document.getElementById('mev-lbl').textContent=`⚡ ${Math.round(totalEnergy)} MeV`;
+  document.getElementById('prog-fill').style.width=fusionProgress+'%';
+}
+
+function updateStage(){
+  const hi=particles.reduce((m,p)=>Math.max(m,p.el.mass),0);
+  const breaks=[1,4,12,16,28,52];
+  let ns=0;
+  for(let i=breaks.length-1;i>=0;i--){if(hi>=breaks[i]){ns=i+1;break;}}
+  currentStage=Math.min(ns,STAGE_NAMES.length-1);
+  document.getElementById('stage-lbl').textContent=STAGE_NAMES[currentStage];
+}
+
+// ── SUPERNOVA SYSTEM ──────────────────────────────────────────────────────────
+// Phases: 0=off 1=tremor 2=implode 3=bounce-flash 4=shockwave 5=jets+ejecta 6=nebula 7=remnant
+let novaPhase=0;
+let novaTimer=0;
+let shockwaves=[];           // multiple rings
+let ejectaParticles=[];
+let nebulaFilaments=[];
+let novaFlashAlpha=0;
+let implodeScale=1;
+let tremorAmp=0;
+let neutronStarR=0, neutronStarAlpha=0;
+let novaJets=[];             // bipolar jets
+let gravitationalRings=[];   // lensing distortion rings
+
+function checkWin(){
+  supernovaPhase=true;
+  novaPhase=1; novaTimer=0; implodeScale=1; tremorAmp=0;
+  particles.forEach(p=>{p.vx=0;p.vy=0;});
+}
+
+function updateSupernova(){
+  novaTimer++;
+  const cx=W/2,cy=H/2;
+
+  // ── PHASE 1: TREMOR — star vibrates violently ──
+  if(novaPhase===1){
+    tremorAmp=Math.min(14, novaTimer*.25);
+    // Rattle particles toward center
+    particles.forEach(p=>{
+      const dx=cx-p.x,dy=cy-p.y,d=Math.sqrt(dx*dx+dy*dy)+1;
+      p.vx+=(dx/d)*1.2+(Math.random()-.5)*tremorAmp*.4;
+      p.vy+=(dy/d)*1.2+(Math.random()-.5)*tremorAmp*.4;
+      p.x+=p.vx;p.y+=p.vy;
+    });
+    if(novaTimer>50){novaPhase=2;novaTimer=0;}
+  }
+
+  // ── PHASE 2: IMPLODE — collapses to a point ──
+  else if(novaPhase===2){
+    implodeScale=Math.max(0.02, implodeScale-0.03);
+    starRadius=maxStarRadius*implodeScale;
+    particles.forEach(p=>{
+      const dx=cx-p.x,dy=cy-p.y,d=Math.sqrt(dx*dx+dy*dy)+1;
+      p.vx+=(dx/d)*4; p.vy+=(dy/d)*4;
+      p.x+=p.vx;p.y+=p.vy;
+    });
+    // Build gravitational lensing rings as it implodes
+    if(novaTimer%8===0){
+      gravitationalRings.push({r:starRadius*(1.2+Math.random()*.8),alpha:.6,life:1});
+    }
+    gravitationalRings.forEach(g=>{g.r+=3;g.alpha*=.88;g.life-=.04;});
+    gravitationalRings=gravitationalRings.filter(g=>g.life>0);
+    if(novaTimer>45){
+      novaPhase=3;novaTimer=0;novaFlashAlpha=0;
+      sfxSupernova();
+      // Seed the massive explosion data
+      _buildExplosion();
+    }
+  }
+
+  // ── PHASE 3: BOUNCE FLASH ──
+  else if(novaPhase===3){
+    novaFlashAlpha=novaTimer<10?novaTimer/10:Math.max(0,1-(novaTimer-10)/18);
+    gravitationalRings.forEach(g=>{g.r+=5;g.alpha*=.8;});
+    gravitationalRings=gravitationalRings.filter(g=>g.alpha>.01);
+    if(novaTimer>28){novaPhase=4;novaTimer=0;novaFlashAlpha=0;}
+  }
+
+  // ── PHASE 4: SHOCKWAVE RINGS ──
+  else if(novaPhase===4){
+    shockwaves.forEach(sw=>{
+      sw.r+=sw.speed+novaTimer*.18;
+      sw.alpha=Math.max(0,1-sw.r/(Math.max(W,H)*.75));
+      sw.width=Math.max(1,(1-sw.r/(Math.max(W,H)*.75))*(sw.maxWidth));
+    });
+    updateEjecta(); updateJets();
+    if(novaTimer>80){novaPhase=5;novaTimer=0;sfxShockwave();}
+  }
+
+  // ── PHASE 5: JETS + EJECTA CLOUD ──
+  else if(novaPhase===5){
+    shockwaves.forEach(sw=>{sw.r+=sw.speed*.4;sw.alpha*=.96;});
+    updateEjecta(); updateJets();
+    nebulaFilaments.forEach(f=>{f.angle+=f.rotSpeed;f.r+=f.speed;f.alpha*=.991;f.spread+=.4;});
+    if(novaTimer>180){novaPhase=6;novaTimer=0;}
+  }
+
+  // ── PHASE 6: NEBULA EXPANDING + NEUTRON STAR REVEAL ──
+  else if(novaPhase===6){
+    updateEjecta(); updateJets();
+    nebulaFilaments.forEach(f=>{f.angle+=f.rotSpeed*.5;f.r+=f.speed*.5;f.alpha*=.994;f.spread+=.2;});
+    // Neutron star pulsar grows in center
+    neutronStarR=Math.min(18, novaTimer*.25);
+    neutronStarAlpha=Math.min(1, novaTimer/40);
+    shockwaves.forEach(sw=>{sw.alpha*=.96;});
+    if(novaTimer>120){novaPhase=7;novaTimer=0;}
+  }
+
+  // ── PHASE 7: REMNANT GLOWS THEN END ──
+  else if(novaPhase===7){
+    updateEjecta();
+    nebulaFilaments.forEach(f=>{f.angle+=f.rotSpeed*.2;f.alpha*=.997;});
+    neutronStarAlpha=Math.max(0,neutronStarAlpha-.002);
+    if(novaTimer>100){showEnd(true);novaPhase=0;}
+  }
+}
+
+function _buildExplosion(){
+  const cx=W/2,cy=H/2;
+  ejectaParticles=[];
+  shockwaves=[];
+  novaJets=[];
+  nebulaFilaments=[];
+  neutronStarR=0; neutronStarAlpha=0;
+
+  // Three shockwave rings at different speeds — use star's palette
+  const swCols=st.shockwaveCols||['#ff9900','#ffffff','#cc44ff'];
+  const swWidths=[28,12,6];
+  for(let i=0;i<3;i++){
+    shockwaves.push({r:8,speed:14+i*5,alpha:1,maxWidth:swWidths[i],width:swWidths[i],col:swCols[i]});
+  }
+
+  // Bipolar jets (like a real core-collapse SN) — use star accent colors
+  const jetAngle=Math.random()*Math.PI*2;
+  const jc=selectedStar.shockwaveCols||['#88ddff','#ffaa44'];
+  for(let s of[0,Math.PI]){
+    novaJets.push({
+      angle:jetAngle+s,
+      particles:[],
+      col:s===0?jc[0]:jc[2]||jc[0],
+      timer:0,
+    });
+  }
+
+  // Ejecta particles — varied types, use star's palette
+  const pal=st.novaEjectaCols||['#ff8800','#ffcc44','#ff4400','#ffff88','#ff2200','#ffaa00','#ffffff','#88ccff','#cc9966'];
+  for(let i=0;i<160;i++){
+    const angle=Math.random()*Math.PI*2;
+    const spd=2+Math.random()*14;
+    ejectaParticles.push({
+      x:cx,y:cy,
+      vx:Math.cos(angle)*spd,vy:Math.sin(angle)*spd,
+      life:1,decay:.0028+Math.random()*.007,
+      r:.8+Math.random()*3.5,
+      col:pal[Math.floor(Math.random()*pal.length)],
+      trail:[],type:Math.floor(Math.random()*3),
+      spin:Math.random()*Math.PI*2,spinRate:(Math.random()-.5)*.3,
+    });
+  }
+  // Labeled atom fragments from existing particles
+  particles.forEach(p=>{
+    const angle=Math.random()*Math.PI*2;
+    const spd=10+Math.random()*18;
+    ejectaParticles.push({
+      x:p.x,y:p.y,
+      vx:Math.cos(angle)*spd,vy:Math.sin(angle)*spd,
+      life:1,decay:.0022,r:p.r*.75,
+      col:p.el.color,trail:[],type:4,sym:p.sym,
+      spin:0,spinRate:(Math.random()-.5)*.4,
+    });
+  });
+  particles=[];
+
+  // Nebula filaments — streaky gaseous arms, star-themed
+  const nebCols=st.nebulaColors||['#ff6600','#cc2299','#2244ff','#00ccff','#ffcc00','#88ff44','#ff4488'];
+  for(let i=0;i<28;i++){
+    const angle=Math.random()*Math.PI*2;
+    nebulaFilaments.push({
+      angle,speed:.2+Math.random()*.9,
+      r:10+Math.random()*50,
+      alpha:.55+Math.random()*.3,
+      col:nebCols[Math.floor(Math.random()*nebCols.length)],
+      rotSpeed:(Math.random()-.5)*.025,
+      spread:25+Math.random()*90,
+      elongation:.3+Math.random()*.7,
+      tilt:Math.random()*Math.PI,
+    });
+  }
+}
+
+function updateJets(){
+  const cx=W/2,cy=H/2;
+  novaJets.forEach(j=>{
+    j.timer++;
+    if(j.timer<220 && j.timer%3===0){
+      const scatter=(Math.random()-.5)*.25;
+      const spd=12+Math.random()*8;
+      j.particles.push({
+        x:cx,y:cy,
+        vx:Math.cos(j.angle+scatter)*spd,
+        vy:Math.sin(j.angle+scatter)*spd,
+        life:1,decay:.006+Math.random()*.005,
+        r:1+Math.random()*2.5,col:j.col,trail:[],
+      });
+    }
+    j.particles.forEach(jp=>{
+      jp.trail.push({x:jp.x,y:jp.y});
+      if(jp.trail.length>16) jp.trail.shift();
+      jp.x+=jp.vx;jp.y+=jp.vy;jp.vx*=.985;jp.vy*=.985;
+      jp.life-=jp.decay;
+    });
+    j.particles=j.particles.filter(jp=>jp.life>0);
+  });
+}
+
+function updateEjecta(){
+  ejectaParticles.forEach(e=>{
+    e.trail.push({x:e.x,y:e.y});
+    if(e.trail.length>14) e.trail.shift();
+    e.x+=e.vx;e.y+=e.vy;
+    e.vx*=.978;e.vy*=.978;
+    e.spin+=e.spinRate;
+    e.life-=e.decay;
+  });
+  ejectaParticles=ejectaParticles.filter(e=>e.life>0);
+}
+
+function renderSupernova(){
+  const cx=W/2,cy=H/2,t=frameCount*.018;
+
+  // ── Gravitational lensing rings (phase 2)
+  gravitationalRings.forEach(g=>{
+    ctx.beginPath();ctx.arc(cx,cy,g.r,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(180,220,255,${g.alpha*.6})`;
+    ctx.lineWidth=2;ctx.stroke();
+  });
+
+  // ── White flash overlay
+  if(novaFlashAlpha>0){
+    const fc=selectedStar.novaFlashCol||['#ffffff','#ff8833','#ff2200'];
+    const fg=ctx.createRadialGradient(cx,cy,0,cx,cy,Math.max(W,H));
+    fg.addColorStop(0,`rgba(255,255,255,${novaFlashAlpha})`);
+    fg.addColorStop(.3,hexA(fc[1]||'#ff8833',novaFlashAlpha*.8));
+    fg.addColorStop(.7,hexA(fc[2]||'#ff2200',novaFlashAlpha*.4));
+    fg.addColorStop(1,`rgba(0,0,0,0)`);
+    ctx.fillStyle=fg;ctx.fillRect(0,0,W,H);
+  }
+
+  // ── Multiple shockwave rings
+  shockwaves.forEach(sw=>{
+    if(sw.alpha<=0) return;
+    // main ring
+    ctx.beginPath();ctx.arc(cx,cy,sw.r,0,Math.PI*2);
+    ctx.strokeStyle=sw.col==='#ffffff'?`rgba(255,255,255,${sw.alpha})`:`rgba(${_hx(sw.col)},${sw.alpha})`;
+    ctx.lineWidth=sw.width*sw.alpha+1;ctx.stroke();
+    // inner glow
+    const ig=ctx.createRadialGradient(cx,cy,Math.max(0,sw.r-sw.width*2),cx,cy,sw.r+sw.width);
+    ig.addColorStop(0,hexA(sw.col,0));
+    ig.addColorStop(.5,hexA(sw.col,sw.alpha*.3));
+    ig.addColorStop(1,hexA(sw.col,0));
+    ctx.beginPath();ctx.arc(cx,cy,sw.r+sw.width*.5,0,Math.PI*2);
+    ctx.fillStyle=ig;ctx.fill();
+  });
+
+  // ── Nebula filaments (elongated gas clouds)
+  if(novaPhase>=5){
+    nebulaFilaments.forEach(f=>{
+      const x=cx+Math.cos(f.angle)*f.r;
+      const y=cy+Math.sin(f.angle)*f.r;
+      ctx.save();ctx.translate(x,y);ctx.rotate(f.tilt);
+      const ng=ctx.createRadialGradient(0,0,0,0,0,f.spread);
+      ng.addColorStop(0,hexA(f.col,f.alpha*.45));
+      ng.addColorStop(1,hexA(f.col,0));
+      ctx.scale(1,f.elongation);
+      ctx.beginPath();ctx.arc(0,0,f.spread,0,Math.PI*2);
+      ctx.fillStyle=ng;ctx.fill();
+      ctx.restore();
+    });
+  }
+
+  // ── Bipolar jets
+  novaJets.forEach(j=>{
+    j.particles.forEach(jp=>{
+      if(jp.trail.length>2){
+        ctx.beginPath();ctx.moveTo(jp.trail[0].x,jp.trail[0].y);
+        jp.trail.forEach(pt=>ctx.lineTo(pt.x,pt.y));
+        ctx.strokeStyle=hexA(jp.col,jp.life*.7);
+        ctx.lineWidth=jp.r*.8;ctx.lineCap='round';ctx.stroke();
+      }
+      // bright head
+      const jg=ctx.createRadialGradient(jp.x,jp.y,0,jp.x,jp.y,jp.r*2.5);
+      jg.addColorStop(0,hexA('#ffffff',jp.life*.9));
+      jg.addColorStop(.4,hexA(jp.col,jp.life*.6));
+      jg.addColorStop(1,hexA(jp.col,0));
+      ctx.beginPath();ctx.arc(jp.x,jp.y,jp.r*2.5,0,Math.PI*2);
+      ctx.fillStyle=jg;ctx.fill();
+    });
+  });
+
+  // ── Ejecta
+  ejectaParticles.forEach(e=>{
+    // glowing trail
+    if(e.trail.length>1){
+      for(let i=1;i<e.trail.length;i++){
+        const a=(i/e.trail.length)*e.life*.55;
+        ctx.beginPath();
+        ctx.moveTo(e.trail[i-1].x,e.trail[i-1].y);
+        ctx.lineTo(e.trail[i].x,e.trail[i].y);
+        ctx.strokeStyle=hexA(e.col,a);
+        ctx.lineWidth=e.r*(i/e.trail.length)*.7;
+        ctx.lineCap='round';ctx.stroke();
+      }
+    }
+    if(e.type===4&&e.sym){
+      // Full unique atom rendering while flying through space
+      const fakeP={x:e.x,y:e.y,r:e.r,el:EL[e.sym],glowPulse:frameCount*.08,sym:e.sym};
+      ctx.globalAlpha=Math.pow(e.life,.5);
+      const rend=ATOM_RENDERERS[e.sym];
+      if(rend) rend(fakeP,t+e.spin);
+      else {
+        const bg=ctx.createRadialGradient(e.x,e.y,0,e.x,e.y,e.r);
+        bg.addColorStop(0,'rgba(255,255,255,.9)');bg.addColorStop(1,e.col);
+        ctx.beginPath();ctx.arc(e.x,e.y,e.r,0,Math.PI*2);ctx.fillStyle=bg;ctx.fill();
+      }
+      ctx.fillStyle='rgba(0,0,0,.85)';
+      ctx.font=`bold ${Math.max(5,e.r*.8)}px JetBrains Mono`;
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(e.sym,e.x,e.y);
+      ctx.globalAlpha=1;
+    } else {
+      // Spark / ember types
+      if(e.type===1){
+        // diamond spark
+        ctx.save();ctx.translate(e.x,e.y);ctx.rotate(e.spin);
+        const sz=e.r*1.4*e.life;
+        ctx.beginPath();ctx.moveTo(0,-sz);ctx.lineTo(sz*.5,0);ctx.lineTo(0,sz);ctx.lineTo(-sz*.5,0);ctx.closePath();
+        ctx.fillStyle=hexA(e.col,e.life*.9);ctx.fill();
+        ctx.restore();
+      } else if(e.type===2){
+        // ring burst
+        ctx.beginPath();ctx.arc(e.x,e.y,e.r*1.5,0,Math.PI*2);
+        ctx.strokeStyle=hexA(e.col,e.life*.8);ctx.lineWidth=1.2;ctx.stroke();
+        ctx.beginPath();ctx.arc(e.x,e.y,e.r*.5,0,Math.PI*2);
+        ctx.fillStyle=hexA(e.col,e.life*.9);ctx.fill();
+      } else {
+        // round ember
+        const eg=ctx.createRadialGradient(e.x,e.y,0,e.x,e.y,e.r*2.2);
+        eg.addColorStop(0,hexA('#ffffff',e.life*.9));
+        eg.addColorStop(.4,hexA(e.col,e.life*.7));
+        eg.addColorStop(1,hexA(e.col,0));
+        ctx.beginPath();ctx.arc(e.x,e.y,e.r*2.2,0,Math.PI*2);ctx.fillStyle=eg;ctx.fill();
+      }
+    }
+  });
+
+  // ── Neutron star pulsar remnant
+  if(neutronStarAlpha>0&&neutronStarR>0){
+    // pulsing core
+    const pulse=.6+.4*Math.abs(Math.sin(frameCount*.12));
+    const ng=ctx.createRadialGradient(cx,cy,0,cx,cy,neutronStarR*3);
+    ng.addColorStop(0,`rgba(200,240,255,${neutronStarAlpha*pulse})`);
+    ng.addColorStop(.4,`rgba(100,180,255,${neutronStarAlpha*.5*pulse})`);
+    ng.addColorStop(1,`rgba(50,50,200,0)`);
+    ctx.beginPath();ctx.arc(cx,cy,neutronStarR*3,0,Math.PI*2);ctx.fillStyle=ng;ctx.fill();
+    ctx.beginPath();ctx.arc(cx,cy,neutronStarR,0,Math.PI*2);
+    ctx.fillStyle=`rgba(220,240,255,${neutronStarAlpha})`;ctx.fill();
+    // pulsar beam sweeping
+    ctx.save();ctx.translate(cx,cy);ctx.rotate(frameCount*.08);
+    const beam=ctx.createLinearGradient(0,0,0,-Math.max(W,H)*.5);
+    beam.addColorStop(0,`rgba(150,220,255,${neutronStarAlpha*.6*pulse})`);
+    beam.addColorStop(1,`rgba(150,220,255,0)`);
+    ctx.beginPath();ctx.moveTo(-2,0);ctx.lineTo(-1,-Math.max(W,H)*.5);ctx.lineTo(1,-Math.max(W,H)*.5);ctx.lineTo(2,0);
+    ctx.fillStyle=beam;ctx.fill();
+    ctx.restore();
+    // label
+    if(neutronStarAlpha>.4){
+      ctx.font=`bold 8px JetBrains Mono`;ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillStyle=`rgba(180,240,255,${neutronStarAlpha*.8})`;
+      ctx.fillText('NS',cx,cy);
+    }
+  }
+}
+
+// helper: parse hex to "r,g,b" for rgba strings
+function _hx(hex){
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return`${r},${g},${b}`;
+}
+
+function showEnd(win){
+  gameOver=true;
+  const ov=document.getElementById('overlay');ov.classList.add('active');
+  if(win){
+    document.getElementById('ov-title').textContent='💥 SUPERNOVA';
+    document.getElementById('ov-title').style.color='#ffaa44';
+    document.getElementById('ov-sub').textContent=`Iron core collapse! Your ${selectedStar.name} went supernova.\n${Math.round(totalEnergy)} MeV released.`;
+  }else{
+    document.getElementById('ov-title').textContent='☆ COLLAPSED';
+    document.getElementById('ov-title').style.color='#8899ff';
+    document.getElementById('ov-sub').textContent=`Gravity crushed your ${selectedStar.name} before reaching iron.\nFuse faster next time!`;
+  }
+}
+
+// ── DRAG ─────────────────────────────────────────────────────────────────────
+function getPos(e){
+  if(e.touches)return{x:e.touches[0].clientX,y:e.touches[0].clientY};
+  return{x:e.clientX,y:e.clientY};
+}
+function onDown(e){
+  if(gameOver)return;
+  const{x,y}=getPos(e);
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i],dx=x-p.x,dy=y-p.y;
+    if(dx*dx+dy*dy<(p.r+10)*(p.r+10)){dragging=p;dragOffX=dx;dragOffY=dy;sfxPickup();break;}
+  }
+}
+function onMove(e){
+  if(!dragging)return;e.preventDefault();
+  const{x,y}=getPos(e);
+  dragging.x=x-dragOffX;dragging.y=y-dragOffY;
+  const cx=W/2,cy=H/2,dx=dragging.x-cx,dy=dragging.y-cy,d=Math.sqrt(dx*dx+dy*dy);
+  if(d+dragging.r>starRadius+12){
+    const nx=dx/d,ny=dy/d;
+    dragging.x=cx+nx*(starRadius+10-dragging.r);
+    dragging.y=cy+ny*(starRadius+10-dragging.r);
+  }
+}
+function onUp(){if(dragging){dragging.vx=(Math.random()-.5);dragging.vy=(Math.random()-.5);sfxDrop();}dragging=null;}
+
+// ── RENDER STAR ─────────────────────────────────────────────────────────────
+function renderStar(){
+  const cx=W/2,cy=H/2,r=starRadius,t=frameCount*.008,st=selectedStar;
+  const pct=r/maxStarRadius; // 0..1 how full the star is
+  const danger=pct<.35;
+  const dangerAmt=danger?Math.max(0,(.35-pct)/.35):0; // 0..1 as it dies
+
+  // ── Per-star corona ──────────────────────────
+  const coronaR=r*(1.4+dangerAmt*.5);
+  const cg=ctx.createRadialGradient(cx,cy,r*.4,cx,cy,coronaR);
+  cg.addColorStop(0,st.corona+(0.25+dangerAmt*.15)+')');
+  cg.addColorStop(.55,st.corona+(0.08)+')');
+  cg.addColorStop(1,st.corona+'0)');
+  ctx.beginPath();ctx.arc(cx,cy,coronaR,0,Math.PI*2);ctx.fillStyle=cg;ctx.fill();
+
+  // ── Surface gradient — per star style ────────
+  const sg=ctx.createRadialGradient(cx-r*.3,cy-r*.38,r*.03,cx,cy,r);
+  if(supernovaPhase){
+    // All stars brighten to white-blue just before explosion
+    sg.addColorStop(0,'#ffffff');sg.addColorStop(.35,'#ccefff');sg.addColorStop(1,'#1144cc');
+  } else {
+    const sc=st.surf;
+    // Danger state: shift surface toward red/dark as star shrinks
+    if(danger){
+      const dc=dangerAmt;
+      sg.addColorStop(0,lerpColor(sc[0],'#ffeecc',dc*.4));
+      sg.addColorStop(.5,lerpColor(sc[1],'#cc4400',dc*.6));
+      sg.addColorStop(1,lerpColor(sc[2],'#440000',dc*.8));
+    } else {
+      sg.addColorStop(0,sc[0]);sg.addColorStop(.5,sc[1]);sg.addColorStop(1,sc[2]);
+    }
+  }
+  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fillStyle=sg;ctx.fill();
+
+  // ── Per-star surface details ──────────────────
+  if(!supernovaPhase){
+    const id=st.id;
+    if(id==='red_dwarf'){
+      // Slow rolling dark sunspot patches
+      ctx.save();ctx.globalAlpha=.12;
+      for(let i=0;i<4;i++){
+        const a=t*.18+i*Math.PI*.5+1.2;
+        const d=r*.38,sz=r*.22;
+        const px=cx+Math.cos(a)*d,py=cy+Math.sin(a)*d;
+        ctx.beginPath();ctx.arc(px,py,sz,0,Math.PI*2);
+        ctx.fillStyle='#660000';ctx.fill();
+      }
+      ctx.restore();
+      // Gentle convection shimmer
+      _drawConvection(cx,cy,r,t*.4,5,'rgba(255,180,100,1)','rgba(255,80,0,0)',.08);
+    }
+    else if(id==='sun'){
+      // Bright granulation grid shimmer + active solar flare streaks
+      _drawConvection(cx,cy,r,t*.6,8,'rgba(255,255,200,1)','rgba(255,160,0,0)',.1);
+      // Solar flare arc
+      ctx.save();ctx.translate(cx,cy);ctx.rotate(t*.3);
+      ctx.beginPath();
+      ctx.arc(0,0,r*.88,-.4,.4);
+      ctx.strokeStyle=`rgba(255,220,80,${.35+.2*Math.sin(t*3)})`;
+      ctx.lineWidth=3;ctx.stroke();
+      ctx.restore();
+    }
+    else if(id==='blue_giant'){
+      // Hot blue plasma tongues licking outward
+      _drawConvection(cx,cy,r,t*.9,6,'rgba(200,230,255,1)','rgba(60,100,255,0)',.13);
+      // Rotating plasma loops
+      ctx.save();ctx.translate(cx,cy);
+      for(let i=0;i<3;i++){
+        ctx.rotate(t*.5+i*Math.PI*2/3);
+        const grad=ctx.createLinearGradient(0,-r*.6,0,-r);
+        grad.addColorStop(0,'rgba(150,200,255,0.25)');
+        grad.addColorStop(1,'rgba(100,150,255,0)');
+        ctx.beginPath();ctx.ellipse(0,-r*.78,r*.08,r*.22,0,0,Math.PI*2);
+        ctx.fillStyle=grad;ctx.fill();
+      }
+      ctx.restore();
+    }
+    else if(id==='red_super'){
+      // Massive boiling convection cells, slow and enormous
+      ctx.save();ctx.globalAlpha=.15;
+      for(let i=0;i<5;i++){
+        const a=t*.12+i*Math.PI*.4;
+        const d=r*.42,sz=r*.32;
+        const px=cx+Math.cos(a)*d,py=cy+Math.sin(a)*d;
+        const cg2=ctx.createRadialGradient(px,py,0,px,py,sz);
+        cg2.addColorStop(0,'rgba(255,200,100,1)');cg2.addColorStop(1,'rgba(200,60,0,0)');
+        ctx.beginPath();ctx.arc(px,py,sz,0,Math.PI*2);ctx.fillStyle=cg2;ctx.fill();
+      }
+      ctx.restore();
+      // Slow deep corona loops
+      ctx.save();ctx.translate(cx,cy);ctx.rotate(t*.15);
+      ctx.beginPath();ctx.ellipse(0,0,r*1.25,r*.35,0,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(255,120,30,0.18)`;ctx.lineWidth=4;ctx.stroke();
+      ctx.restore();
+    }
+    else if(id==='magnetar'){
+      // Crackling magnetic field lines spinning rapidly
+      ctx.save();ctx.translate(cx,cy);
+      for(let i=0;i<6;i++){
+        ctx.rotate(t*2.5+i*Math.PI/3);
+        const mg=ctx.createLinearGradient(0,0,0,-r*1.3);
+        mg.addColorStop(0,`rgba(180,255,255,${.35+.15*Math.sin(t*4+i)})`);
+        mg.addColorStop(1,'rgba(80,255,255,0)');
+        ctx.beginPath();ctx.moveTo(-1,0);ctx.lineTo(-2,-r*1.3);ctx.lineTo(2,-r*1.3);ctx.lineTo(1,0);
+        ctx.fillStyle=mg;ctx.fill();
+      }
+      ctx.restore();
+      // Rapid surface crackling shimmer
+      _drawConvection(cx,cy,r,t*2.2,10,'rgba(200,255,255,1)','rgba(0,200,200,0)',.14);
+    }
+    else if(id==='white_dwarf'){
+      // Very subtle crisp crystalline shimmer, mostly static
+      _drawConvection(cx,cy,r,t*.2,6,'rgba(220,240,255,1)','rgba(160,180,255,0)',.06);
+      // Faint lattice ring
+      ctx.beginPath();ctx.arc(cx,cy,r*.78,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(200,220,255,0.1)`;ctx.lineWidth=2;ctx.stroke();
+    }
+
+    // ── Collapse-specific per-star visual effects ──
+    if(danger){
+      const da=dangerAmt;
+      if(id==='red_dwarf'){
+        // Embers drifting inward — handled by collapseEmbers
+        _collapseEmbers(cx,cy,r,da,'#ff4422','#ffaa44');
+      } else if(id==='sun'){
+        // Golden prominences flaring and dying
+        _collapseFlarings(cx,cy,r,da,'#ffcc44','#ff8800');
+      } else if(id==='blue_giant'){
+        // Blue shockwaves rippling across surface
+        _collapseRipples(cx,cy,r,da,'#44aaff','#aaddff');
+      } else if(id==='red_super'){
+        // Deep red churning boil — big convection gone mad
+        _collapseBoil(cx,cy,r,da,'#ff6633','#cc2200');
+      } else if(id==='magnetar'){
+        // White-cyan field lines snapping and crackling wildly
+        _collapsePulsar(cx,cy,r,da,'#aaffff','#ff44ff');
+      } else if(id==='white_dwarf'){
+        // Crystal fracture lines appearing on surface
+        _collapseCrystal(cx,cy,r,da,'#ddeeff','#8899ff');
+      }
+    }
+  }
+
+  // ── Danger pulse ring (all stars) ─────────────
+  if(danger){
+    const pulse=.5+.5*Math.abs(Math.sin(frameCount*.22));
+    ctx.beginPath();ctx.arc(cx,cy,r+3+dangerAmt*6,0,Math.PI*2);
+    ctx.strokeStyle=hexA(st.color,dangerAmt*pulse*.9);
+    ctx.lineWidth=2.5;ctx.stroke();
+    // second inner ring
+    ctx.beginPath();ctx.arc(cx,cy,r-2,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(255,60,30,${dangerAmt*.5*pulse})`;
+    ctx.lineWidth=1.5;ctx.stroke();
+  }
+}
+
+// ── Shared convection shimmer helper ──────────────────────────────────────────
+function _drawConvection(cx,cy,r,tOff,count,inner,outer,alpha){
+  ctx.save();ctx.globalAlpha=alpha;
+  for(let i=0;i<count;i++){
+    const a=tOff+i*Math.PI*2/count,d=r*.45;
+    const px=cx+Math.cos(a)*d,py=cy+Math.sin(a)*d;
+    const cg=ctx.createRadialGradient(px,py,0,px,py,r*.2);
+    cg.addColorStop(0,inner);cg.addColorStop(1,outer);
+    ctx.beginPath();ctx.arc(px,py,r*.2,0,Math.PI*2);ctx.fillStyle=cg;ctx.fill();
+  }
+  ctx.restore();
+}
+
+// ── Per-star collapse effect functions ────────────────────────────────────────
+function _collapseEmbers(cx,cy,r,da,col1,col2){
+  // Sparks fly inward/outward from surface
+  ctx.save();
+  const n=Math.floor(da*18);
+  for(let i=0;i<n;i++){
+    const a=(frameCount*0.07+i*2.4)%(Math.PI*2);
+    const d=r*(0.85+Math.random()*.3);
+    const px=cx+Math.cos(a)*d,py=cy+Math.sin(a)*d;
+    ctx.beginPath();ctx.arc(px,py,1.5+Math.random()*2,0,Math.PI*2);
+    ctx.fillStyle=Math.random()>.5?hexA(col1,da*.9):hexA(col2,da*.7);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function _collapseFlarings(cx,cy,r,da,col1,col2){
+  // Prominences flaring off the edge, getting more frantic
+  ctx.save();ctx.translate(cx,cy);
+  const n=Math.floor(3+da*5);
+  for(let i=0;i<n;i++){
+    const a=frameCount*(.04+i*.015)+i*1.1;
+    ctx.rotate(Math.PI*2/n);
+    const h=r*(.3+da*.4+.15*Math.sin(frameCount*.08+i));
+    const g2=ctx.createLinearGradient(0,-r,0,-r-h);
+    g2.addColorStop(0,hexA(col1,da*.8));g2.addColorStop(1,hexA(col2,0));
+    ctx.beginPath();ctx.ellipse(0,-r,r*.06,h,0,0,Math.PI*2);
+    ctx.fillStyle=g2;ctx.fill();
+  }
+  ctx.restore();
+}
+
+function _collapseRipples(cx,cy,r,da,col1,col2){
+  // Expanding rings across the surface
+  const rings=Math.floor(2+da*3);
+  for(let i=0;i<rings;i++){
+    const phase=(frameCount*.04+i*.7)%1;
+    const rr=r*(.5+phase*.55);
+    ctx.beginPath();ctx.arc(cx,cy,rr,0,Math.PI*2);
+    ctx.strokeStyle=hexA(col1,da*(.5-phase*.5));
+    ctx.lineWidth=2;ctx.stroke();
+  }
+}
+
+function _collapseBoil(cx,cy,r,da,col1,col2){
+  // Huge churning plumes erupt from the surface
+  ctx.save();ctx.globalAlpha=da*.5;
+  const n=Math.floor(3+da*4);
+  for(let i=0;i<n;i++){
+    const a=frameCount*.03+i*Math.PI*2/n;
+    const px=cx+Math.cos(a)*r*.88,py=cy+Math.sin(a)*r*.88;
+    const sz=r*(.25+.15*Math.sin(frameCount*.06+i));
+    const cg=ctx.createRadialGradient(px,py,0,px,py,sz);
+    cg.addColorStop(0,col2);cg.addColorStop(1,hexA(col1,0));
+    ctx.beginPath();ctx.arc(px,py,sz,0,Math.PI*2);ctx.fillStyle=cg;ctx.fill();
+  }
+  ctx.restore();
+}
+
+function _collapsePulsar(cx,cy,r,da,col1,col2){
+  // Field lines snapping, surface crackling electric
+  ctx.save();ctx.translate(cx,cy);ctx.rotate(frameCount*.15);
+  const beams=Math.floor(4+da*8);
+  for(let i=0;i<beams;i++){
+    const a=i*Math.PI*2/beams+frameCount*.08;
+    const len=r*(1.2+da*.8);
+    ctx.beginPath();ctx.moveTo(Math.cos(a)*r*.9,Math.sin(a)*r*.9);
+    ctx.lineTo(Math.cos(a)*len,Math.sin(a)*len);
+    ctx.strokeStyle=hexA(i%2===0?col1:col2,da*(.6+.3*Math.sin(frameCount*.2+i)));
+    ctx.lineWidth=1.2;ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function _collapseCrystal(cx,cy,r,da,col1,col2){
+  // Fracture lines cracking across the surface
+  ctx.save();ctx.translate(cx,cy);
+  const cracks=Math.floor(3+da*8);
+  for(let i=0;i<cracks;i++){
+    const a=i*Math.PI*2/cracks+i*.4;
+    const len=r*(.4+da*.55);
+    ctx.beginPath();ctx.moveTo(Math.cos(a)*r*.5,Math.sin(a)*r*.5);
+    ctx.lineTo(Math.cos(a+.15)*len,Math.sin(a+.15)*len);
+    ctx.strokeStyle=hexA(col1,da*(.7+.3*Math.sin(frameCount*.1+i)));
+    ctx.lineWidth=1;ctx.stroke();
+    // junction dot
+    ctx.beginPath();ctx.arc(Math.cos(a)*len*.85,Math.sin(a)*len*.85,1.5,0,Math.PI*2);
+    ctx.fillStyle=hexA(col2,da*.8);ctx.fill();
+  }
+  ctx.restore();
+}
+
+// ── Color lerp helper ─────────────────────────────────────────────────────────
+function lerpColor(hexA_,hexB,t){
+  const ar=parseInt(hexA_.slice(1,3),16),ag=parseInt(hexA_.slice(3,5),16),ab_=parseInt(hexA_.slice(5,7),16);
+  const br=parseInt(hexB.slice(1,3),16),bg=parseInt(hexB.slice(3,5),16),bb=parseInt(hexB.slice(5,7),16);
+  const r=Math.round(ar+(br-ar)*t),g=Math.round(ag+(bg-ag)*t),b=Math.round(ab_+(bb-ab_)*t);
+  return`#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+}
+
+// ── PER-ELEMENT UNIQUE RENDERERS ──────────────────────────────────────────────
+const ATOM_RENDERERS = {
+  H(p,t){
+    // Simple hydrogen: soft blue glow, single electron orbit ring
+    const pulse=.7+.3*Math.sin(p.glowPulse);
+    const gr=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*3.2);
+    gr.addColorStop(0,hexA('#88ccff',.4*pulse));gr.addColorStop(1,hexA('#88ccff',0));
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r*3.2,0,Math.PI*2);ctx.fillStyle=gr;ctx.fill();
+    // body
+    const bg=ctx.createRadialGradient(p.x-p.r*.35,p.y-p.r*.35,1,p.x,p.y,p.r);
+    bg.addColorStop(0,'#eef8ff');bg.addColorStop(1,'#3399dd');
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=bg;ctx.fill();
+    // electron orbit ellipse
+    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(t*1.8);
+    ctx.beginPath();ctx.ellipse(0,0,p.r*1.9,p.r*.7,0,0,Math.PI*2);
+    ctx.strokeStyle=hexA('#88ccff',.5*pulse);ctx.lineWidth=1;ctx.stroke();
+    // electron dot
+    const ex=Math.cos(t*1.8)*p.r*1.9, ey=Math.sin(t*1.8)*p.r*.7;
+    ctx.beginPath();ctx.arc(ex,ey,2,0,Math.PI*2);ctx.fillStyle='#aaddff';ctx.fill();
+    ctx.restore();
+  },
+  He(p,t){
+    // Helium: warm yellow, double ring halos
+    const pulse=.7+.3*Math.sin(p.glowPulse);
+    const gr=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*3);
+    gr.addColorStop(0,hexA('#ffffaa',.45*pulse));gr.addColorStop(1,hexA('#ffcc44',0));
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r*3,0,Math.PI*2);ctx.fillStyle=gr;ctx.fill();
+    const bg=ctx.createRadialGradient(p.x-p.r*.3,p.y-p.r*.3,1,p.x,p.y,p.r);
+    bg.addColorStop(0,'#ffffee');bg.addColorStop(.6,'#ffee88');bg.addColorStop(1,'#ddaa00');
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=bg;ctx.fill();
+    // two orbit rings at 60° offset
+    for(let i=0;i<2;i++){
+      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(t*1.4+i*Math.PI*.6);
+      ctx.beginPath();ctx.ellipse(0,0,p.r*2,p.r*.65,0,0,Math.PI*2);
+      ctx.strokeStyle=hexA('#ffee88',.45*pulse);ctx.lineWidth=.8;ctx.stroke();
+      ctx.restore();
+    }
+  },
+  C(p,t){
+    // Carbon: green hexagonal glow, 6-point star shape
+    const pulse=.7+.3*Math.sin(p.glowPulse);
+    const gr=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*2.8);
+    gr.addColorStop(0,hexA('#aaffaa',.4*pulse));gr.addColorStop(1,hexA('#44cc44',0));
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r*2.8,0,Math.PI*2);ctx.fillStyle=gr;ctx.fill();
+    // hexagon body
+    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(t*.5);
+    ctx.beginPath();
+    for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.lineTo(Math.cos(a)*p.r,Math.sin(a)*p.r);}
+    ctx.closePath();
+    const bg=ctx.createRadialGradient(-p.r*.2,-p.r*.2,1,0,0,p.r);
+    bg.addColorStop(0,'#eeffee');bg.addColorStop(1,'#44aa44');
+    ctx.fillStyle=bg;ctx.fill();
+    ctx.strokeStyle=hexA('#aaffaa',.6);ctx.lineWidth=1;ctx.stroke();
+    ctx.restore();
+  },
+  O(p,t){
+    // Oxygen: cyan, double-lobe orbital shape
+    const pulse=.7+.3*Math.sin(p.glowPulse);
+    const gr=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*3);
+    gr.addColorStop(0,hexA('#66ddff',.4*pulse));gr.addColorStop(1,hexA('#0099cc',0));
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r*3,0,Math.PI*2);ctx.fillStyle=gr;ctx.fill();
+    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(t*.8);
+    // double peanut orbital lobes
+    for(let s of[-1,1]){
+      ctx.beginPath();ctx.ellipse(s*p.r*.55,0,p.r*.7,p.r*.45,0,0,Math.PI*2);
+      const lg=ctx.createRadialGradient(s*p.r*.3,0,1,s*p.r*.55,0,p.r*.7);
+      lg.addColorStop(0,'#ccf8ff');lg.addColorStop(1,'#0088bb');
+      ctx.fillStyle=lg;ctx.fill();
+    }
+    ctx.restore();
+    // thin outer ring
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r+3,0,Math.PI*2);
+    ctx.strokeStyle=hexA('#66ddff',.4*pulse);ctx.lineWidth=1.2;ctx.stroke();
+  },
+  Ne(p,t){
+    // Neon: pink/magenta, radiating spikes
+    const pulse=.7+.3*Math.sin(p.glowPulse);
+    const gr=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*3.5);
+    gr.addColorStop(0,hexA('#ff88ff',.45*pulse));gr.addColorStop(1,hexA('#cc44cc',0));
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r*3.5,0,Math.PI*2);ctx.fillStyle=gr;ctx.fill();
+    const bg=ctx.createRadialGradient(p.x-p.r*.3,p.y-p.r*.3,1,p.x,p.y,p.r);
+    bg.addColorStop(0,'#ffddff');bg.addColorStop(1,'#cc44cc');
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=bg;ctx.fill();
+    // radiating spikes
+    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(t*.9);
+    for(let i=0;i<8;i++){
+      const a=i*Math.PI/4;
+      ctx.beginPath();ctx.moveTo(Math.cos(a)*p.r*.9,Math.sin(a)*p.r*.9);
+      ctx.lineTo(Math.cos(a)*p.r*2.2,Math.sin(a)*p.r*2.2);
+      ctx.strokeStyle=hexA('#ff88ff',.5*pulse);ctx.lineWidth=1.2;ctx.stroke();
+    }
+    ctx.restore();
+  },
+  Mg(p,t){
+    // Magnesium: light green, square-ish crystal lattice feel
+    const pulse=.7+.3*Math.sin(p.glowPulse);
+    const gr=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*2.8);
+    gr.addColorStop(0,hexA('#ccffcc',.38*pulse));gr.addColorStop(1,hexA('#88dd88',0));
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r*2.8,0,Math.PI*2);ctx.fillStyle=gr;ctx.fill();
+    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(t*.4+Math.PI/4);
+    // diamond / rotated square body
+    ctx.beginPath();
+    ctx.moveTo(0,-p.r);ctx.lineTo(p.r,0);ctx.lineTo(0,p.r);ctx.lineTo(-p.r,0);ctx.closePath();
+    const bg=ctx.createRadialGradient(-p.r*.2,-p.r*.2,1,0,0,p.r);
+    bg.addColorStop(0,'#eeffee');bg.addColorStop(1,'#66bb66');
+    ctx.fillStyle=bg;ctx.fill();
+    ctx.strokeStyle=hexA('#ccffcc',.7);ctx.lineWidth=1;ctx.stroke();
+    ctx.restore();
+  },
+  Si(p,t){
+    // Silicon: gold/orange, faceted crystal octagon
+    const pulse=.7+.3*Math.sin(p.glowPulse);
+    const gr=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*3);
+    gr.addColorStop(0,hexA('#ffcc66',.42*pulse));gr.addColorStop(1,hexA('#cc8800',0));
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r*3,0,Math.PI*2);ctx.fillStyle=gr;ctx.fill();
+    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(t*.35);
+    ctx.beginPath();
+    for(let i=0;i<8;i++){const a=i*Math.PI/4+Math.PI/8;ctx.lineTo(Math.cos(a)*p.r,Math.sin(a)*p.r);}
+    ctx.closePath();
+    const bg=ctx.createRadialGradient(-p.r*.25,-p.r*.25,1,0,0,p.r);
+    bg.addColorStop(0,'#fff8cc');bg.addColorStop(.5,'#ffcc44');bg.addColorStop(1,'#cc8800');
+    ctx.fillStyle=bg;ctx.fill();
+    ctx.strokeStyle=hexA('#ffee88',.7);ctx.lineWidth=1.2;ctx.stroke();
+    ctx.restore();
+  },
+  S(p,t){
+    // Sulfur: bright yellow, jagged star
+    const pulse=.7+.3*Math.sin(p.glowPulse);
+    const gr=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*3.2);
+    gr.addColorStop(0,hexA('#ffff44',.45*pulse));gr.addColorStop(1,hexA('#cccc00',0));
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r*3.2,0,Math.PI*2);ctx.fillStyle=gr;ctx.fill();
+    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(t*.6);
+    // 5-point star
+    ctx.beginPath();
+    for(let i=0;i<10;i++){
+      const a=i*Math.PI/5-Math.PI/2;
+      const r2=i%2===0?p.r:p.r*.45;
+      ctx.lineTo(Math.cos(a)*r2,Math.sin(a)*r2);
+    }
+    ctx.closePath();
+    const bg=ctx.createRadialGradient(0,-p.r*.2,1,0,0,p.r);
+    bg.addColorStop(0,'#ffff99');bg.addColorStop(1,'#cccc00');
+    ctx.fillStyle=bg;ctx.fill();
+    ctx.strokeStyle=hexA('#ffff44',.7);ctx.lineWidth=1;ctx.stroke();
+    ctx.restore();
+  },
+  Ar(p,t){
+    // Argon: purple, concentric rings with rotating dashes
+    const pulse=.7+.3*Math.sin(p.glowPulse);
+    const gr=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*3.2);
+    gr.addColorStop(0,hexA('#cc88ff',.42*pulse));gr.addColorStop(1,hexA('#7733bb',0));
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r*3.2,0,Math.PI*2);ctx.fillStyle=gr;ctx.fill();
+    const bg=ctx.createRadialGradient(p.x-p.r*.3,p.y-p.r*.3,1,p.x,p.y,p.r);
+    bg.addColorStop(0,'#eeddff');bg.addColorStop(1,'#8833cc');
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=bg;ctx.fill();
+    for(let ring=1;ring<=2;ring++){
+      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(t*(ring%2===0?1.1:-0.8));
+      ctx.setLineDash([4,4]);
+      ctx.beginPath();ctx.arc(0,0,p.r*(1+ring*.45),0,Math.PI*2);
+      ctx.strokeStyle=hexA('#cc88ff',.4*pulse);ctx.lineWidth=1.2;ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+  },
+  Ca(p,t){
+    // Calcium: warm peach/salmon, rounded cross shape
+    const pulse=.7+.3*Math.sin(p.glowPulse);
+    const gr=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*3);
+    gr.addColorStop(0,hexA('#ffbbaa',.4*pulse));gr.addColorStop(1,hexA('#dd7755',0));
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r*3,0,Math.PI*2);ctx.fillStyle=gr;ctx.fill();
+    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(t*.3);
+    const arm=p.r*.65,w=p.r*.5;
+    ctx.beginPath();
+    ctx.roundRect(-w,-p.r,w*2,p.r*2,4);
+    ctx.roundRect(-p.r,-w,p.r*2,w*2,4);
+    const bg=ctx.createRadialGradient(0,0,1,0,0,p.r);
+    bg.addColorStop(0,'#ffeedd');bg.addColorStop(1,'#cc7755');
+    ctx.fillStyle=bg;ctx.fill();
+    ctx.strokeStyle=hexA('#ffbbaa',.6);ctx.lineWidth=1;ctx.stroke();
+    ctx.restore();
+  },
+  Cr(p,t){
+    // Chromium: teal/grey, gear-like notched ring
+    const pulse=.7+.3*Math.sin(p.glowPulse);
+    const gr=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*2.8);
+    gr.addColorStop(0,hexA('#aacccc',.4*pulse));gr.addColorStop(1,hexA('#557777',0));
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r*2.8,0,Math.PI*2);ctx.fillStyle=gr;ctx.fill();
+    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(t*.25);
+    // gear teeth
+    const teeth=10,ro=p.r,ri=p.r*.72;
+    ctx.beginPath();
+    for(let i=0;i<teeth*2;i++){
+      const a=i*Math.PI/teeth;
+      const r2=i%2===0?ro:ri;
+      ctx.lineTo(Math.cos(a)*r2,Math.sin(a)*r2);
+    }
+    ctx.closePath();
+    const bg=ctx.createRadialGradient(-p.r*.2,-p.r*.2,1,0,0,p.r);
+    bg.addColorStop(0,'#ddeedd');bg.addColorStop(1,'#557788');
+    ctx.fillStyle=bg;ctx.fill();
+    ctx.strokeStyle=hexA('#aacccc',.7);ctx.lineWidth=1;ctx.stroke();
+    // inner hole
+    ctx.beginPath();ctx.arc(0,0,p.r*.35,0,Math.PI*2);
+    ctx.fillStyle='rgba(0,0,0,.4)';ctx.fill();
+    ctx.restore();
+  },
+  Fe(p,t){
+    // Iron: bronze/copper, heavy dense layered rings — the end product
+    const pulse=.6+.4*Math.sin(p.glowPulse*.7);
+    // heavy amber glow
+    const gr=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*3.5);
+    gr.addColorStop(0,hexA('#cc9966',.5*pulse));gr.addColorStop(.5,hexA('#aa7733',.2));gr.addColorStop(1,hexA('#884400',0));
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r*3.5,0,Math.PI*2);ctx.fillStyle=gr;ctx.fill();
+    // layered rings radiating outward
+    for(let i=3;i>=0;i--){
+      const layR=p.r*(1-i*.15);
+      const bg=ctx.createRadialGradient(p.x-layR*.3,p.y-layR*.3,1,p.x,p.y,layR);
+      bg.addColorStop(0,i===0?'#ffe0bb':'#cc8844');
+      bg.addColorStop(1,i===0?'#aa6633':'#663300');
+      ctx.beginPath();ctx.arc(p.x,p.y,layR,0,Math.PI*2);ctx.fillStyle=bg;ctx.fill();
+    }
+    // 3 orbital rings, slow rotation
+    for(let i=0;i<3;i++){
+      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(t*(.2+i*.15)+i*Math.PI/3);
+      ctx.beginPath();ctx.ellipse(0,0,p.r*(1.6+i*.3),p.r*(.5+i*.15),0,0,Math.PI*2);
+      ctx.strokeStyle=hexA('#cc9966',.35*pulse);ctx.lineWidth=1.5;ctx.stroke();
+      ctx.restore();
+    }
+    // crown of tiny dots
+    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(t*.4);
+    for(let i=0;i<6;i++){
+      const a=i*Math.PI/3;
+      ctx.beginPath();ctx.arc(Math.cos(a)*p.r*1.35,Math.sin(a)*p.r*1.35,2.5,0,Math.PI*2);
+      ctx.fillStyle=hexA('#ffcc88',.8*pulse);ctx.fill();
+    }
+    ctx.restore();
+  }
+};
+
+function renderParticles(){
+  const t=frameCount*.018;
+  particles.forEach(p=>{
+    const sym=p.sym;
+    const renderer=ATOM_RENDERERS[sym];
+    if(renderer){
+      renderer(p,t);
+    } else {
+      // fallback for any unlisted element
+      const el=p.el,pulse=.72+.28*Math.sin(p.glowPulse);
+      const gr=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*3);
+      gr.addColorStop(0,hexA(el.color,.32*pulse));gr.addColorStop(1,hexA(el.color,0));
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r*3,0,Math.PI*2);ctx.fillStyle=gr;ctx.fill();
+      const bg=ctx.createRadialGradient(p.x-p.r*.3,p.y-p.r*.3,1,p.x,p.y,p.r);
+      bg.addColorStop(0,'rgba(255,255,255,.88)');bg.addColorStop(1,el.color);
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=bg;ctx.fill();
+    }
+    // drag ring
+    if(p===dragging){
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r+7,0,Math.PI*2);
+      ctx.strokeStyle='rgba(255,255,255,.7)';ctx.lineWidth=1.5;ctx.stroke();
+    }
+    // symbol label
+    ctx.fillStyle='rgba(0,0,0,.82)';
+    ctx.font=`bold ${Math.max(7,p.r*.78)}px JetBrains Mono`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(p.sym,p.x,p.y);
+  });
+}
+
+function renderFlashes(){
+  flashes=flashes.filter(f=>f.life>0);
+  flashes.forEach(f=>{
+    const a=f.life/f.maxLife;
+    ctx.beginPath();ctx.arc(f.x,f.y,f.r*a,0,Math.PI*2);
+    ctx.fillStyle=hexA(f.col,a*.85);ctx.fill();
+    f.x+=f.vx;f.y+=f.vy;f.vx*=.87;f.vy*=.87;f.life--;
+  });
+}
+
+function renderHUD(){
+  const pct=Math.max(0,starRadius/maxStarRadius);
+  document.getElementById('size-fill').style.width=(pct*100)+'%';
+  const st=selectedStar;
+  if(pct<.25) document.getElementById('size-fill').style.background='linear-gradient(90deg,#ff0033,#ff5500)';
+  else if(pct<.55) document.getElementById('size-fill').style.background='linear-gradient(90deg,#ff5500,#ffcc00)';
+  else document.getElementById('size-fill').style.background=`linear-gradient(90deg,${st.color2},${st.color})`;
+}
+
+// ── STARFIELD ─────────────────────────────────────────────────────────────────
+function drawBgStars(){
+  sfCtx.clearRect(0,0,W,H);sfCtx.fillStyle='#00000a';sfCtx.fillRect(0,0,W,H);
+  bgStars.forEach(s=>{
+    const b=.3+.7*Math.abs(Math.sin(s.tw));
+    sfCtx.beginPath();sfCtx.arc(s.x*W,s.y*H,s.r,0,Math.PI*2);
+    sfCtx.fillStyle=`rgba(255,255,255,${b*.65})`;sfCtx.fill();
+  });
+}
+
+// ── MAIN LOOP ─────────────────────────────────────────────────────────────────
+function loop(){
+  requestAnimationFrame(loop);frameCount++;
+  if(frameCount%4===0){bgStars.forEach(s=>s.tw+=.04);drawBgStars();}
+  ctx.clearRect(0,0,W,H);
+
+  if(!gameOver&&selectedStar){
+    if(!supernovaPhase){
+      starRadius-=selectedStar.shrink;
+      if(starRadius<minStarRadius){sfxGameOver();showEnd(false);return;}
+      // Danger warning throb
+      const pct=starRadius/maxStarRadius;
+      if(pct<.3){
+        warnPulseTimer++;
+        const interval=Math.max(18,Math.floor(pct*120));
+        if(warnPulseTimer>=interval){warnPulseTimer=0;sfxWarnPulse();}
+      } else { warnPulseTimer=0; }
+      spawnTimer++;
+      if(spawnTimer>=selectedStar.spawnInt){spawnTimer=0;autoSpawn();}
+      if(recentFusionTimer>0){recentFusionTimer--;if(recentFusionTimer===0){recentFusion=null;refreshTable();}}
+      updatePhysics();
+      renderHUD();
+      renderNextSpawnArc();
+    } else {
+      updateSupernova();
+    }
+  }
+
+  if(selectedStar&&(!supernovaPhase||novaPhase<=2)) renderStar();
+  if(!supernovaPhase){
+    renderParticles();
+    renderFlashes();
+  }
+  if(supernovaPhase) renderSupernova();
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function hexA(hex,a){
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return`rgba(${r},${g},${b},${a})`;
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+function init(){
+  canvas=document.getElementById('gc');ctx=canvas.getContext('2d');
+  sfCanvas=document.getElementById('starfield');sfCtx=sfCanvas.getContext('2d');
+  resize();
+  window.addEventListener('resize',resize);
+  bgStars=Array.from({length:220},()=>({x:Math.random(),y:Math.random(),r:.3+Math.random()*1.4,tw:Math.random()*Math.PI*2}));
+  drawBgStars();
+  canvas.addEventListener('mousedown',onDown);
+  canvas.addEventListener('mousemove',onMove);
+  canvas.addEventListener('mouseup',onUp);
+  canvas.addEventListener('mouseleave',onUp);
+  canvas.addEventListener('touchstart',e=>{e.preventDefault();onDown(e);},{passive:false});
+  canvas.addEventListener('touchmove',e=>{e.preventDefault();onMove(e);},{passive:false});
+  canvas.addEventListener('touchend',e=>{e.preventDefault();onUp(e);},{passive:false});
+  buildSelectScreen();
+  requestAnimationFrame(loop);
+}
+
+function resize(){
+  W=canvas.width=sfCanvas.width=window.innerWidth;
+  H=canvas.height=sfCanvas.height=window.innerHeight;
+  drawBgStars();
+}
+
+window.addEventListener('load',init);
+</script>
+</body>
+</html>
