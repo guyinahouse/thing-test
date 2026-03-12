@@ -1,703 +1,978 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GeoSim: Climate & Temperature</title>
-    <style>
-        body {
-            background-color: #0f1115;
-            color: #cfd8dc;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            overflow: hidden;
-            user-select: none;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GeoSim — Planetary Evolution Engine</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+  :root {
+    --bg:#0a0c0f; --panel:#111318; --border:#1e2530;
+    --accent:#00d4ff; --accent2:#ff6b35; --accent3:#39ff14;
+    --text:#c8d6e5; --dim:#4a5568;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;height:100vh;overflow:hidden;display:flex;flex-direction:column;}
 
-        /* --- UI LAYOUT --- */
-        header {
-            width: 100%;
-            background: #191c24;
-            padding: 8px 0;
-            text-align: center;
-            border-bottom: 1px solid #2f3640;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
+  header{display:flex;align-items:center;padding:8px 16px;background:var(--panel);border-bottom:1px solid var(--border);gap:20px;flex-shrink:0;z-index:10;}
+  .logo{font-family:'Space Mono',monospace;font-size:14px;font-weight:700;letter-spacing:3px;color:var(--accent);text-shadow:0 0 10px rgba(0,212,255,0.5);white-space:nowrap;}
+  .logo span{color:var(--accent2);}
+  .time-display{font-family:'Space Mono',monospace;font-size:11px;color:var(--accent3);text-shadow:0 0 8px rgba(57,255,20,0.4);white-space:nowrap;}
+  .header-controls{display:flex;gap:8px;align-items:center;margin-left:auto;}
+  .btn{font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;letter-spacing:1px;padding:5px 12px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;transition:all 0.15s;text-transform:uppercase;}
+  .btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,0.05);}
+  .btn.danger{border-color:var(--accent2);color:var(--accent2);}
+  .btn.danger:hover{background:rgba(255,107,53,0.1);}
+  .btn.go{border-color:var(--accent3);color:var(--accent3);}
+  .btn.go:hover{background:rgba(57,255,20,0.1);box-shadow:0 0 10px rgba(57,255,20,0.2);}
 
-        h1 { margin: 0; font-size: 1.1rem; color: #90a4ae; text-transform: uppercase; letter-spacing: 2px; }
+  .main{display:flex;flex:1;overflow:hidden;}
+  .left-panel{width:206px;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;}
+  .panel-section{border-bottom:1px solid var(--border);padding:10px;}
+  .panel-title{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-bottom:8px;}
 
-        .control-group {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: #232730;
-            padding: 4px 12px;
-            border-radius: 16px;
-            border: 1px solid #37474f;
-        }
+  /* Tool buttons */
+  .tool-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;}
+  .tool-btn{font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:600;padding:7px 3px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;transition:all 0.15s;text-align:center;letter-spacing:0.3px;}
+  .tool-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .tool-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,0.1);}
+  /* per-tool active colors */
+  .tool-btn[data-color="green"].active  {border-color:#a5d6a7;color:#a5d6a7;background:rgba(165,214,167,0.1);}
+  .tool-btn[data-color="red"].active    {border-color:#ef9a9a;color:#ef9a9a;background:rgba(239,154,154,0.1);}
+  .tool-btn[data-color="blue"].active   {border-color:#4fc3f7;color:#4fc3f7;background:rgba(79,195,247,0.1);}
+  .tool-btn[data-color="purple"].active {border-color:#ce93d8;color:#ce93d8;background:rgba(206,147,216,0.1);}
+  .tool-btn[data-color="orange"].active {border-color:#ffb74d;color:#ffb74d;background:rgba(255,183,77,0.1);}
+  .tool-btn[data-color="cyan"].active   {border-color:#80deea;color:#80deea;background:rgba(128,222,234,0.1);}
+  .tool-btn[data-color="lime"].active   {border-color:#c6e48b;color:#c6e48b;background:rgba(198,228,139,0.1);}
+  .tool-btn[data-color="brown"].active  {border-color:#bcaaa4;color:#bcaaa4;background:rgba(188,170,164,0.1);}
 
-        .temp-slider-container {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.9rem;
-            color: #b0bec5;
-        }
+  /* Paint value sub-control */
+  .paint-ctrl{display:none;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);}
+  .paint-ctrl.show{display:block;}
 
-        /* Temperature Slider Styling */
-        input[type=range].temp-slider {
-            -webkit-appearance: none;
-            width: 120px;
-            height: 6px;
-            background: linear-gradient(90deg, #4fc3f7 0%, #fff 50%, #ff5722 100%);
-            border-radius: 3px;
-            cursor: pointer;
-        }
-        input[type=range].temp-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 16px;
-            width: 16px;
-            border-radius: 50%;
-            background: #fff;
-            border: 2px solid #555;
-            margin-top: -5px;
-        }
+  .slider-row{display:flex;flex-direction:column;gap:4px;margin-bottom:8px;}
+  .slider-label{display:flex;justify-content:space-between;font-size:12px;color:var(--dim);}
+  .slider-val{color:var(--accent);font-family:'Space Mono',monospace;font-size:10px;}
+  input[type=range]{width:100%;height:3px;background:var(--border);outline:none;border:none;cursor:pointer;-webkit-appearance:none;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;background:var(--accent);cursor:pointer;box-shadow:0 0 6px rgba(0,212,255,0.5);}
 
-        .toolbar {
-            display: flex;
-            gap: 6px;
-            margin: 10px 0;
-            flex-wrap: wrap;
-            justify-content: center;
-            background: #191c24;
-            padding: 8px 12px;
-            border-radius: 8px;
-            border: 1px solid #2f3640;
-            max-width: 95vw;
-        }
+  /* Biome picker */
+  .biome-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-top:4px;}
+  .biome-pick{font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:600;padding:4px 3px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;text-align:center;transition:all 0.12s;}
+  .biome-pick:hover{border-color:#fff2;color:var(--text);}
+  .biome-pick.active{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,0.08);}
 
-        button {
-            padding: 6px 10px;
-            border: 1px solid #37474f;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.75rem;
-            background-color: #263238;
-            color: #b0bec5;
-            transition: all 0.2s;
-            font-weight: 500;
-        }
+  .mapmode-btn{font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:600;padding:6px 8px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;transition:all 0.15s;text-align:left;width:100%;margin-bottom:3px;letter-spacing:0.5px;text-transform:uppercase;display:flex;align-items:center;gap:6px;}
+  .mapmode-btn .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .mapmode-btn:hover{color:var(--text);border-color:#2a3545;}
+  .mapmode-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,0.05);}
 
-        button:hover { background-color: #37474f; color: #fff; transform: translateY(-1px); }
-        button.active { 
-            background-color: #546e7a; 
-            color: #fff; 
-            border-color: #fff;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        }
+  .canvas-area{flex:1;position:relative;overflow:hidden;cursor:crosshair;background:#000;}
+  canvas{position:absolute;image-rendering:pixelated;touch-action:none;}
+  .coord-display{position:absolute;bottom:8px;left:8px;font-family:'Space Mono',monospace;font-size:10px;color:rgba(200,214,229,0.5);pointer-events:none;z-index:5;}
 
-        /* Material Colors in UI */
-        .btn-bedrock { border-bottom: 3px solid #6b6b6b; }
-        .btn-sediment { border-bottom: 3px solid #e6c229; }
-        .btn-water { border-bottom: 3px solid #4da6ff; }
-        .btn-magma { border-bottom: 3px solid #ff3c00; }
-        .btn-ice { border-bottom: 3px solid #aaddff; }
-        .btn-snow { border-bottom: 3px solid #fff; }
-        .btn-seed { border-bottom: 3px solid #76ff03; }
-        .btn-salt { border-bottom: 3px solid #f8bbd0; }
+  .right-panel{width:180px;background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;}
+  .legend-item{display:flex;align-items:center;gap:6px;margin-bottom:5px;font-size:11px;color:var(--dim);}
+  .legend-color{width:14px;height:10px;flex-shrink:0;}
+  .stat-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:12px;}
+  .stat-val{font-family:'Space Mono',monospace;font-size:10px;color:var(--accent);}
 
-        .game-container {
-            position: relative;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            border: 1px solid #37474f;
-        }
-        
-        canvas {
-            background-color: #000;
-            image-rendering: pixelated; 
-            cursor: crosshair;
-            display: block;
-        }
+  /* ---- GEO EVENT DOTS ---- */
+  .geo-dot{
+    position:absolute;width:10px;height:10px;border-radius:50%;
+    cursor:pointer;pointer-events:all;z-index:50;
+    transform:translate(-50%,-50%);
+    box-shadow:0 0 0 2px rgba(0,0,0,0.6);
+    animation:dotIn 0.25s ease;
+    transition:transform 0.15s, box-shadow 0.15s, opacity 0.5s;
+  }
+  @keyframes dotIn{from{opacity:0;transform:translate(-50%,-50%) scale(0.3)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+  .geo-dot::after{
+    content:'';position:absolute;inset:-3px;border-radius:50%;
+    border:1px solid currentColor;opacity:0.5;
+    animation:ring 1.8s ease-out infinite;
+  }
+  @keyframes ring{0%{transform:scale(1);opacity:0.5}100%{transform:scale(2.4);opacity:0}}
+  .geo-dot:hover{transform:translate(-50%,-50%) scale(1.5);box-shadow:0 0 0 2px rgba(0,0,0,0.8),0 0 8px currentColor;}
 
-        /* --- EDUCATIONAL INFO BOX --- */
-        #infoPanel {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 80%;
-            max-width: 600px;
-            background: rgba(20, 25, 30, 0.95);
-            border-left: 4px solid #4da6ff;
-            padding: 15px;
-            border-radius: 4px;
-            color: #eee;
-            opacity: 0;
-            transition: opacity 0.5s ease-in-out;
-            pointer-events: none;
-            text-align: left;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
-            z-index: 10;
-        }
+  /* ---- GEO POPUP ---- */
+  .geo-popup{
+    position:absolute;background:rgba(6,10,16,0.97);
+    border:1px solid var(--accent);padding:14px 16px;width:270px;
+    font-family:'Space Mono',monospace;font-size:10px;z-index:200;
+    box-shadow:0 0 30px rgba(0,212,255,0.15);animation:popIn 0.2s ease;
+  }
+  @keyframes popIn{from{opacity:0;transform:scale(0.92) translateY(-4px)}to{opacity:1;transform:none}}
+  .geo-popup h3{font-size:11px;color:var(--accent);margin-bottom:7px;letter-spacing:1px;}
+  .geo-popup .gp-meta{color:var(--dim);font-size:8px;margin-bottom:9px;}
+  .geo-popup p{color:var(--text);line-height:1.75;font-size:11px;font-family:'Rajdhani',sans-serif;margin-bottom:10px;}
+  .geo-popup .gp-stats{display:flex;flex-direction:column;gap:4px;border-top:1px solid var(--border);padding-top:8px;}
+  .geo-popup .gp-stat{display:flex;justify-content:space-between;color:var(--dim);font-size:9px;}
+  .geo-popup .gp-stat span:last-child{color:var(--accent3);}
+  .geo-popup-close{position:absolute;top:8px;right:10px;cursor:pointer;color:var(--dim);font-size:12px;}
+  .geo-popup-close:hover{color:var(--accent2);}
 
-        #infoTitle {
-            font-weight: bold;
-            color: #4da6ff;
-            text-transform: uppercase;
-            font-size: 0.9rem;
-            margin-bottom: 5px;
-            display: block;
-        }
+  /* ---- TOP NOTIF ---- */
+  .top-notif{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.87);border:1px solid var(--accent3);color:var(--accent3);font-family:'Space Mono',monospace;font-size:11px;padding:7px 16px;pointer-events:none;opacity:0;transition:opacity 0.3s;white-space:nowrap;letter-spacing:1px;z-index:60;}
+  .top-notif.show{opacity:1;}
 
-        #infoDesc { font-size: 0.9rem; line-height: 1.4; color: #ccc; }
+  /* ---- MODAL ---- */
+  .modal-overlay{position:absolute;inset:0;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;z-index:100;opacity:0;pointer-events:none;transition:opacity 0.3s;backdrop-filter:blur(4px);}
+  .modal-overlay.show{opacity:1;pointer-events:all;}
+  .modal{background:var(--panel);border:1px solid var(--border);padding:24px;width:420px;box-shadow:0 0 60px rgba(0,0,0,0.8),0 0 30px rgba(0,212,255,0.1);}
+  .modal h2{font-family:'Space Mono',monospace;font-size:13px;letter-spacing:3px;color:var(--accent);margin-bottom:16px;text-shadow:0 0 10px rgba(0,212,255,0.4);}
+  .modal p{font-size:13px;color:var(--dim);margin-bottom:12px;line-height:1.6;}
+  .modal-progress{height:2px;background:var(--border);margin:16px 0;overflow:hidden;}
+  .modal-progress-bar{height:100%;background:var(--accent3);width:0%;transition:width 0.08s;box-shadow:0 0 10px rgba(57,255,20,0.5);}
+  .progress-text{font-family:'Space Mono',monospace;font-size:10px;color:var(--accent3);text-align:center;}
+  .simulation-log{max-height:150px;overflow-y:auto;background:rgba(0,0,0,0.3);border:1px solid var(--border);padding:8px;margin-top:10px;}
+  .log-line{font-family:'Space Mono',monospace;font-size:9px;color:var(--dim);margin-bottom:3px;line-height:1.5;}
+  .log-line.event{color:var(--accent3);}
+  .log-line.warn{color:var(--accent2);}
+  .log-line.crit{color:#ff3366;}
 
-        .status-bar {
-            display: flex;
-            gap: 20px;
-            margin-top: 10px;
-            font-size: 0.8rem;
-            color: #546e7a;
-            align-items: center;
-        }
-    </style>
+  ::-webkit-scrollbar{width:4px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:var(--border);}
+</style>
 </head>
 <body>
 
-    <header>
-        <h1>GeoSim</h1>
-        
-        <div class="control-group temp-slider-container">
-            <span>Temp: <span id="tempDisplay" style="width: 40px; display:inline-block; text-align:right;">20</span>°C</span>
-            <input type="range" min="-20" max="120" value="20" class="temp-slider" id="tempSlider" oninput="updateTemp(this.value)">
-        </div>
+<header>
+  <div class="logo">GEO<span>SIM</span></div>
+  <div class="time-display" id="timeDisplay">● 0 MY</div>
+  <div style="font-size:12px;color:var(--dim);margin-left:8px;" id="eraDisplay">HADEAN EON</div>
+  <div class="header-controls">
+    <button class="btn" onclick="generateTerrain()">NEW WORLD</button>
+    <button class="btn go" onclick="openFastForward()">⚡ FAST FORWARD</button>
+    <button class="btn danger" onclick="resetWorld()">RESET</button>
+  </div>
+</header>
 
-        <div class="control-group">
-            <input type="checkbox" id="rainToggle"> <label for="rainToggle" style="font-size: 0.8rem; cursor:pointer;">Precipitation</label>
-        </div>
-    </header>
+<div class="main">
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
 
-    <div class="toolbar">
-        <button class="btn-bedrock active" onclick="setMaterial(1)">Bedrock</button>
-        <button class="btn-sediment" onclick="setMaterial(2)">Sediment</button>
-        <button class="btn-water" onclick="setMaterial(3)">Water</button>
-        <button class="btn-magma" onclick="setMaterial(4)">Magma</button>
-        <div style="width:1px; background:#37474f; margin:0 2px;"></div>
-        <button class="btn-ice" onclick="setMaterial(8)">Ice</button>
-        <button class="btn-snow" onclick="setMaterial(12)">Snow</button>
-        <button class="btn-salt" onclick="setMaterial(13)">Salt</button>
-        <button class="btn-seed" onclick="setMaterial(10)">Seed</button>
-        <div style="width:1px; background:#37474f; margin:0 2px;"></div>
-        <button onclick="setMaterial(0)" style="color:#ff5252">Eraser</button>
-        <button onclick="clearGrid()">Reset</button>
+    <!-- TERRAIN TOOLS -->
+    <div class="panel-section">
+      <div class="panel-title">Terrain</div>
+      <div class="tool-grid">
+        <button class="tool-btn active" data-color="green" id="tool-raise"   onclick="setTool('raise')">▲ RAISE</button>
+        <button class="tool-btn"        data-color="red"   id="tool-lower"   onclick="setTool('lower')">▼ LOWER</button>
+        <button class="tool-btn"        data-color="blue"  id="tool-water"   onclick="setTool('water')">◈ WATER</button>
+        <button class="tool-btn"        data-color="purple"id="tool-smooth"  onclick="setTool('smooth')">≈ SMOOTH</button>
+        <button class="tool-btn"        data-color="orange"id="tool-volcano" onclick="setTool('volcano')" style="grid-column:span 2">🌋 VOLCANO</button>
+      </div>
     </div>
 
-    <div class="game-container">
-        <canvas id="simCanvas"></canvas>
-        
-        <!-- Educational Overlay -->
-        <div id="infoPanel">
-            <span id="infoTitle">GEOLOGICAL EVENT</span>
-            <span id="infoDesc">Description goes here...</span>
+    <!-- PAINT TOOLS -->
+    <div class="panel-section">
+      <div class="panel-title">Paint</div>
+      <div class="tool-grid">
+        <button class="tool-btn" data-color="orange" id="tool-paint-temp"    onclick="setTool('paint-temp')">🌡 TEMP</button>
+        <button class="tool-btn" data-color="cyan"   id="tool-paint-rain"    onclick="setTool('paint-rain')">💧 RAIN</button>
+        <button class="tool-btn" data-color="brown"  id="tool-paint-erosion" onclick="setTool('paint-erosion')">⛰ ERODE</button>
+        <button class="tool-btn" data-color="lime"   id="tool-paint-biome"   onclick="setTool('paint-biome')">🌿 BIOME</button>
+      </div>
+
+      <!-- Temperature paint value -->
+      <div class="paint-ctrl" id="ctrl-paint-temp">
+        <div class="slider-row">
+          <div class="slider-label"><span>PAINT TEMP</span><span class="slider-val" id="paintTempVal">20°C</span></div>
+          <input type="range" id="paintTemp" min="-30" max="50" value="20" oninput="document.getElementById('paintTempVal').textContent=this.value+'°C'">
         </div>
+      </div>
+
+      <!-- Rainfall paint value -->
+      <div class="paint-ctrl" id="ctrl-paint-rain">
+        <div class="slider-row">
+          <div class="slider-label"><span>PAINT RAIN</span><span class="slider-val" id="paintRainVal">50%</span></div>
+          <input type="range" id="paintRain" min="0" max="100" value="50" oninput="document.getElementById('paintRainVal').textContent=this.value+'%'">
+        </div>
+      </div>
+
+      <!-- Erosion paint value -->
+      <div class="paint-ctrl" id="ctrl-paint-erosion">
+        <div class="slider-row">
+          <div class="slider-label"><span>ERODE AMT</span><span class="slider-val" id="paintErosionVal">0.5</span></div>
+          <input type="range" id="paintErosion" min="0" max="100" value="50" oninput="document.getElementById('paintErosionVal').textContent=(this.value/100).toFixed(2)">
+        </div>
+      </div>
+
+      <!-- Biome picker -->
+      <div class="paint-ctrl" id="ctrl-paint-biome">
+        <div class="panel-title" style="margin-bottom:5px;">TARGET BIOME</div>
+        <div class="biome-grid" id="biomePicker"></div>
+      </div>
     </div>
 
-    <div class="status-bar">
-        <span>Brush: <input type="range" min="1" max="8" value="3" oninput="brushSize=parseInt(this.value)"></span>
-        <span id="fps">FPS: 60</span>
+    <!-- BRUSH -->
+    <div class="panel-section">
+      <div class="panel-title">Brush</div>
+      <div class="slider-row">
+        <div class="slider-label"><span>SIZE</span><span class="slider-val" id="brushSizeVal">12</span></div>
+        <input type="range" id="brushSize" min="2" max="40" value="12" oninput="updateBrush()">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label"><span>STRENGTH</span><span class="slider-val" id="brushStrVal">50</span></div>
+        <input type="range" id="brushStr" min="1" max="100" value="50" oninput="updateBrush()">
+      </div>
     </div>
+
+    <!-- CLIMATE GLOBALS -->
+    <div class="panel-section">
+      <div class="panel-title">Global Climate</div>
+      <div class="slider-row">
+        <div class="slider-label"><span>RAINFALL</span><span class="slider-val" id="rainfallVal">50</span></div>
+        <input type="range" id="rainfall" min="0" max="100" value="50" oninput="updateClimate()">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label"><span>TEMPERATURE</span><span class="slider-val" id="tempVal">20°C</span></div>
+        <input type="range" id="temperature" min="-30" max="50" value="20" oninput="updateClimate()">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label"><span>WIND</span><span class="slider-val" id="windVal">E</span></div>
+        <input type="range" id="wind" min="0" max="7" value="2" step="1" oninput="updateClimate()">
+      </div>
+    </div>
+
+    <!-- MAP MODES -->
+    <div class="panel-section" style="flex:1">
+      <div class="panel-title">Map Mode</div>
+      <button class="mapmode-btn active" onclick="setMapMode('terrain')"     id="mm-terrain"><span class="dot" style="background:linear-gradient(#6d8b3a,#5a9cc5)"></span>TERRAIN</button>
+      <button class="mapmode-btn"        onclick="setMapMode('elevation')"   id="mm-elevation"><span class="dot" style="background:linear-gradient(#fff,#000)"></span>ELEVATION</button>
+      <button class="mapmode-btn"        onclick="setMapMode('temperature')" id="mm-temperature"><span class="dot" style="background:linear-gradient(#ff4444,#4444ff)"></span>TEMPERATURE</button>
+      <button class="mapmode-btn"        onclick="setMapMode('rainfall')"    id="mm-rainfall"><span class="dot" style="background:linear-gradient(#00f,#0ff)"></span>RAINFALL</button>
+      <button class="mapmode-btn"        onclick="setMapMode('biome')"       id="mm-biome"><span class="dot" style="background:linear-gradient(#2d6a4f,#d4a017)"></span>BIOME</button>
+      <button class="mapmode-btn"        onclick="setMapMode('erosion')"     id="mm-erosion"><span class="dot" style="background:linear-gradient(#8b4513,#d2b48c)"></span>EROSION</button>
+      <button class="mapmode-btn"        onclick="setMapMode('water')"       id="mm-water"><span class="dot" style="background:linear-gradient(#1a6fb5,#87ceeb)"></span>WATER DEPTH</button>
+    </div>
+  </div>
+
+  <!-- CANVAS -->
+  <div class="canvas-area" id="canvasArea">
+    <canvas id="mainCanvas"></canvas>
+    <div class="coord-display" id="coordDisplay">X:— Y:—</div>
+    <div class="top-notif" id="topNotif"></div>
+    <!-- geo dots and popups injected here -->
+    <div class="modal-overlay" id="ffModal">
+      <div class="modal">
+        <h2>⚡ TEMPORAL ACCELERATION</h2>
+        <div id="modalContent">
+          <p>Select duration. Erosion, tectonics, sea level change, mass extinctions and climate upheaval will dramatically reshape your world.</p>
+          <div class="slider-row" style="margin-bottom:12px">
+            <div class="slider-label"><span>DURATION</span><span class="slider-val" id="ffYearsVal">50 Million Years</span></div>
+            <input type="range" id="ffYears" min="1" max="1000" value="50" style="width:100%" oninput="document.getElementById('ffYearsVal').textContent=this.value+' Million Years'">
+          </div>
+          <div style="display:flex;gap:8px;margin-top:16px">
+            <button class="btn go" style="flex:1" onclick="startFastForward()">SIMULATE</button>
+            <button class="btn danger" onclick="closeFastForward()">CANCEL</button>
+          </div>
+        </div>
+        <div id="modalProgress" style="display:none">
+          <div class="modal-progress"><div class="modal-progress-bar" id="progressBar"></div></div>
+          <div class="progress-text" id="progressText">Initializing...</div>
+          <div class="simulation-log" id="simLog"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div class="panel-section">
+      <div class="panel-title">World Stats</div>
+      <div class="stat-row"><span>Age</span><span class="stat-val" id="s-age">0 MY</span></div>
+      <div class="stat-row"><span>Sea Level</span><span class="stat-val" id="s-sea">35%</span></div>
+      <div class="stat-row"><span>Highest</span><span class="stat-val" id="s-high">0m</span></div>
+      <div class="stat-row"><span>Ocean %</span><span class="stat-val" id="s-ocean">0%</span></div>
+      <div class="stat-row"><span>Land %</span><span class="stat-val" id="s-land">0%</span></div>
+      <div class="stat-row"><span>Erosion</span><span class="stat-val" id="s-erosion">0</span></div>
+    </div>
+    <div class="panel-section"><div class="panel-title">Biomes</div><div id="biomeLegend"></div></div>
+    <div class="panel-section"><div class="panel-title">Legend</div><div id="modeLegend"></div></div>
+    <div class="panel-section" style="flex:1">
+      <div class="panel-title">Events Log</div>
+      <div id="eventLog" style="font-family:'Space Mono',monospace;font-size:9px;color:var(--dim);line-height:1.8"></div>
+    </div>
+  </div>
+</div>
 
 <script>
-    // --- EDUCATIONAL DATA ---
-    const GEO_EVENTS = {
-        'erosion': {
-            title: "Erosion",
-            desc: "Water wears down hard Bedrock, creating loose Sediment.",
-            color: "#e6c229"
-        },
-        'soil_formation': {
-            title: "Pedogenesis (Soil Formation)",
-            desc: "Dry Sediment absorbs water to become Wet Sediment (Soil). This creates a medium where plants can grow.",
-            color: "#5d4037"
-        },
-        'germination': {
-            title: "Germination",
-            desc: "A Seed planted in damp Soil begins to grow into a plant.",
-            color: "#76ff03"
-        },
-        'lithification': {
-            title: "Lithification",
-            desc: "Deep pressure turns Sediment into Sandstone.",
-            color: "#a1887f"
-        },
-        'volcanism': {
-            title: "Crystallization",
-            desc: "Magma cools into Basalt rock.",
-            color: "#546e7a"
-        },
-        'melting': {
-            title: "Melting",
-            desc: "Extreme heat melts rock/ice back into liquid form.",
-            color: "#ff3c00"
-        },
-        'freezing': {
-            title: "Freezing",
-            desc: "Low temperatures cause liquid Water to solidify into Ice.",
-            color: "#aaddff"
-        },
-        'evaporation': {
-            title: "Evaporation",
-            desc: "Water turns to steam. Heat increases this rate.",
-            color: "#4da6ff"
-        },
-        'boiling': {
-            title: "Boiling",
-            desc: "Temperatures above 100°C cause Water to instantly turn into Steam.",
-            color: "#ff5722"
-        },
-        'salinization': {
-            title: "Salinization",
-            desc: "As water evaporates, it leaves behind dissolved minerals (Salt).",
-            color: "#f8bbd0"
+// =====================================================
+// WORLD STATE
+// =====================================================
+const W=256,H=160;
+let canvas,ctx,canvasArea;
+let heightMap   = new Float32Array(W*H);
+let waterMap    = new Float32Array(W*H);
+let erosionMap  = new Float32Array(W*H);
+let rainfallMap = new Float32Array(W*H);
+let tempMap     = new Float32Array(W*H);
+let biomeMap    = new Uint8Array(W*H);
+// Per-pixel override flags (paint tools write here)
+let tempOverride    = new Float32Array(W*H).fill(NaN);
+let rainfallOverride= new Float32Array(W*H).fill(NaN);
+let erosionOverride = new Float32Array(W*H).fill(NaN);
+let biomeOverride   = new Int8Array(W*H).fill(-1);   // -1 = no override
+
+let currentTool='raise', currentMode='terrain';
+let brushSize=12, brushStrength=0.5;
+let isDrawing=false;
+let worldAge=0, seaLevel=0.35;
+let globalRainfall=0.5, globalTemp=20, windDir=2;
+let imgData, ffRunning=false;
+let cOffX=0,cOffY=0,cScale=1;  // canvas display transform
+let selectedBiome=8; // default paint biome = Temperate Forest
+
+const WIND_DIRS=['N','NE','E','SE','S','SW','W','NW'];
+
+const BIOMES={
+  0:{name:'Deep Ocean',     color:[10,40,90]},
+  1:{name:'Ocean',          color:[20,70,150]},
+  2:{name:'Shallow Sea',    color:[40,120,180]},
+  3:{name:'Coast',          color:[220,200,140]},
+  4:{name:'Desert',         color:[210,175,90]},
+  5:{name:'Savanna',        color:[160,150,70]},
+  6:{name:'Grassland',      color:[100,160,60]},
+  7:{name:'Shrubland',      color:[130,130,60]},
+  8:{name:'Temp. Forest',   color:[50,120,40]},
+  9:{name:'Trop. Forest',   color:[20,100,30]},
+ 10:{name:'Boreal Forest',  color:[40,90,60]},
+ 11:{name:'Tundra',         color:[160,180,160]},
+ 12:{name:'Snow/Ice',       color:[230,240,255]},
+ 13:{name:'Mountain',       color:[130,110,90]},
+ 14:{name:'Alpine',         color:[180,170,160]},
+ 15:{name:'Volcanic',       color:[200,40,10]},
+};
+
+// =====================================================
+// BIOME PICKER BUILD
+// =====================================================
+function buildBiomePicker(){
+  const grid=document.getElementById('biomePicker');
+  // Only land biomes make sense to paint
+  const paintable=[3,4,5,6,7,8,9,10,11,12,13,14,15];
+  grid.innerHTML=paintable.map(id=>{
+    const b=BIOMES[id];
+    const [r,g,bv]=b.color;
+    return `<button class="biome-pick${id===selectedBiome?' active':''}" data-id="${id}"
+      style="border-left:3px solid rgb(${r},${g},${bv})"
+      onclick="selectBiome(${id})">${b.name}</button>`;
+  }).join('');
+}
+function selectBiome(id){
+  selectedBiome=id;
+  document.querySelectorAll('.biome-pick').forEach(b=>b.classList.toggle('active',+b.dataset.id===id));
+}
+
+// =====================================================
+// GEO EVENT DOT SYSTEM
+// =====================================================
+const GEO_DB={
+  volcano:{icon:'🌋',label:'Volcanic Eruption',color:'#ff4422',
+    descs:['A massive shield volcano has erupted, pouring basaltic lava across the landscape. Successive flows build a broad dome of new crust above sea level.','A stratovolcano tears open, releasing pyroclastic flows at 700°C. The ash cloud blocks sunlight for decades, temporarily cooling the regional climate.','Caldera collapse follows a catastrophic eruption. The summit pancakes inward — creating a vast depression that may later fill with water.'],
+    stats:()=>[['Eruption Type',['Shield','Stratovolcano','Caldera','Fissure'][Math.floor(Math.random()*4)]],['Lava Volume',Math.round(Math.random()*900+100)+' km³'],['SO₂ Released',(Math.random()*5+0.5).toFixed(1)+' Mt'],['Duration',Math.round(Math.random()*200+10)+' years']]},
+  tectonic:{icon:'⚡',label:'Tectonic Event',color:'#ffcc00',
+    descs:['Colliding plates force oceanic crust beneath continental rock. The downgoing slab melts, feeding new magma chambers and driving mountain-building.','A rift zone opens as two plates pull apart. Crust stretches and thins, allowing mantle material to form a new chain of volcanic islands.','Compressional forces buckle the crust into fold mountains. Rocks once deposited as seafloor sediment are now thrust kilometres skyward.'],
+    stats:()=>[['Plate Movement',(Math.random()*8+1).toFixed(1)+' cm/yr'],['Uplift Rate',(Math.random()*3+0.1).toFixed(2)+' mm/yr'],['Affected Area',Math.round(Math.random()*50000+5000)+' km²'],['Type',['Subduction','Rift','Collision','Transform'][Math.floor(Math.random()*4)]]]},
+  erosion:{icon:'🏔',label:'Major Erosion Event',color:'#c87840',
+    descs:['A vast river network carves deeply into softer rock. Over millions of years the persistent flow sculpts a grand canyon, exposing ancient geology.','Glacial advance scours the highlands. As the glacier retreats it leaves a U-shaped valley strewn with moraines and polished bedrock.','Coastal headlands are undercut by relentless wave action. Sea stacks, arches and caves form as resistant rock is left standing while softer material collapses.'],
+    stats:()=>[['Material Removed',Math.round(Math.random()*8000+500)+' km³'],['Rate',(Math.random()*0.5+0.01).toFixed(3)+' mm/yr'],['Agent',['Fluvial','Glacial','Coastal','Aeolian'][Math.floor(Math.random()*4)]],['Duration',Math.round(Math.random()*5000+100)+' kyr']]},
+  flood:{icon:'🌊',label:'Marine Transgression',color:'#4488ff',
+    descs:['Rising seas inundate vast low-lying plains. Warm shallow seas deposit carbonate sediments that will later become limestone.','Glacial melt accelerates. Coastal zones submerge within a geologically brief window, reshaping coastlines and isolating organisms.','A submarine landslide displaces enormous volumes of water, sending megatsunamis across the basin.'],
+    stats:()=>[['Sea Level Rise','+'+(Math.random()*80+10).toFixed(0)+' m'],['Area Flooded',Math.round(Math.random()*200000)+' km²'],['Duration',Math.round(Math.random()*500+50)+' kyr'],['Cause',['Glacial Melt','Thermal Expansion','Subsidence'][Math.floor(Math.random()*3)]]]},
+  climate:{icon:'🌡',label:'Climate Shift',color:'#39ff14',
+    descs:['Atmospheric CO₂ crosses a tipping point, triggering greenhouse warming. Tropical biomes migrate poleward as ice sheets retreat.','The planet enters an icehouse phase. Milankovitch cycles drive periodic glaciations with ice sheets advancing every 100,000 years.','Prolonged drought transforms lush woodland to desert. Wind erosion accelerates — creating vast dune fields and dust storm corridors.'],
+    stats:()=>[['Temp Change',(Math.random()*8-4).toFixed(1)+'°C'],['CO₂ Change',(Math.random()*200-50).toFixed(0)+' ppm'],['Duration',Math.round(Math.random()*2000+100)+' kyr'],['Biome Impact',['Severe','Moderate','Mild'][Math.floor(Math.random()*3)]]]},
+  ice:{icon:'❄',label:'Ice Age',color:'#aaddff',
+    descs:['Continental ice sheets advance to temperate latitudes, locking up ocean water. Sea level drops over 100m, exposing continental shelves.','Snowball Earth begins — equatorial glaciation triggers an albedo feedback loop. Only geothermal vents keep liquid water alive.','The ice age recedes as volcanic CO₂ warms the atmosphere. Catastrophic meltwater floods reshape river systems.'],
+    stats:()=>[['Ice Volume',Math.round(Math.random()*30+5)+' million km³'],['Sea Level Drop','-'+Math.round(Math.random()*120+40)+' m'],['Duration',Math.round(Math.random()*50+10)+' Myr'],['Max Extent',Math.round(Math.random()*50+30)+'° latitude']]},
+  impact:{icon:'☄',label:'Bolide Impact',color:'#ff44cc',
+    descs:['A 10 km asteroid strikes at 20 km/s. The impact vaporises crust, triggers global wildfires and an impact winter lasting decades — a mass extinction unfolds.','A cometary fragment explodes in the upper atmosphere. The shockwave flattens terrain over thousands of square kilometres.','Deep-ocean impact sends megatsunamis across the basin and triggers submarine volcanic activity for millennia.'],
+    stats:()=>[['Impactor Size',(Math.random()*15+0.5).toFixed(1)+' km'],['Crater Diameter',Math.round(Math.random()*150+5)+' km'],['Energy Released',(Math.random()*1e8).toExponential(2)+' J'],['Extinction Level',['Minor','Regional','Mass'][Math.floor(Math.random()*3)]]]},
+};
+
+let geoDots=[];   // {el, dotX (px in canvasArea), dotY}
+let nextDotId=0;
+let activePopup=null;
+
+function spawnGeoNotif(type,mapX,mapY,age){
+  const db=GEO_DB[type]; if(!db) return;
+  const id=nextDotId++;
+
+  // Map coords → canvasArea pixel coords
+  const px=cOffX+mapX*cScale;
+  const py=cOffY+mapY*cScale;
+
+  const dot=document.createElement('div');
+  dot.className='geo-dot';
+  dot.style.cssText=`left:${px}px;top:${py}px;background:${db.color};color:${db.color};`;
+  dot.title=`${db.icon} ${db.label} — ${age}MY`;
+  dot.addEventListener('click',ev=>{
+    ev.stopPropagation();
+    openGeoPopup(type,mapX,mapY,age,px,py);
+  });
+  canvasArea.appendChild(dot);
+  geoDots.push({id,el:dot});
+
+  // Auto-dismiss after 25s
+  setTimeout(()=>dismissDot(id), 25000);
+}
+
+function dismissDot(id){
+  const idx=geoDots.findIndex(d=>d.id===id);
+  if(idx<0) return;
+  const {el}=geoDots[idx];
+  el.style.opacity='0';
+  setTimeout(()=>el.remove(),500);
+  geoDots.splice(idx,1);
+}
+
+function openGeoPopup(type,mapX,mapY,age,dotPx,dotPy){
+  if(activePopup){activePopup.remove();activePopup=null;}
+  const db=GEO_DB[type];
+  const desc=db.descs[Math.floor(Math.random()*db.descs.length)];
+  const stats=db.stats();
+
+  const pop=document.createElement('div');
+  pop.className='geo-popup';
+  const PW=270,PH=290;
+  const aW=canvasArea.clientWidth,aH=canvasArea.clientHeight;
+  let pl=Math.min(aW-PW-8,Math.max(8,dotPx-PW/2));
+  let pt=dotPy-PH-14;
+  if(pt<8) pt=dotPy+14;
+  pop.style.cssText=`left:${pl}px;top:${pt}px;border-color:${db.color};`;
+  pop.innerHTML=`
+    <div class="geo-popup-close" onclick="this.closest('.geo-popup').remove();activePopup=null;">✕</div>
+    <h3 style="color:${db.color}">${db.icon} ${db.label.toUpperCase()}</h3>
+    <div class="gp-meta">Year ${age} MY &middot; (${Math.round(mapX)}, ${Math.round(mapY)})</div>
+    <p>${desc}</p>
+    <div class="gp-stats">${stats.map(([k,v])=>`<div class="gp-stat"><span>${k}</span><span>${v}</span></div>`).join('')}</div>
+  `;
+  canvasArea.appendChild(pop);
+  activePopup=pop;
+  setTimeout(()=>{
+    function outside(e){
+      if(activePopup&&!activePopup.contains(e.target)){activePopup.remove();activePopup=null;}
+      document.removeEventListener('click',outside);
+    }
+    document.addEventListener('click',outside);
+  },120);
+}
+
+// =====================================================
+// NOISE
+// =====================================================
+function smoothstep(t){return t*t*(3-2*t);}
+function lerp(a,b,t){return a+(b-a)*t;}
+function noise2d(x,y,s){let n=Math.sin(x*127.1+y*311.7+s*74.1)*43758.5453;return n-Math.floor(n);}
+function valueNoise(x,y,s){
+  let ix=Math.floor(x),iy=Math.floor(y),fx=x-ix,fy=y-iy;
+  let ux=smoothstep(fx),uy=smoothstep(fy);
+  return lerp(lerp(noise2d(ix,iy,s),noise2d(ix+1,iy,s),ux),lerp(noise2d(ix,iy+1,s),noise2d(ix+1,iy+1,s),ux),uy);
+}
+function fbm(x,y,s,oct=6){
+  let v=0,a=0.5,f=1,m=0;
+  for(let i=0;i<oct;i++){v+=valueNoise(x*f,y*f,s+i*13)*a;m+=a;a*=0.5;f*=2.1;}
+  return v/m;
+}
+
+// =====================================================
+// TERRAIN GENERATION
+// =====================================================
+function generateTerrain(){
+  const seed=Math.random()*1000,cx=W/2,cy=H/2;
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+    const i=y*W+x,nx=x/W*4,ny=y/H*4;
+    const dx=(x-cx)/(W*0.5),dy=(y-cy)/(H*0.5);
+    const cMask=Math.max(0,1-Math.sqrt(dx*dx+dy*dy)*0.85)*0.6;
+    const wX=fbm(nx+1.7,ny+9.2,seed+5)-0.5,wY=fbm(nx+8.3,ny+2.8,seed+9)-0.5;
+    let h=fbm(nx+wX,ny+wY,seed)*0.7+cMask;
+    h=Math.max(0,Math.min(1,h));
+    const isl=fbm(nx*2,ny*2,seed+100);
+    if(isl>0.72) h=Math.max(h,(isl-0.72)*4);
+    heightMap[i]=h; waterMap[i]=0; erosionMap[i]=0;
+    tempOverride[i]=NaN; rainfallOverride[i]=NaN; erosionOverride[i]=NaN; biomeOverride[i]=-1;
+  }
+  worldAge=0; seaLevel=0.35;
+  updateClimate(); updateBiomes(); updateStats(); render();
+  showTopNotif('NEW WORLD GENERATED');
+  logEvent('World generated from primordial chaos');
+}
+
+// =====================================================
+// CLIMATE (respects overrides)
+// =====================================================
+function updateClimate(){
+  globalRainfall=parseInt(document.getElementById('rainfall').value)/100;
+  globalTemp=parseInt(document.getElementById('temperature').value);
+  windDir=parseInt(document.getElementById('wind').value);
+  document.getElementById('rainfallVal').textContent=Math.round(globalRainfall*100);
+  document.getElementById('tempVal').textContent=globalTemp+'°C';
+  document.getElementById('windVal').textContent=WIND_DIRS[windDir];
+  const wDX=[0,1,1,1,0,-1,-1,-1][windDir],wDY=[-1,-1,0,1,1,1,0,-1][windDir];
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+    const i=y*W+x,h=heightMap[i];
+    const lat=1-Math.abs(y/H-0.5)*2;
+    // Temperature: painted override OR derived
+    if(!isNaN(tempOverride[i])){
+      tempMap[i]=tempOverride[i];
+    } else {
+      tempMap[i]=globalTemp*lat-(h>seaLevel?(h-seaLevel)*2:0)*30;
+    }
+    // Rainfall: painted override OR derived
+    if(!isNaN(rainfallOverride[i])){
+      rainfallMap[i]=rainfallOverride[i];
+    } else {
+      const lx=Math.max(0,Math.min(W-1,x-wDX*3)),ly=Math.max(0,Math.min(H-1,y-wDY*3));
+      rainfallMap[i]=globalRainfall*(h>heightMap[ly*W+lx]?1.3:0.8)*(0.5+lat*0.5);
+    }
+    // Erosion override
+    if(!isNaN(erosionOverride[i])){
+      erosionMap[i]=erosionOverride[i];
+    }
+  }
+  updateBiomes(); render();
+}
+
+// =====================================================
+// BIOMES (respects biome paint overrides)
+// =====================================================
+function getBiomeNatural(i){
+  const h=heightMap[i],t=tempMap[i],r=rainfallMap[i],w=waterMap[i];
+  if(h<seaLevel-0.15)return 0; if(h<seaLevel-0.05)return 1;
+  if(h<seaLevel||w>0.1)return 2;
+  const e=h-seaLevel;
+  if(e>0.35)return 12; if(e>0.25)return 14; if(e>0.18)return 13;
+  if(t<-5)return 11; if(t<5)return 10;
+  if(t>30&&r<0.25)return 4; if(t>25&&r>0.6)return 9;
+  if(t>20&&r>0.4)return 8; if(t>15&&r<0.3)return 5;
+  if(r>0.5)return 8; if(r>0.3)return 6; if(r>0.2)return 7;
+  if(e<0.03)return 3; return 5;
+}
+function updateBiomes(){
+  for(let i=0;i<W*H;i++){
+    biomeMap[i]=biomeOverride[i]>=0 ? biomeOverride[i] : getBiomeNatural(i);
+  }
+}
+
+// =====================================================
+// SIMULATION
+// =====================================================
+function simulateErosion(passes,intensity){
+  const eR=0.007*intensity,dR=0.003*intensity,rain=globalRainfall*0.9;
+  for(let p=0;p<passes;p++){
+    const nH=new Float32Array(heightMap);
+    for(let y=1;y<H-1;y++) for(let x=1;x<W-1;x++){
+      const i=y*W+x; if(heightMap[i]<seaLevel) continue;
+      const h=heightMap[i],r=rainfallMap[i]*rain;
+      let mH=h,mI=-1;
+      for(const ni of[(y-1)*W+x,(y+1)*W+x,y*W+(x-1),y*W+(x+1)])
+        if(heightMap[ni]<mH){mH=heightMap[ni];mI=ni;}
+      if(mI>=0){const sl=h-mH,er=sl*eR*(1+r*6);nH[i]-=er;nH[mI]+=er*dR;erosionMap[i]+=er;}
+    }
+    heightMap=nH;
+  }
+  for(let y=1;y<H-1;y++) for(let x=1;x<W-1;x++){
+    const i=y*W+x,h=heightMap[i],talus=0.04;
+    for(const ni of[(y-1)*W+x,(y+1)*W+x,y*W+(x-1),y*W+(x+1)]){
+      const d=h-heightMap[ni];
+      if(d>talus){const delta=(d-talus)*0.15*intensity;heightMap[i]-=delta;heightMap[ni]+=delta;}
+    }
+  }
+}
+function simulateTectonics(intensity){
+  const n=Math.floor(Math.random()*4)+1;
+  for(let e=0;e<n;e++){
+    const cx=Math.random()*W,cy=Math.random()*H,r=15+Math.random()*40;
+    const str=(Math.random()-0.35)*0.14*intensity;
+    for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+      const d=Math.sqrt((x-cx)**2+(y-cy)**2);
+      if(d<r) heightMap[y*W+x]=Math.max(0,Math.min(1,heightMap[y*W+x]+str*smoothstep(1-d/r)));
+    }
+  }
+}
+function simulateVolcano(cx,cy,intensity){
+  const r=8+Math.random()*14;
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+    const d=Math.sqrt((x-cx)**2+(y-cy)**2);
+    if(d<r*1.8){
+      const f=smoothstep(Math.max(0,1-d/(r*1.8)));
+      if(d<r*0.18) heightMap[y*W+x]=Math.max(0,heightMap[y*W+x]-0.2*f);
+      else heightMap[y*W+x]=Math.min(1,heightMap[y*W+x]+0.25*intensity*f);
+    }
+  }
+}
+function simulateImpact(cx,cy,size){
+  const r=size*1.5;
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+    const d=Math.sqrt((x-cx)**2+(y-cy)**2);
+    if(d<r){
+      const f=smoothstep(1-d/r);
+      if(d>r*0.7) heightMap[y*W+x]=Math.min(1,heightMap[y*W+x]+0.1*f);
+      else heightMap[y*W+x]=Math.max(0,heightMap[y*W+x]-0.35*f);
+      erosionMap[y*W+x]+=0.5*f;
+    }
+  }
+}
+function clampH(){for(let i=0;i<W*H;i++)heightMap[i]=Math.max(0,Math.min(1,heightMap[i]));}
+
+// =====================================================
+// FAST FORWARD
+// =====================================================
+function openFastForward(){
+  document.getElementById('ffModal').classList.add('show');
+  document.getElementById('modalContent').style.display='';
+  document.getElementById('modalProgress').style.display='none';
+}
+function closeFastForward(){if(!ffRunning)document.getElementById('ffModal').classList.remove('show');}
+
+async function startFastForward(){
+  const totalYears=parseInt(document.getElementById('ffYears').value);
+  const STEPS=40, yps=totalYears/STEPS;
+  const bar=document.getElementById('progressBar');
+  const txt=document.getElementById('progressText');
+  const log=document.getElementById('simLog');
+  document.getElementById('modalContent').style.display='none';
+  document.getElementById('modalProgress').style.display='';
+  log.innerHTML=''; ffRunning=true;
+  const addLog=(text,cls='')=>{
+    const d=document.createElement('div');
+    d.className='log-line'+(cls?' '+cls:'');
+    d.textContent='> '+text; log.appendChild(d); log.scrollTop=log.scrollHeight;
+  };
+  addLog(`Initiating ${totalYears}MY — ${STEPS} compute steps`,'event');
+  const freq=Math.min(3,totalYears/40);
+  for(let step=0;step<STEPS;step++){
+    const prog=step/STEPS, curAge=worldAge+step*yps;
+    bar.style.width=(prog*100)+'%';
+    txt.textContent=`${Math.round(prog*100)}% — ${curAge.toFixed(0)} MY`;
+    const intensity=0.7+Math.random()*1.0;
+    simulateErosion(Math.min(3+Math.floor(yps/15),14),intensity);
+    if(Math.random()<0.45*freq){
+      simulateTectonics(intensity*0.65);
+      const cx=Math.floor(Math.random()*W),cy=Math.floor(Math.random()*H);
+      addLog(`Tectonic event at (${cx},${cy}) — ${curAge.toFixed(0)}MY`,'warn');
+      spawnGeoNotif('tectonic',cx,cy,Math.round(curAge));
+    }
+    if(Math.random()<0.4*freq){
+      const vx=Math.floor(Math.random()*W),vy=Math.floor(Math.random()*H);
+      simulateVolcano(vx,vy,intensity);
+      addLog(`Volcanic eruption at (${vx},${vy}) — ${curAge.toFixed(0)}MY`,'warn');
+      spawnGeoNotif('volcano',vx,vy,Math.round(curAge));
+    }
+    if(Math.random()<0.08*freq){
+      const ix=Math.floor(Math.random()*W),iy=Math.floor(Math.random()*H);
+      const sz=4+Math.random()*20;
+      simulateImpact(ix,iy,sz);
+      addLog(`☄ BOLIDE IMPACT (${sz.toFixed(0)}km) at (${ix},${iy}) — ${curAge.toFixed(0)}MY`,'crit');
+      spawnGeoNotif('impact',ix,iy,Math.round(curAge));
+    }
+    if(globalTemp<10&&Math.random()<0.14*freq){
+      seaLevel=Math.max(0.1,seaLevel-(0.04+Math.random()*0.07));
+      addLog(`Ice age intensifies — sea level falling`,'warn');
+      spawnGeoNotif('ice',Math.floor(Math.random()*W),Math.floor(Math.random()*H*0.35),Math.round(curAge));
+    }
+    if(Math.random()<0.2*freq){
+      const amt=(Math.random()-0.45)*0.1;
+      seaLevel=Math.max(0.1,Math.min(0.75,seaLevel+amt));
+      if(amt>0.025){addLog(`Marine transgression — flooding lowlands`,'');spawnGeoNotif('flood',Math.floor(W/2),Math.floor(H/2),Math.round(curAge));}
+      else if(amt<-0.025)addLog(`Regression — sea retreating`,'');
+    }
+    if(Math.random()<0.1*freq){
+      const dT=(Math.random()-0.5)*14;
+      globalTemp=Math.max(-20,Math.min(45,globalTemp+dT));
+      document.getElementById('temperature').value=globalTemp;
+      addLog(`Climate shift: Δ${dT>0?'+':''}${dT.toFixed(1)}°C — ${curAge.toFixed(0)}MY`,'event');
+      spawnGeoNotif('climate',Math.floor(Math.random()*W),Math.floor(Math.random()*H),Math.round(curAge));
+    }
+    if(Math.random()<0.22*freq){
+      const ex=Math.floor(Math.random()*W),ey=Math.floor(Math.random()*H);
+      spawnGeoNotif('erosion',ex,ey,Math.round(curAge));
+      addLog(`Major erosion event at (${ex},${ey})`,'');
+    }
+    clampH(); updateClimate(); updateBiomes();
+    if(step%2===0){render();updateStats();await sleep(18);}
+  }
+  worldAge+=totalYears; updateStats(); render();
+  txt.textContent=`✓ Complete — simulated ${totalYears} million years`;
+  addLog(`Done. World age: ${worldAge}MY`,'event');
+  setTimeout(()=>{
+    ffRunning=false;
+    document.getElementById('ffModal').classList.remove('show');
+    logEvent(`Fast-forwarded ${totalYears}MY → world age ${worldAge}MY`);
+    showTopNotif(`⚡ SIMULATED ${totalYears} MILLION YEARS`);
+  },1400);
+}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+// =====================================================
+// RENDER
+// =====================================================
+function getTerrainColor(i){
+  const h=heightMap[i],w=waterMap[i];
+  if(h<seaLevel&&w<=0){const d=(seaLevel-h)/seaLevel;return[Math.round(10+(1-d)*40),Math.round(30+(1-d)*80),Math.round(80+(1-d)*100)];}
+  if(w>0.05)return[60,140,200];
+  const e=(h-seaLevel)/(1-seaLevel);
+  if(e>0.75)return[240,240,250]; if(e>0.55)return[200,190,180];
+  if(e>0.4)return[150,130,110]; if(e<0.02)return[220,205,150];
+  const r=rainfallMap[i],t=tempMap[i];
+  if(t>25&&r>0.5)return[20,100,30]; if(t>15&&r>0.4)return[50,130,45];
+  if(r>0.3)return[90,150,55]; if(t>25)return[200,170,80];
+  return[140,160,70];
+}
+
+function render(){
+  if(!ctx) return;
+  if(!imgData) imgData=ctx.createImageData(W,H);
+  const d=imgData.data;
+  for(let i=0;i<W*H;i++){
+    let r,g,b;
+    if(currentMode==='terrain'){
+      [r,g,b]=getTerrainColor(i);
+      const x=i%W,y=Math.floor(i/W);
+      if(x>0&&x<W-1&&y>0&&y<H-1){
+        const sh=(heightMap[i-1]-heightMap[i+1]+heightMap[(y-1)*W+x]-heightMap[(y+1)*W+x])*2;
+        const s=1+Math.max(-0.4,Math.min(0.4,sh));
+        r=Math.min(255,r*s);g=Math.min(255,g*s);b=Math.min(255,b*s);
+      }
+    } else if(currentMode==='elevation'){
+      if(heightMap[i]<seaLevel){const e=heightMap[i]/seaLevel;r=0;g=Math.round(e*100);b=Math.round(150+e*105);}
+      else{const e=(heightMap[i]-seaLevel)/(1-seaLevel);r=g=b=Math.round(e*255);}
+    } else if(currentMode==='temperature'){
+      const t=Math.max(0,Math.min(1,(tempMap[i]+30)/80));
+      r=Math.round(t<0.5?t*2*100:100+(t-0.5)*2*155);
+      g=Math.round(t<0.5?t*2*100:(1-(t-0.5)*2)*100);
+      b=Math.round(t<0.5?150+(1-t*2)*105:0);
+    } else if(currentMode==='rainfall'){
+      const rc=Math.max(0,Math.min(1,rainfallMap[i]));
+      r=Math.round((1-rc)*30);g=Math.round(50+rc*50);b=Math.round(80+rc*175);
+    } else if(currentMode==='biome'){
+      const bm=BIOMES[biomeMap[i]];[r,g,b]=bm?bm.color:[100,100,100];
+    } else if(currentMode==='erosion'){
+      const e=Math.min(1,erosionMap[i]*8);
+      r=Math.round(40+e*200);g=Math.round(30+e*80);b=20;
+    } else if(currentMode==='water'){
+      if(heightMap[i]<seaLevel){const dw=(seaLevel-heightMap[i])/seaLevel;r=10;g=Math.round(50+dw*50);b=Math.round(100+dw*155);}
+      else{r=waterMap[i]>0.01?60:180;g=waterMap[i]>0.01?140:160;b=waterMap[i]>0.01?200:120;}
+    }
+    const p=i*4; d[p]=r||0;d[p+1]=g||0;d[p+2]=b||0;d[p+3]=255;
+  }
+  ctx.putImageData(imgData,0,0);
+  // Update display transform
+  const aW=canvasArea.clientWidth,aH=canvasArea.clientHeight;
+  cScale=Math.min(aW/W,aH/H);
+  cOffX=(aW-W*cScale)/2; cOffY=(aH-H*cScale)/2;
+  canvas.style.cssText=`position:absolute;image-rendering:pixelated;width:${W*cScale}px;height:${H*cScale}px;left:${cOffX}px;top:${cOffY}px`;
+}
+
+// =====================================================
+// MOUSE → MAP COORDS
+// =====================================================
+function getMapCoords(clientX,clientY){
+  const rect=canvasArea.getBoundingClientRect();
+  return{
+    x:Math.floor((clientX-rect.left-cOffX)/cScale),
+    y:Math.floor((clientY-rect.top-cOffY)/cScale)
+  };
+}
+
+// =====================================================
+// BRUSH APPLICATION
+// =====================================================
+function applyBrushAt(clientX,clientY){
+  const{x,y}=getMapCoords(clientX,clientY);
+  if(x<0||x>=W||y<0||y>=H) return;
+
+  const str=brushStrength*0.03;
+
+  for(let by=Math.max(0,y-brushSize);by<Math.min(H,y+brushSize);by++){
+    for(let bx=Math.max(0,x-brushSize);bx<Math.min(W,x+brushSize);bx++){
+      const dist=Math.sqrt((bx-x)**2+(by-y)**2);
+      if(dist>brushSize) continue;
+      const f=smoothstep(1-dist/brushSize);
+      const i=by*W+bx;
+
+      switch(currentTool){
+        case 'raise':   heightMap[i]=Math.min(1,heightMap[i]+str*f); break;
+        case 'lower':   heightMap[i]=Math.max(0,heightMap[i]-str*f); break;
+        case 'water':   waterMap[i]=Math.min(1,waterMap[i]+str*f*0.5); break;
+        case 'smooth':{
+          let sum=0,cnt=0;
+          for(let dy=-2;dy<=2;dy++) for(let dx=-2;dx<=2;dx++){
+            const nx=bx+dx,ny=by+dy;
+            if(nx>=0&&nx<W&&ny>=0&&ny<H){sum+=heightMap[ny*W+nx];cnt++;}
+          }
+          heightMap[i]=lerp(heightMap[i],sum/cnt,str*f*0.3);
+          break;
         }
-    };
+        case 'volcano':
+          if(dist<brushSize*0.2) heightMap[i]=Math.max(0,heightMap[i]-str*f*2);
+          else heightMap[i]=Math.min(1,heightMap[i]+str*f*0.8);
+          break;
 
-    let lastEventTime = 0;
-    let currentEventKey = null;
-
-    function triggerEvent(key) {
-        const now = Date.now();
-        const cooldown = (key === currentEventKey) ? 6000 : 3000;
-        
-        if (now - lastEventTime > cooldown) {
-            const info = GEO_EVENTS[key];
-            if (!info) return;
-
-            const panel = document.getElementById('infoPanel');
-            const title = document.getElementById('infoTitle');
-            const desc = document.getElementById('infoDesc');
-
-            title.innerText = info.title;
-            title.style.color = info.color;
-            panel.style.borderLeftColor = info.color;
-            desc.innerText = info.desc;
-
-            panel.style.opacity = 1;
-            lastEventTime = now;
-            currentEventKey = key;
-
-            setTimeout(() => {
-                if (currentEventKey === key && Date.now() - lastEventTime >= 4000) {
-                    panel.style.opacity = 0;
-                }
-            }, 5000);
+        // ---- PAINT TOOLS ----
+        case 'paint-temp':{
+          const target=parseInt(document.getElementById('paintTemp').value);
+          // Blend toward target based on strength & falloff
+          const current=isNaN(tempOverride[i])?tempMap[i]:tempOverride[i];
+          tempOverride[i]=lerp(current,target,brushStrength*f*0.15);
+          break;
         }
-    }
-
-    // --- SIMULATION CONFIG ---
-    const WIDTH = 200;
-    const HEIGHT = 150;
-    const SCALE = 4;
-    
-    // --- MATERIALS ---
-    const AIR = 0;
-    const BEDROCK = 1;
-    const SEDIMENT = 2;
-    const WATER = 3;
-    const MAGMA = 4;
-    const BASALT = 5;
-    const SANDSTONE = 6;
-    const STEAM = 7;
-    const ICE = 8;
-    const PLANT = 9;   
-    const SEED = 10;
-    const WET_SEDIMENT = 11;
-    const SNOW = 12;
-    const SALT = 13;
-    const WOOD = 14;
-
-    // --- COLORS ---
-    const PALETTE = {
-        [AIR]: [10, 10, 15],
-        [BEDROCK]: [80, 80, 85],
-        [SEDIMENT]: [210, 180, 100],
-        [WATER]: [40, 100, 220],
-        [MAGMA]: [255, 60, 10],
-        [BASALT]: [40, 40, 45],
-        [SANDSTONE]: [140, 90, 60],
-        [STEAM]: [220, 230, 240],
-        [ICE]: [200, 240, 255],
-        [PLANT]: [50, 200, 60],
-        [SEED]: [160, 255, 50],
-        [WET_SEDIMENT]: [101, 67, 33],
-        [SNOW]: [250, 250, 255],
-        [SALT]: [255, 230, 230],
-        [WOOD]: [90, 60, 30]
-    };
-
-    const canvas = document.getElementById('simCanvas');
-    const ctx = canvas.getContext('2d', { alpha: false });
-    canvas.width = WIDTH * SCALE;
-    canvas.height = HEIGHT * SCALE;
-
-    const offCanvas = document.createElement('canvas');
-    offCanvas.width = WIDTH;
-    offCanvas.height = HEIGHT;
-    const offCtx = offCanvas.getContext('2d');
-    const imgData = offCtx.createImageData(WIDTH, HEIGHT);
-
-    let cells = new Uint8Array(WIDTH * HEIGHT);
-    
-    // Input State
-    let brushSize = 3;
-    let currentMat = BEDROCK;
-    let isMouseDown = false;
-    let rainEnabled = false;
-    let temperature = 20; // Celsius
-    let frameCount = 0;
-
-    // --- INPUT HANDLING ---
-    function updateTemp(val) {
-        temperature = parseInt(val);
-        const display = document.getElementById('tempDisplay');
-        display.innerText = temperature;
-        
-        // Visual Feedback for slider text
-        if(temperature < 0) display.style.color = "#4fc3f7";
-        else if(temperature > 40) display.style.color = "#ff5722";
-        else display.style.color = "#b0bec5";
-    }
-
-    function getMousePos(e) {
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        return {
-            x: Math.floor(((e.clientX - rect.left) * scaleX) / SCALE),
-            y: Math.floor(((e.clientY - rect.top) * scaleY) / SCALE)
-        };
-    }
-
-    canvas.addEventListener('mousedown', e => { isMouseDown = true; paint(e); });
-    window.addEventListener('mouseup', () => isMouseDown = false);
-    canvas.addEventListener('mousemove', e => { if (isMouseDown) paint(e); });
-    canvas.addEventListener('contextmenu', e => e.preventDefault());
-    
-    document.getElementById('rainToggle').addEventListener('change', (e) => rainEnabled = e.target.checked);
-
-    function setMaterial(m) {
-        currentMat = m;
-        document.querySelectorAll('.toolbar button').forEach(b => b.classList.remove('active'));
-        const btn = Array.from(document.querySelectorAll('.toolbar button')).find(b => b.getAttribute('onclick').includes(`setMaterial(${m})`));
-        if(btn) btn.classList.add('active');
-    }
-
-    function clearGrid() {
-        cells.fill(AIR);
-        generateTerrain();
-    }
-
-    function paint(e) {
-        const pos = getMousePos(e);
-        const mat = (e.button === 2) ? AIR : currentMat;
-        for (let y = -brushSize + 1; y < brushSize; y++) {
-            for (let x = -brushSize + 1; x < brushSize; x++) {
-                if (x*x + y*y < brushSize*brushSize) set(pos.x + x, pos.y + y, mat);
-            }
+        case 'paint-rain':{
+          const target=parseInt(document.getElementById('paintRain').value)/100;
+          const current=isNaN(rainfallOverride[i])?rainfallMap[i]:rainfallOverride[i];
+          rainfallOverride[i]=Math.max(0,Math.min(1,lerp(current,target,brushStrength*f*0.15)));
+          break;
         }
-    }
-
-    // --- HELPERS ---
-    function get(x, y) {
-        if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) return BEDROCK;
-        return cells[y * WIDTH + x];
-    }
-    
-    function set(x, y, t) {
-        if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) return;
-        cells[y * WIDTH + x] = t;
-    }
-
-    function isEmpty(x, y) { return get(x, y) === AIR; }
-
-    function generateTerrain() {
-        for (let x = 0; x < WIDTH; x++) {
-            let h = Math.floor(HEIGHT * 0.75 + Math.sin(x * 0.04) * 15);
-            for (let y = h; y < HEIGHT; y++) set(x, y, BEDROCK);
+        case 'paint-erosion':{
+          const target=parseInt(document.getElementById('paintErosion').value)/100;
+          const current=isNaN(erosionOverride[i])?erosionMap[i]:erosionOverride[i];
+          erosionOverride[i]=Math.max(0,lerp(current,target,brushStrength*f*0.2));
+          break;
         }
-    }
-
-    // --- PHYSICS UPDATE ---
-    function update() {
-        for (let y = HEIGHT - 1; y >= 0; y--) {
-            const dir = Math.random() > 0.5 ? 1 : -1;
-            const startX = dir === 1 ? 0 : WIDTH - 1;
-            const endX = dir === 1 ? WIDTH : -1;
-
-            for (let x = startX; x !== endX; x += dir) {
-                const idx = y * WIDTH + x;
-                const type = cells[idx];
-                
-                if (type === AIR || type === BEDROCK || type === BASALT || type === SANDSTONE || type === WOOD) continue;
-
-                // 1. WEATHER GENERATION
-                if (y === 0 && rainEnabled) {
-                    if (Math.random() < 0.03) {
-                        if (temperature < 0) set(x, y, SNOW);
-                        else if (temperature > 100) set(x, y, AIR); // Too hot to rain
-                        else set(x, y, WATER);
-                    }
-                }
-
-                const below = get(x, y + 1);
-                
-                // 2. WATER DYNAMICS
-                if (type === WATER) {
-                    // Temperature Check
-                    if (temperature < 0) {
-                        // Freeze
-                        if (Math.random() < 0.02) {
-                            set(x, y, ICE);
-                            triggerEvent('freezing');
-                            continue;
-                        }
-                    } else if (temperature > 100) {
-                        // Boil
-                        set(x, y, STEAM);
-                        triggerEvent('boiling');
-                        continue;
-                    }
-
-                    // Movement
-                    let moved = false;
-                    if (below === AIR || below === SNOW) {
-                        set(x, y + 1, WATER); set(x, y, AIR); moved = true;
-                    } else if (isEmpty(x - 1, y)) {
-                        set(x - 1, y, WATER); set(x, y, AIR); moved = true;
-                    } else if (isEmpty(x + 1, y)) {
-                        set(x + 1, y, WATER); set(x, y, AIR); moved = true;
-                    }
-
-                    if (!moved) {
-                        // Erosion
-                        const neighbors = [[x,y+1], [x+1,y], [x-1,y]];
-                        for (let n of neighbors) {
-                            const nt = get(n[0], n[1]);
-                            if ((nt === BEDROCK || nt === SANDSTONE) && Math.random() < 0.005) {
-                                set(n[0], n[1], SEDIMENT); set(x, y, AIR);
-                                triggerEvent('erosion'); break; 
-                            }
-                            if (nt === SALT && Math.random() < 0.1) set(n[0], n[1], WATER);
-                        }
-                    }
-
-                    // Evaporation (Rate increases with temperature)
-                    let evapChance = 0.001; 
-                    if (temperature > 30) evapChance = 0.02;
-                    if (temperature > 60) evapChance = 0.1;
-
-                    // Nearby Heat Source boosts evaporation
-                    if (get(x, y+1) === MAGMA || get(x, y+1) === BASALT) evapChance += 0.2;
-
-                    if (Math.random() < evapChance) {
-                        set(x, y, Math.random() < 0.05 ? SALT : STEAM);
-                        if (get(x,y) === SALT) triggerEvent('salinization');
-                        else triggerEvent('evaporation');
-                    }
-                }
-
-                // 3. ICE & SNOW
-                else if (type === ICE || type === SNOW) {
-                    // Melting
-                    if (temperature > 0) {
-                        // Warmer = faster melting
-                        let meltChance = 0.01 + (temperature * 0.001);
-                        // Magma melts instantly
-                        if (get(x,y+1) === MAGMA) meltChance = 1.0;
-                        
-                        if (Math.random() < meltChance) {
-                            set(x, y, WATER);
-                            triggerEvent('melting');
-                        }
-                    }
-
-                    // Gravity (Snow only, Ice is static-ish)
-                    if (type === SNOW) {
-                         if (below === AIR || below === WATER) {
-                            set(x, y + 1, SNOW); set(x, y, below===WATER?WATER:AIR);
-                        } else if (isEmpty(x - 1, y + 1)) {
-                            set(x - 1, y + 1, SNOW); set(x, y, AIR);
-                        } else if (isEmpty(x + 1, y + 1)) {
-                            set(x + 1, y + 1, SNOW); set(x, y, AIR);
-                        }
-                    }
-                }
-
-                // 4. PLANT LIFE
-                else if (type === PLANT) {
-                    // Thermal Shock
-                    if (temperature > 60 || temperature < -10) {
-                        if (Math.random() < 0.05) set(x, y, WOOD); // Die/Dry out
-                    }
-
-                    const ground = get(x, y + 1);
-                    if (ground === AIR || ground === WATER) {
-                        set(x, y + 1, PLANT); set(x, y, AIR); // Fall
-                    } else if ((ground === WOOD || ground === PLANT) && Math.random() < 0.02) {
-                        // Grow if temp is decent
-                        if (temperature > 10 && temperature < 40) {
-                            if (get(x, y-1) === AIR) {
-                                set(x, y, WOOD); set(x, y-1, PLANT);
-                                if (Math.random() > 0.7) {
-                                    if (isEmpty(x-1, y)) set(x-1, y, PLANT);
-                                    if (isEmpty(x+1, y)) set(x+1, y, PLANT);
-                                }
-                            }
-                        }
-                    }
-                    if ([MAGMA].includes(get(x, y+1))) set(x,y,AIR);
-                }
-
-                // 5. SEEDS
-                else if (type === SEED) {
-                    if (below === AIR || below === WATER) {
-                        set(x, y + 1, SEED); set(x, y, below === WATER ? WATER : AIR);
-                    } else if (below === WET_SEDIMENT) {
-                        // Germinate only in good temps
-                        if (temperature > 5 && temperature < 45 && Math.random() < 0.05) {
-                            set(x, y, WOOD); set(x, y-1, PLANT);
-                            triggerEvent('germination');
-                        }
-                    }
-                }
-
-                // 6. SEDIMENT
-                else if (type === SEDIMENT || type === WET_SEDIMENT || type === SALT) {
-                    if (below === AIR || below === WATER) {
-                        set(x, y + 1, type); set(x, y, below === WATER ? WATER : AIR);
-                    } else if (isEmpty(x - 1, y + 1)) {
-                        set(x - 1, y + 1, type); set(x, y, AIR);
-                    } else if (isEmpty(x + 1, y + 1)) {
-                        set(x + 1, y + 1, type); set(x, y, AIR);
-                    } 
-                    
-                    if (type === SEDIMENT) {
-                        const neighbors = [get(x,y-1), get(x,y+1), get(x-1,y), get(x+1,y)];
-                        if (neighbors.includes(WATER)) {
-                            if (get(x,y-1)===WATER) set(x,y-1,AIR); // Absorb water
-                            set(x, y, WET_SEDIMENT);
-                            triggerEvent('soil_formation');
-                        }
-                    }
-                    // Drying out
-                    if (type === WET_SEDIMENT && temperature > 40 && Math.random() < 0.01) {
-                        set(x, y, SEDIMENT); // Dry back to sand
-                    }
-
-                    if (Math.random() < 0.001 && type !== SALT) {
-                         if (get(x, y-5) === SEDIMENT || get(x, y-5) === WET_SEDIMENT) {
-                             set(x, y, SANDSTONE); triggerEvent('lithification');
-                         }
-                    }
-                }
-
-                // 7. MAGMA
-                else if (type === MAGMA) {
-                    if (below === AIR) {
-                        set(x, y + 1, MAGMA); set(x, y, AIR);
-                    } else if (isEmpty(x + dir, y)) {
-                        set(x + dir, y, MAGMA); set(x, y, AIR);
-                    }
-
-                    const neighbors = [[x,y+1], [x,y-1], [x+1,y], [x-1,y]];
-                    for (let n of neighbors) {
-                        const nt = get(n[0], n[1]);
-                        if (nt === BEDROCK || nt === SEDIMENT || nt === SANDSTONE) {
-                            if (Math.random() < 0.08) { set(n[0], n[1], MAGMA); triggerEvent('melting'); }
-                        } else if (nt === WATER || nt === ICE || nt === SNOW) {
-                            set(x, y, BASALT); set(n[0], n[1], STEAM); triggerEvent('volcanism');
-                        } else if (nt === AIR && Math.random() < 0.005) {
-                            set(x, y, BASALT); triggerEvent('volcanism');
-                        }
-                    }
-                }
-
-                // 8. STEAM
-                else if (type === STEAM) {
-                    if (Math.random() < 0.05) set(x, y, AIR);
-                    else if (isEmpty(x, y - 1)) { set(x, y - 1, STEAM); set(x, y, AIR); }
-                    
-                    // Condensation (only if cool enough)
-                    if (temperature < 100 && y < 20 && Math.random() < 0.01) { 
-                        set(x, y, WATER); 
-                    }
-                }
-            }
+        case 'paint-biome':{
+          // Full override within brush — inner core full, edge fades by probability
+          if(Math.random()<f*0.7+0.3) biomeOverride[i]=selectedBiome;
+          break;
         }
+      }
     }
+  }
 
-    // --- RENDER ---
-    function draw() {
-        const data = imgData.data;
-        for (let i = 0; i < cells.length; i++) {
-            const type = cells[i];
-            const [r, g, b] = PALETTE[type];
-            const idx = i * 4;
-            
-            let noise = 0;
-            if (type !== AIR && type !== WATER && type !== STEAM) {
-                noise = ((i * 1234.5678) % 25) - 12; 
-            } else if (type === WATER) {
-                 noise = ((i * 45.67) % 10) - 5;
-            }
+  updateClimate(); updateBiomes(); render(); updateStats();
+  const h=heightMap[y*W+x];
+  document.getElementById('coordDisplay').textContent=
+    `X:${x} Y:${y}  H:${(h*100).toFixed(0)}%  T:${tempMap[y*W+x].toFixed(0)}°  ${BIOMES[biomeMap[y*W+x]]?.name||''}`;
+}
 
-            data[idx] = Math.max(0, Math.min(255, r + noise));
-            data[idx + 1] = Math.max(0, Math.min(255, g + noise));
-            data[idx + 2] = Math.max(0, Math.min(255, b + noise));
-            data[idx + 3] = 255;
-        }
-        
-        offCtx.putImageData(imgData, 0, 0);
-        ctx.drawImage(offCanvas, 0, 0, canvas.width, canvas.height);
+// =====================================================
+// STATS
+// =====================================================
+function updateStats(){
+  document.getElementById('s-age').textContent=worldAge+' MY';
+  document.getElementById('s-sea').textContent=(seaLevel*100).toFixed(0)+'%';
+  let mx=0,oc=0,te=0;
+  for(let i=0;i<W*H;i++){if(heightMap[i]>mx)mx=heightMap[i];if(heightMap[i]<seaLevel)oc++;te+=erosionMap[i];}
+  const op=Math.round(oc/(W*H)*100);
+  document.getElementById('s-high').textContent=(mx*8848).toFixed(0)+'m';
+  document.getElementById('s-ocean').textContent=op+'%';
+  document.getElementById('s-land').textContent=(100-op)+'%';
+  document.getElementById('s-erosion').textContent=te.toFixed(0);
+  document.getElementById('timeDisplay').textContent=`● ${worldAge} MY`;
+  const eras=[[500,'HADEAN'],[1000,'ARCHEAN'],[1500,'PROTEROZOIC'],[1800,'PALEOZOIC'],[1950,'MESOZOIC'],[2000,'CENOZOIC']];
+  let era='MODERN';
+  for(const[t,n]of eras){if(worldAge<t){era=n;break;}}
+  document.getElementById('eraDisplay').textContent=era+' EON';
+  const bc={};
+  for(let i=0;i<W*H;i++) bc[biomeMap[i]]=(bc[biomeMap[i]]||0)+1;
+  document.getElementById('biomeLegend').innerHTML=Object.entries(bc).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([id,cnt])=>{
+    const bm=BIOMES[id];if(!bm)return'';
+    const[r,g,bv]=bm.color;
+    return`<div class="legend-item"><div class="legend-color" style="background:rgb(${r},${g},${bv})"></div><span>${bm.name} <span style="color:var(--accent);font-family:'Space Mono'">${Math.round(cnt/(W*H)*100)}%</span></span></div>`;
+  }).join('');
+}
+
+function updateModeLegend(){
+  const L={
+    terrain:[{c:'rgb(10,40,90)',l:'Deep Ocean'},{c:'rgb(40,120,180)',l:'Shallow Sea'},{c:'rgb(220,205,150)',l:'Beach'},{c:'rgb(90,150,55)',l:'Lowlands'},{c:'rgb(50,130,45)',l:'Forest'},{c:'rgb(150,130,110)',l:'Mountains'},{c:'rgb(240,240,250)',l:'Snow'}],
+    elevation:[{c:'#000080',l:'Below Sea'},{c:'#808080',l:'Mid Elev.'},{c:'#ffffff',l:'Peaks'}],
+    temperature:[{c:'#0000ff',l:'Freezing'},{c:'#00ffff',l:'Cold'},{c:'#00aa00',l:'Temperate'},{c:'#ff6600',l:'Hot'},{c:'#ff0000',l:'Extreme'}],
+    rainfall:[{c:'#1e1e60',l:'Arid'},{c:'#1e50a0',l:'Low'},{c:'#3090e0',l:'Moderate'},{c:'#50c0ff',l:'Wet'},{c:'#aae0ff',l:'Very Wet'}],
+    biome:Object.entries(BIOMES).map(([,b])=>({c:`rgb(${b.color.join(',')})`,l:b.name})),
+    erosion:[{c:'#200800',l:'None'},{c:'#8b4513',l:'Low'},{c:'#e8a060',l:'High'}],
+    water:[{c:'rgb(180,160,120)',l:'Dry Land'},{c:'rgb(60,140,200)',l:'Surface Water'},{c:'rgb(10,60,130)',l:'Deep Ocean'}],
+  };
+  document.getElementById('modeLegend').innerHTML=(L[currentMode]||[]).slice(0,8).map(({c,l})=>
+    `<div class="legend-item"><div class="legend-color" style="background:${c}"></div><span>${l}</span></div>`
+  ).join('');
+}
+
+// =====================================================
+// UI HELPERS
+// =====================================================
+const PAINT_CTRLS=['paint-temp','paint-rain','paint-erosion','paint-biome'];
+
+function setTool(t){
+  currentTool=t;
+  document.querySelectorAll('.tool-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tool-'+t)?.classList.add('active');
+  // Show/hide paint sub-controls
+  PAINT_CTRLS.forEach(k=>{
+    const el=document.getElementById('ctrl-'+k);
+    if(el) el.classList.toggle('show',k===t);
+  });
+}
+function updateBrush(){
+  brushSize=parseInt(document.getElementById('brushSize').value);
+  brushStrength=parseInt(document.getElementById('brushStr').value)/100;
+  document.getElementById('brushSizeVal').textContent=brushSize;
+  document.getElementById('brushStrVal').textContent=Math.round(brushStrength*100);
+}
+function setMapMode(m){
+  currentMode=m;
+  document.querySelectorAll('.mapmode-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('mm-'+m)?.classList.add('active');
+  updateModeLegend(); render();
+}
+function resetWorld(){
+  heightMap.fill(0); waterMap.fill(0); erosionMap.fill(0);
+  tempOverride.fill(NaN); rainfallOverride.fill(NaN); erosionOverride.fill(NaN); biomeOverride.fill(-1);
+  worldAge=0; seaLevel=0.35;
+  geoDots.forEach(d=>{d.el.style.opacity='0';setTimeout(()=>d.el.remove(),400)});geoDots=[];
+  if(activePopup){activePopup.remove();activePopup=null;}
+  updateBiomes();updateStats();render();showTopNotif('WORLD RESET');
+}
+function logEvent(msg){
+  const log=document.getElementById('eventLog');
+  const d=document.createElement('div');
+  d.textContent=`[${worldAge}MY] ${msg}`;d.style.marginBottom='4px';
+  log.prepend(d);while(log.children.length>20)log.removeChild(log.lastChild);
+}
+function showTopNotif(msg){
+  const n=document.getElementById('topNotif');
+  n.textContent=msg;n.classList.add('show');
+  setTimeout(()=>n.classList.remove('show'),2800);
+}
+
+// =====================================================
+// INIT
+// =====================================================
+window.addEventListener('load',()=>{
+  canvas=document.getElementById('mainCanvas');
+  canvas.width=W;canvas.height=H;
+  ctx=canvas.getContext('2d');
+  canvasArea=document.getElementById('canvasArea');
+
+  canvasArea.addEventListener('mousedown',e=>{
+    if(e.target.closest('.geo-dot,.geo-popup,.modal-overlay'))return;
+    isDrawing=true; applyBrushAt(e.clientX,e.clientY);
+  });
+  canvasArea.addEventListener('mousemove',e=>{
+    const{x,y}=getMapCoords(e.clientX,e.clientY);
+    if(x>=0&&x<W&&y>=0&&y<H){
+      document.getElementById('coordDisplay').textContent=
+        `X:${x} Y:${y}  H:${(heightMap[y*W+x]*100).toFixed(0)}%  T:${tempMap[y*W+x].toFixed(0)}°  ${BIOMES[biomeMap[y*W+x]]?.name||''}`;
     }
+    if(isDrawing) applyBrushAt(e.clientX,e.clientY);
+  });
+  canvasArea.addEventListener('mouseup',()=>isDrawing=false);
+  canvasArea.addEventListener('mouseleave',()=>isDrawing=false);
+  canvasArea.addEventListener('touchstart',e=>{
+    if(e.target.closest('.geo-dot,.geo-popup,.modal-overlay'))return;
+    isDrawing=true;applyBrushAt(e.touches[0].clientX,e.touches[0].clientY);e.preventDefault();
+  },{passive:false});
+  canvasArea.addEventListener('touchmove',e=>{
+    if(isDrawing)applyBrushAt(e.touches[0].clientX,e.touches[0].clientY);e.preventDefault();
+  },{passive:false});
+  canvasArea.addEventListener('touchend',()=>isDrawing=false);
 
-    // --- LOOP ---
-    let lastMouseX=0, lastMouseY=0;
-    document.addEventListener('mousemove', e => {lastMouseX=e.clientX; lastMouseY=e.clientY;});
-
-    function loop() {
-        update();
-        draw();
-        
-        const rect = canvas.getBoundingClientRect();
-        if (lastMouseX > rect.left && lastMouseX < rect.right && lastMouseY > rect.top && lastMouseY < rect.bottom) {
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-            const cx = (lastMouseX - rect.left) * scaleX;
-            const cy = (lastMouseY - rect.top) * scaleY;
-            ctx.strokeStyle = "rgba(255,255,255,0.4)";
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.arc(cx, cy, brushSize * SCALE, 0, Math.PI*2);
-            ctx.stroke();
-        }
-
-        frameCount++;
-        requestAnimationFrame(loop);
-    }
-
-    setInterval(() => { document.getElementById('fps').innerText = `FPS: ${frameCount}`; frameCount = 0; }, 1000);
-    
-    generateTerrain();
-    loop();
-
+  window.addEventListener('resize',()=>render());
+  buildBiomePicker();
+  updateModeLegend();
+  generateTerrain();
+});
 </script>
 </body>
 </html>
