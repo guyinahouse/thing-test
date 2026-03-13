@@ -1,1614 +1,1209 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cell Stage Evolution</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap');
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRIMORDIAL</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap');
+:root{
+  --deep:#020810;--abyss:#050f1a;--brine:#0a1f35;--teal:#0d4f6e;
+  --cyan:#12a4c4;--glow:#1fffd4;--life:#7dff9a;--danger:#ff4d6d;
+  --gold:#ffd166;--mate:#ff9ee8;--text:#c8e6f0;--muted:#5a8a9f;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--deep);color:var(--text);font-family:'Crimson Pro',serif;overflow:hidden;height:100vh;width:100vw;cursor:none;}
+#cursor{position:fixed;width:14px;height:14px;border:2px solid var(--glow);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);box-shadow:0 0 8px var(--glow);transition:transform .1s;}
+.screen{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+.hidden{display:none!important;}
 
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #051e26;
-            font-family: 'Fredoka', sans-serif;
-            color: white;
-            user-select: none;
-        }
+/* ═══ TITLE ═══ */
+#title-screen{background:radial-gradient(ellipse at 50% 60%,#061828,var(--deep) 70%);flex-direction:column;}
+#title-canvas{position:absolute;inset:0;}
+.title-content{position:relative;z-index:10;text-align:center;}
+.game-title{font-family:'Cinzel',serif;font-size:clamp(3rem,9vw,7rem);font-weight:900;letter-spacing:.3em;color:transparent;background:linear-gradient(180deg,#fff 0%,var(--glow) 40%,var(--cyan) 80%,#084d6e 100%);-webkit-background-clip:text;background-clip:text;filter:drop-shadow(0 0 30px rgba(31,255,212,.4));animation:tp 4s ease-in-out infinite;}
+@keyframes tp{0%,100%{filter:drop-shadow(0 0 30px rgba(31,255,212,.4));}50%{filter:drop-shadow(0 0 60px rgba(31,255,212,.9));}}
+.subtitle{font-size:1rem;letter-spacing:.5em;color:var(--muted);text-transform:uppercase;margin:.3rem 0 2.5rem;}
+.start-btn{font-family:'Cinzel',serif;font-size:.95rem;letter-spacing:.3em;text-transform:uppercase;color:var(--glow);border:1px solid var(--glow);background:transparent;padding:.9rem 2.8rem;cursor:none;transition:all .3s;position:relative;overflow:hidden;}
+.start-btn::before{content:'';position:absolute;inset:0;background:var(--glow);transform:scaleX(0);transform-origin:left;transition:transform .3s;z-index:-1;}
+.start-btn:hover{color:var(--deep);box-shadow:0 0 30px var(--glow);}
+.start-btn:hover::before{transform:scaleX(1);}
 
-        canvas {
-            display: block;
-        }
+/* ═══ GAME ═══ */
+#game-canvas{position:absolute;inset:0;}
+#hud{position:absolute;inset:0;pointer-events:none;z-index:10;}
+#hud-top{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;padding:1rem 1.4rem;background:linear-gradient(180deg,rgba(2,8,16,.93) 0%,transparent 100%);}
+.hud-left{display:flex;flex-direction:column;gap:.3rem;}
+.cell-name{font-family:'Cinzel',serif;font-size:1.3rem;font-weight:700;color:var(--glow);letter-spacing:.1em;}
+.generation{font-size:.78rem;color:var(--muted);letter-spacing:.2em;text-transform:uppercase;}
+.hud-center{display:flex;flex-direction:column;align-items:center;gap:.4rem;}
+.stat-bars{display:flex;gap:.9rem;}
+.stat-bar-wrap{display:flex;flex-direction:column;align-items:center;gap:.22rem;}
+.stat-label{font-size:.62rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);}
+.stat-bar{width:110px;height:5px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;}
+.stat-fill{height:100%;border-radius:3px;transition:width .2s;}
+.health-fill{background:linear-gradient(90deg,#ff4d6d,#ff8fa3);}
+.energy-fill{background:linear-gradient(90deg,#ffd166,#ffe0a0);}
+.evo-fill{background:linear-gradient(90deg,var(--glow),#7dffda);}
+.hud-right{text-align:right;display:flex;flex-direction:column;gap:.2rem;}
+.score-label{font-size:.62rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);}
+.score-val{font-family:'Cinzel',serif;font-size:1.7rem;color:var(--gold);}
+.biomass-spend{font-size:.72rem;color:var(--muted);}
 
-        #ui-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-        }
+/* hotkeys strip */
+#hotkeys{position:absolute;top:5.4rem;left:50%;transform:translateX(-50%);display:flex;gap:.6rem;pointer-events:none;}
+.hk{font-size:.65rem;letter-spacing:.1em;color:var(--muted);background:rgba(2,8,16,.65);border:1px solid rgba(255,255,255,.09);padding:.18rem .52rem;border-radius:2px;white-space:nowrap;}
+.hk span{color:var(--glow);}
 
-        .hud-element {
-            position: absolute;
-            pointer-events: auto;
-            background: rgba(0, 0, 0, 0.4);
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(4px);
-            border-radius: 12px;
-            padding: 10px 20px;
-        }
+/* bottom panel — parts list */
+#bottom-panel{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(0deg,rgba(2,8,16,.97) 0%,transparent 100%);padding:.65rem 1.1rem;display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;}
+.parts-row{display:flex;gap:.4rem;flex-wrap:wrap;max-width:76%;}
+.part-btn{display:flex;flex-direction:column;align-items:center;gap:.2rem;padding:.35rem .55rem;border:1px solid rgba(31,255,212,.2);background:rgba(2,8,16,.85);cursor:none;pointer-events:all;transition:all .2s;min-width:66px;position:relative;}
+.part-btn.owned{border-color:rgba(31,255,212,.6);}
+.part-btn.maxed{border-color:var(--gold);}
+.part-btn:hover:not(.locked-part){background:rgba(31,255,212,.1);box-shadow:0 0 14px rgba(31,255,212,.2);z-index:100;}
+.part-btn.locked-part{opacity:.28;pointer-events:none;}
+.part-icon{font-size:1.15rem;}
+.part-name{font-size:.56rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text);}
+.part-pips{display:flex;gap:2px;}
+.part-pip{width:5px;height:5px;border-radius:50%;border:1px solid rgba(31,255,212,.5);}
+.part-pip.filled{background:var(--glow);}
+.part-cost{font-size:.62rem;color:var(--gold);}
 
-        #dna-counter {
-            top: 20px;
-            left: 20px;
-            font-size: 28px;
-            color: #4ade80;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-weight: 600;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        }
+/* tooltip */
+.part-btn:hover:not(.locked-part) .part-tooltip{display:flex;}
+.part-tooltip{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:rgba(5,15,26,.97);border:1px solid rgba(31,255,212,.35);padding:.6rem .8rem;flex-direction:column;gap:.3rem;min-width:180px;max-width:220px;z-index:200;pointer-events:none;}
+.part-tooltip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:rgba(31,255,212,.35);}
+.tt-name{font-family:'Cinzel',serif;font-size:.8rem;color:var(--glow);}
+.tt-effect{font-size:.75rem;color:var(--text);line-height:1.5;}
+.tt-levels{font-size:.7rem;color:var(--muted);line-height:1.6;margin-top:.2rem;border-top:1px solid rgba(255,255,255,.06);padding-top:.3rem;}
+.tt-level-row{display:flex;justify-content:space-between;gap:.5rem;}
+.tt-level-row.current{color:var(--glow);}
+.tt-lock{font-size:.7rem;color:var(--danger);margin-top:.2rem;border-top:1px solid rgba(255,255,255,.06);padding-top:.3rem;}
 
-        /* Growth Bar Container */
-        #growth-container {
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 400px;
-            text-align: center;
-        }
-        #growth-label {
-            margin-bottom: 5px;
-            font-size: 14px;
-            text-shadow: 0 2px 4px black;
-        }
-        #growth-bar-bg {
-            width: 100%;
-            height: 20px;
-            background: rgba(0,0,0,0.6);
-            border: 2px solid rgba(255,255,255,0.2);
-            border-radius: 10px;
-            overflow: hidden;
-        }
-        #growth-bar-fill {
-            height: 100%;
-            width: 0%;
-            background: linear-gradient(90deg, #4ade80, #22c55e);
-            transition: width 0.5s;
-        }
+.panel-right{text-align:right;min-width:130px;}
+.era-label{font-size:.62rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);}
+.era-name{font-family:'Cinzel',serif;font-size:.88rem;color:var(--cyan);}
+.evo-pts{font-size:.76rem;color:var(--gold);margin-top:.1rem;}
+.mate-btn-hud{font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;color:var(--mate);border:1px solid var(--mate);background:transparent;padding:.38rem .9rem;cursor:none;pointer-events:all;transition:all .25s;margin-top:.4rem;display:block;}
+.mate-btn-hud:hover{background:rgba(255,158,232,.15);box-shadow:0 0 16px rgba(255,158,232,.3);}
 
-        #mate-btn {
-            bottom: 30px;
-            right: 30px;
-            background: #ec4899;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-            transition: transform 0.1s;
-            font-size: 20px;
-            padding: 15px 30px;
-            box-shadow: 0 4px 15px rgba(236, 72, 153, 0.4);
-            border: 2px solid rgba(255,255,255,0.2);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        #mate-btn:hover { transform: scale(1.05); background: #db2777; }
-        #mate-btn.disabled { filter: grayscale(1); opacity: 0.5; cursor: not-allowed; }
+/* ═══ NOTIFICATIONS ═══ */
+#notifications{position:absolute;top:5rem;right:1.4rem;display:flex;flex-direction:column;gap:.4rem;pointer-events:none;z-index:20;}
+.notif{background:rgba(2,8,16,.92);border-left:3px solid var(--glow);padding:.42rem .85rem;font-size:.8rem;color:var(--text);animation:ns .3s ease-out,nf .5s 2.5s forwards;max-width:240px;}
+.notif.danger{border-left-color:var(--danger);}
+.notif.mate{border-left-color:var(--mate);}
+.notif.gold{border-left-color:var(--gold);}
+@keyframes ns{from{transform:translateX(30px);opacity:0;}to{transform:translateX(0);opacity:1;}}
+@keyframes nf{to{opacity:0;transform:translateX(10px);}}
 
-        /* Evolution Editor Overlay */
-        #editor-overlay {
-            display: none;
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(5, 30, 38, 0.98);
-            pointer-events: auto;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 10;
-        }
+/* ═══ MATE / CELL EDITOR ═══ */
+#mate-screen{background:rgba(2,8,16,.96);z-index:60;align-items:stretch;padding:0;}
 
-        .editor-container {
-            display: flex;
-            gap: 30px;
-            height: 85%;
-            width: 95%;
-            max-width: 1800px;
-        }
+.mate-layout{display:grid;grid-template-columns:260px 1fr 280px;width:100%;height:100%;gap:0;}
 
-        .parts-panel {
-            min-width: 350px;
-            width: 25%; /* Wider sidebars */
-            background: rgba(255,255,255,0.05);
-            border-radius: 15px;
-            padding: 20px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
+/* LEFT — your cell preview */
+.mate-left{border-right:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;align-items:center;padding:2rem 1.5rem;gap:1.2rem;}
+.mate-section-title{font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.35em;text-transform:uppercase;color:var(--muted);}
+.mate-cell-name{font-family:'Cinzel',serif;font-size:1.1rem;color:var(--glow);}
+#you-canvas{border:1px solid rgba(31,255,212,.15);background:rgba(5,15,26,.8);}
+.cell-live-stats{width:100%;display:flex;flex-direction:column;gap:.4rem;margin-top:.3rem;}
+.live-stat{display:flex;justify-content:space-between;font-size:.76rem;padding:.25rem 0;border-bottom:1px solid rgba(255,255,255,.05);}
+.live-stat-label{color:var(--muted);}
+.live-stat-val{color:var(--text);font-weight:400;}
+.live-stat-val.boosted{color:var(--glow);}
+.gen-label{font-size:.72rem;color:var(--muted);letter-spacing:.15em;text-transform:uppercase;}
+.gen-val{font-family:'Cinzel',serif;font-size:1rem;color:var(--cyan);}
 
-        .part-card {
-            background: rgba(255,255,255,0.08);
-            margin-bottom: 12px;
-            padding: 15px;
-            border-radius: 10px;
-            cursor: pointer;
-            border: 2px solid transparent;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        .part-card:hover { border-color: #4ade80; background: rgba(255,255,255,0.15); }
-        .part-card.locked { opacity: 0.4; pointer-events: none; filter: grayscale(1); position: relative; }
-        .part-card.locked::after {
-            content: "🔒";
-            position: absolute;
-            right: 15px;
-            font-size: 20px;
-        }
+/* CENTER — parts grid */
+.mate-center{overflow-y:auto;padding:1.8rem 1.5rem;display:flex;flex-direction:column;gap:1.2rem;}
+.mate-center::-webkit-scrollbar{width:4px;}
+.mate-center::-webkit-scrollbar-track{background:rgba(255,255,255,.03);}
+.mate-center::-webkit-scrollbar-thumb{background:rgba(31,255,212,.2);border-radius:2px;}
+.editor-header{display:flex;flex-direction:column;gap:.3rem;}
+.editor-title{font-family:'Cinzel',serif;font-size:1.6rem;color:var(--mate);letter-spacing:.2em;}
+.editor-sub{font-size:.8rem;color:var(--muted);letter-spacing:.15em;}
+.biomass-display{font-family:'Cinzel',serif;font-size:1.1rem;color:var(--gold);}
 
-        .preview-area {
-            flex-grow: 1;
-            background: radial-gradient(circle, #1a2c38 0%, #051e26 100%);
-            border-radius: 20px;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            box-shadow: inset 0 0 50px rgba(0,0,0,0.5);
-            border: 1px solid rgba(255,255,255,0.1);
-        }
+.parts-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;}
+.editor-part{border:1px solid rgba(31,255,212,.18);background:rgba(5,15,26,.75);padding:.75rem;display:flex;flex-direction:column;gap:.5rem;cursor:none;pointer-events:all;transition:all .22s;position:relative;}
+.editor-part.ep-owned{border-color:rgba(31,255,212,.5);}
+.editor-part.ep-maxed{border-color:var(--gold);background:rgba(20,15,0,.5);}
+.editor-part.ep-locked{opacity:.25;pointer-events:none;}
+.editor-part:hover:not(.ep-locked){background:rgba(31,255,212,.08);box-shadow:0 0 18px rgba(31,255,212,.18);transform:translateY(-1px);}
+.ep-top{display:flex;align-items:center;gap:.5rem;}
+.ep-icon{font-size:1.5rem;line-height:1;}
+.ep-name{font-family:'Cinzel',serif;font-size:.8rem;color:var(--text);}
+.ep-pips{display:flex;gap:2px;margin-top:1px;}
+.ep-pip{width:6px;height:6px;border-radius:50%;border:1px solid rgba(31,255,212,.4);}
+.ep-pip.filled{background:var(--glow);box-shadow:0 0 4px var(--glow);}
+.ep-desc{font-size:.72rem;color:var(--muted);line-height:1.45;}
+.ep-levels{display:flex;flex-direction:column;gap:.18rem;margin-top:.15rem;}
+.ep-level-row{font-size:.68rem;display:flex;justify-content:space-between;color:rgba(255,255,255,.3);padding:.1rem 0;}
+.ep-level-row.ep-current{color:var(--glow);}
+.ep-level-row.ep-next{color:rgba(255,209,102,.7);}
+.ep-action{margin-top:.3rem;display:flex;align-items:center;justify-content:space-between;gap:.4rem;}
+.ep-cost{font-size:.7rem;color:var(--gold);}
+.ep-buy-btn{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.15em;text-transform:uppercase;color:var(--deep);background:var(--glow);border:none;padding:.28rem .6rem;cursor:none;transition:all .2s;white-space:nowrap;}
+.ep-buy-btn:hover{background:#7dffda;box-shadow:0 0 10px var(--glow);}
+.ep-buy-btn.ep-disabled{background:rgba(255,255,255,.1);color:var(--muted);pointer-events:none;}
+.ep-max-badge{font-size:.62rem;color:var(--gold);letter-spacing:.15em;text-transform:uppercase;}
+.ep-lock-badge{font-size:.62rem;color:var(--danger);letter-spacing:.1em;}
 
-        .color-picker {
-            margin-top: 20px;
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        .color-swatch {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            cursor: pointer;
-            border: 2px solid rgba(255,255,255,0.2);
-            transition: transform 0.2s;
-        }
-        .color-swatch:hover { transform: scale(1.1); border-color: white; }
+/* RIGHT — mate/offspring */
+.mate-right{border-left:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;padding:2rem 1.5rem;gap:1.1rem;}
+.mate-right-title{font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.35em;text-transform:uppercase;color:var(--muted);}
+#mate-canvas{border:1px solid rgba(255,158,232,.2);background:rgba(5,15,26,.8);}
+.mate-name{font-family:'Cinzel',serif;font-size:1rem;color:var(--mate);}
+.mate-cell-traits{font-size:.74rem;color:var(--text);line-height:1.9;}
+.offspring-box{border:1px solid rgba(255,158,232,.25);background:rgba(20,5,15,.5);padding:.9rem 1rem;display:flex;flex-direction:column;gap:.45rem;flex:1;}
+.offspring-box-title{font-family:'Cinzel',serif;font-size:.78rem;color:var(--mate);letter-spacing:.12em;}
+.offspring-trait-list{font-size:.72rem;color:var(--text);line-height:2;flex:1;}
+.mate-cost-line{font-size:.76rem;color:var(--gold);}
+.mate-warning{font-size:.7rem;color:var(--muted);font-style:italic;}
+.reproduce-btn{font-family:'Cinzel',serif;font-size:.8rem;letter-spacing:.22em;text-transform:uppercase;color:var(--mate);border:1px solid var(--mate);background:transparent;padding:.65rem 1rem;cursor:none;transition:all .3s;pointer-events:all;width:100%;}
+.reproduce-btn:hover{background:rgba(255,158,232,.15);box-shadow:0 0 20px rgba(255,158,232,.3);}
+.reproduce-btn:disabled{opacity:.4;pointer-events:none;}
+.close-editor-btn{font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);border:1px solid rgba(255,255,255,.1);background:transparent;padding:.5rem 1rem;cursor:none;transition:all .25s;pointer-events:all;width:100%;margin-top:.3rem;}
+.close-editor-btn:hover{color:var(--text);border-color:rgba(255,255,255,.25);}
 
-        h2, h3 { margin: 0 0 15px 0; letter-spacing: 1px; }
-        .stat-bar { height: 10px; background: #333; border-radius: 5px; margin-top: 8px; overflow: hidden; border: 1px solid #444;}
-        .stat-fill { height: 100%; background: #4ade80; transition: width 0.3s ease; }
+/* ═══ EVO EVENT ═══ */
+#evo-event{position:absolute;inset:0;background:rgba(2,8,16,.9);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.1rem;z-index:70;animation:fadeIn .4s ease;}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+.evo-event-label{font-family:'Cinzel',serif;font-size:.8rem;letter-spacing:.5em;color:var(--muted);text-transform:uppercase;}
+.evo-event-name{font-family:'Cinzel',serif;font-size:2rem;color:var(--glow);text-align:center;}
+.evo-event-desc{color:var(--text);font-size:.95rem;font-style:italic;text-align:center;max-width:380px;}
+.evo-choices{display:flex;gap:1.1rem;margin-top:.7rem;}
+.evo-choice{border:1px solid rgba(31,255,212,.3);background:rgba(5,15,26,.9);padding:.9rem 1.2rem;width:165px;cursor:none;pointer-events:all;transition:all .28s;text-align:center;display:flex;flex-direction:column;gap:.38rem;}
+.evo-choice:hover{border-color:var(--glow);box-shadow:0 0 22px rgba(31,255,212,.25);transform:translateY(-3px);}
+.choice-icon{font-size:1.7rem;}
+.choice-name{font-family:'Cinzel',serif;font-size:.82rem;color:var(--glow);}
+.choice-desc{font-size:.72rem;color:var(--muted);line-height:1.4;}
 
-        #start-screen, #game-over-screen {
-            position: absolute;
-            top:0; left:0; width:100%; height:100%;
-            background: #051e26;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 20;
-        }
-        
-        #game-over-screen {
-            display: none;
-            background: rgba(5, 30, 38, 0.9);
-            backdrop-filter: blur(10px);
-        }
-
-        .btn {
-            background: #4ade80;
-            border: none;
-            padding: 15px 50px;
-            font-size: 24px;
-            border-radius: 50px;
-            font-family: inherit;
-            font-weight: bold;
-            color: #022c22;
-            cursor: pointer;
-            margin-top: 30px;
-            transition: transform 0.1s, box-shadow 0.1s;
-            box-shadow: 0 0 20px rgba(74, 222, 128, 0.4);
-        }
-        .btn:hover { transform: scale(1.05); box-shadow: 0 0 30px rgba(74, 222, 128, 0.6); }
-
-        .btn-red {
-            background: #f87171;
-            color: white;
-            box-shadow: 0 0 20px rgba(248, 113, 113, 0.4);
-        }
-        .btn-red:hover {
-            box-shadow: 0 0 30px rgba(248, 113, 113, 0.6);
-        }
-
-        .notification-area {
-            position: absolute;
-            top: 100px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            pointer-events: none;
-        }
-        .notification {
-            background: rgba(0, 0, 0, 0.7);
-            border: 1px solid #4ade80;
-            color: #4ade80;
-            padding: 10px 20px;
-            border-radius: 30px;
-            font-size: 18px;
-            animation: fadeOut 3s forwards;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        @keyframes fadeOut {
-            0% { opacity: 0; transform: translateY(20px); }
-            10% { opacity: 1; transform: translateY(0); }
-            80% { opacity: 1; }
-            100% { opacity: 0; }
-        }
-
-        .mate-indicator {
-            position: absolute;
-            width: 40px;
-            height: 40px;
-            background: #ec4899;
-            border-radius: 50%;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            border: 2px solid white;
-            box-shadow: 0 0 10px #ec4899;
-            pointer-events: none;
-        }
-
-        .tutorial {
-            position: absolute;
-            top: 80px;
-            left: 20px;
-            text-align: left;
-            opacity: 0.8;
-            font-size: 16px;
-            text-shadow: 0 2px 4px black;
-            color: #eee;
-        }
-    </style>
+/* ═══ DEATH ═══ */
+#death-screen{background:rgba(2,8,16,.97);flex-direction:column;gap:.85rem;z-index:100;}
+.death-title{font-family:'Cinzel',serif;font-size:2.8rem;color:var(--danger);letter-spacing:.3em;}
+.death-sub{color:var(--muted);letter-spacing:.2em;font-size:.8rem;text-transform:uppercase;}
+.death-score{font-family:'Cinzel',serif;font-size:1.7rem;color:var(--gold);margin:.6rem 0;}
+.death-stats{display:flex;gap:1.8rem;font-size:.8rem;color:var(--muted);margin-bottom:.8rem;}
+.death-stat span{color:var(--text);}
+.death-btn{font-family:'Cinzel',serif;font-size:.8rem;letter-spacing:.3em;text-transform:uppercase;color:var(--text);border:1px solid var(--muted);background:transparent;padding:.7rem 1.8rem;cursor:none;transition:all .3s;pointer-events:all;}
+.death-btn:hover{color:var(--glow);border-color:var(--glow);box-shadow:0 0 18px rgba(31,255,212,.2);}
+</style>
 </head>
 <body>
+<div id="cursor"></div>
 
-    <canvas id="gameCanvas"></canvas>
-    
-    <!-- Arrow pointing to mate -->
-    <div id="mate-arrow" class="mate-indicator">♥</div>
+<!-- ══ TITLE ══ -->
+<div id="title-screen" class="screen">
+  <canvas id="title-canvas"></canvas>
+  <div class="title-content">
+    <div class="game-title">PRIMORDIAL</div>
+    <div class="subtitle">Survive · Evolve · Reproduce</div>
+    <button class="start-btn" onclick="startGame()">Enter the Primordial Sea</button>
+  </div>
+</div>
 
-    <div id="ui-layer">
-        <div id="dna-counter" class="hud-element">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path>
-                <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
-            </svg>
-            <span id="dna-val">0</span> DNA
+<!-- ══ GAME ══ -->
+<div id="game-screen" class="screen hidden">
+  <canvas id="game-canvas"></canvas>
+  <div id="hud">
+    <div id="hud-top">
+      <div class="hud-left">
+        <div class="cell-name" id="cell-name">Primordius</div>
+        <div class="generation" id="gen-display">Generation I</div>
+      </div>
+      <div class="hud-center">
+        <div class="stat-bars">
+          <div class="stat-bar-wrap"><div class="stat-label">Health</div><div class="stat-bar"><div class="stat-fill health-fill" id="health-bar" style="width:100%"></div></div></div>
+          <div class="stat-bar-wrap"><div class="stat-label">Energy</div><div class="stat-bar"><div class="stat-fill energy-fill" id="energy-bar" style="width:100%"></div></div></div>
+          <div class="stat-bar-wrap"><div class="stat-label">Evolution</div><div class="stat-bar"><div class="stat-fill evo-fill" id="evo-bar" style="width:0%"></div></div></div>
         </div>
-
-        <div id="growth-container" class="hud-element" style="background:transparent; border:none; backdrop-filter:none;">
-            <div id="growth-label">Evolution Progress</div>
-            <div id="growth-bar-bg">
-                <div id="growth-bar-fill"></div>
-            </div>
+        <div id="hotkeys">
+          <div class="hk"><span>WASD</span> Move</div>
+          <div class="hk"><span>SPACE</span> Attack</div>
+          <div class="hk"><span>F</span> Cell Editor</div>
+          <div class="hk"><span>E</span> Eat nearest</div>
+          <div class="hk"><span>Hover parts</span> Info</div>
         </div>
+      </div>
+      <div class="hud-right">
+        <div class="score-label">Biomass</div>
+        <div class="score-val" id="score-val">0</div>
+        <div class="biomass-spend">Spent: <span id="spent-val">0</span></div>
+      </div>
+    </div>
+    <div id="bottom-panel">
+      <div class="parts-row" id="parts-row"></div>
+      <div class="panel-right">
+        <div class="era-label">Current Era</div>
+        <div class="era-name" id="era-name">Primordial Soup</div>
+        <div class="evo-pts">⬡ <span id="evo-pts">0</span> Evo Points</div>
+        <button class="mate-btn-hud" onclick="openEditor()">💕 Cell Editor [F]</button>
+      </div>
+    </div>
+  </div>
+  <div id="notifications"></div>
+</div>
 
-        <div id="mate-btn" class="hud-element" onclick="callMate()">
-            <span>♥</span> Call Mate [C]
-        </div>
+<!-- ══ CELL EDITOR / MATE SCREEN ══ -->
+<div id="mate-screen" class="screen hidden">
+  <div class="mate-layout">
 
-        <div class="notification-area" id="notifications"></div>
-
-        <div class="tutorial" id="tutorial-text">
-            <b>Controls:</b> Mouse to Move • <b>[C]</b> to Call Mate • <b>[K]</b> to Self-Destruct<br>
-            <span style="color:#f87171">Warning:</span> Avoid Spikes and Jaws!
-        </div>
+    <!-- LEFT: your cell -->
+    <div class="mate-left">
+      <div class="mate-section-title">Your Cell</div>
+      <div class="mate-cell-name" id="editor-cell-name">Primordius</div>
+      <canvas id="you-canvas" width="180" height="180"></canvas>
+      <div style="display:flex;flex-direction:column;gap:.2rem;align-items:center;">
+        <div class="gen-label">Generation</div>
+        <div class="gen-val" id="editor-gen">I</div>
+      </div>
+      <div class="cell-live-stats" id="live-stats"></div>
     </div>
 
-    <!-- Start Screen -->
-    <div id="start-screen">
-        <h1 style="font-size: 80px; color: #4ade80; margin-bottom: 0px; text-shadow: 0 0 30px rgba(74,222,128,0.3);">PRIMORDIAL</h1>
-        <p style="font-size: 24px; color: #a3b8c2; letter-spacing: 2px;">EAT. EVOLVE. SURVIVE.</p>
-        <button class="btn" onclick="startGame()">Hatch</button>
+    <!-- CENTER: part editor -->
+    <div class="mate-center">
+      <div class="editor-header">
+        <div class="editor-title">Cell Editor</div>
+        <div class="editor-sub">Spend Biomass to grow new cell parts · Call a mate to reproduce</div>
+        <div class="biomass-display">⬡ <span id="editor-biomass">0</span> Biomass available</div>
+      </div>
+      <div class="parts-grid" id="editor-parts-grid"></div>
     </div>
 
-    <!-- Game Over Screen -->
-    <div id="game-over-screen">
-        <h1 style="font-size: 80px; color: #f87171; margin-bottom: 10px; text-shadow: 0 0 30px rgba(248, 113, 113, 0.4);">YOU DIED</h1>
-        <p style="font-size: 24px; color: #e2e8f0; margin-bottom: 30px;">
-            DNA Collected: <span style="color:#4ade80" id="final-dna">0</span>
-        </p>
-        <button class="btn btn-red" onclick="resetGame()">Respawn</button>
+    <!-- RIGHT: mate -->
+    <div class="mate-right">
+      <div class="mate-right-title">Mating Partner</div>
+      <canvas id="mate-canvas" width="160" height="160"></canvas>
+      <div class="mate-name" id="mate-cell-name">Seeking mate...</div>
+      <div class="mate-cell-traits" id="mate-cell-traits">—</div>
+      <div class="offspring-box">
+        <div class="offspring-box-title">Predicted Offspring</div>
+        <div class="offspring-trait-list" id="offspring-traits">—</div>
+        <div class="mate-cost-line" id="mate-cost-line">Cost: calculating...</div>
+        <div class="mate-warning">Traits combine from both parents.<br>25% chance of a bonus mutation.</div>
+      </div>
+      <button class="reproduce-btn" id="reproduce-btn" onclick="confirmMating()">Reproduce &amp; Evolve</button>
+      <button class="close-editor-btn" onclick="closeEditor()">← Return to Ocean</button>
     </div>
 
-    <!-- Editor Overlay -->
-    <div id="editor-overlay">
-        <div style="width: 95%; max-width: 1800px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h2 style="font-size: 32px;">Evolution Chamber</h2>
-            <button class="btn" style="padding: 10px 40px; margin: 0; font-size: 20px;" onclick="exitEditor()">Hatch Organism</button>
-        </div>
-        
-        <div class="editor-container">
-            <div class="parts-panel">
-                <h3>Body Parts</h3>
-                <div id="parts-list"></div>
-            </div>
+  </div>
+</div>
 
-            <div class="preview-area" id="preview-area">
-                <canvas id="previewCanvas" width="800" height="600"></canvas>
-                <div style="position: absolute; bottom: 30px; display: flex; gap: 20px;">
-                    <div style="background:rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 20px;">Scroll to Rotate</div>
-                    <div style="background:rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 20px;">Click Part to Remove</div>
-                </div>
-            </div>
+<!-- ══ EVO EVENT ══ -->
+<div id="evo-event" class="hidden">
+  <div class="evo-event-label">Evolutionary Pressure</div>
+  <div class="evo-event-name" id="evo-event-name"></div>
+  <div class="evo-event-desc" id="evo-event-desc"></div>
+  <div class="evo-choices" id="evo-choices"></div>
+</div>
 
-            <div class="parts-panel">
-                <h3>Creature Stats</h3>
-                <div style="margin-bottom: 5px; font-size: 14px; opacity: 0.8;">Speed</div>
-                <div class="stat-bar"><div class="stat-fill" id="stat-speed" style="width: 20%"></div></div>
-                
-                <div style="margin-top:15px; margin-bottom: 5px; font-size: 14px; opacity: 0.8;">Health</div>
-                <div class="stat-bar"><div class="stat-fill" id="stat-health" style="width: 20%"></div></div>
-                
-                <div style="margin-top:15px; margin-bottom: 5px; font-size: 14px; opacity: 0.8;">Combat Damage</div>
-                <div class="stat-bar"><div class="stat-fill" id="stat-dmg" style="width: 0%; background: #f87171;"></div></div>
-                
-                <div style="margin-top:15px; margin-bottom: 5px; font-size: 14px; opacity: 0.8;">Diet Type</div>
-                <div id="stat-diet" style="font-weight:bold; font-size: 20px; color: #4ade80;">Herbivore</div>
-                
-                <h3 style="margin-top: 40px;">Pigment</h3>
-                <div class="color-picker" id="color-picker"></div>
-            </div>
-        </div>
-    </div>
+<!-- ══ DEATH ══ -->
+<div id="death-screen" class="screen hidden">
+  <div class="death-title">EXTINCTION</div>
+  <div class="death-sub">Your lineage ends here</div>
+  <div class="death-score" id="death-score">0 Biomass</div>
+  <div class="death-stats">
+    <div class="death-stat">Era: <span id="d-era">—</span></div>
+    <div class="death-stat">Gen: <span id="d-gen">—</span></div>
+    <div class="death-stat">Kills: <span id="d-kills">—</span></div>
+    <div class="death-stat">Matings: <span id="d-mate">—</span></div>
+  </div>
+  <div style="display:flex;gap:1rem;">
+    <button class="death-btn" onclick="startGame()">Evolve Again</button>
+    <button class="death-btn" onclick="showTitle()">Return to Void</button>
+  </div>
+</div>
 
 <script>
-/**
- * PRIMORDIAL - Cell Evolution Simulator
- * Complete Ecosystem Edition
- */
+// ══════════════════════════════════════════════
+// CURSOR
+// ══════════════════════════════════════════════
+const cursor = document.getElementById('cursor');
+document.addEventListener('mousemove', e => {
+  cursor.style.left = e.clientX + 'px';
+  cursor.style.top = e.clientY + 'px';
+});
 
-const CONSTANTS = {
-    FRICTION: 0.94,
-    TURN_SPEED: 0.08,
-    MAX_SPEED_BASE: 2.5,
-    FOOD_VALUE: 5,
-    MEAT_VALUE: 15,
-    BASE_SIZE: 15,
-    GROWTH_CAP: 200,
-    STARVATION_RATE: 0.03 // Health loss per tick
-};
+// ══════════════════════════════════════════════
+// TITLE ANIMATION
+// ══════════════════════════════════════════════
+const titleCanvas = document.getElementById('title-canvas');
+const tctx = titleCanvas.getContext('2d');
+let titleParticles = [], titleRunning = true;
+function resizeTitle() { titleCanvas.width = innerWidth; titleCanvas.height = innerHeight; }
+resizeTitle(); addEventListener('resize', resizeTitle);
 
-// --- GAME STATE ---
-let canvas, ctx;
-let lastTime = 0;
-let gameState = 'START'; // START, PLAY, EDITOR, GAMEOVER
-let camera = { x: 0, y: 0, zoom: 1 };
-let mouse = { x: 0, y: 0, worldX: 0, worldY: 0 };
-let damageFlash = 0; // Visual flash for damage
-
-// --- ENTITIES ---
-let player;
-let entities = [];
-let particles = []; // Food
-let secrets = [];   // Unlocks
-let backgroundParticles = [];
-let mate = null; // The mate entity
-
-// --- Zandy AI Integration ---
-async function fetchZandyDecision(organism) {
-    // Throttle: Max one request every 8-12 seconds to prevent rate limits/lag
-    if (Date.now() - organism.lastAiUpdate < 8000 + Math.random() * 4000) return;
-    organism.lastAiUpdate = Date.now();
-
-    try {
-        const prompt = `I am a microscopic organism. Health: ${Math.floor(organism.health)}%. Diet: ${organism.diet}. Nearby entities: ${entities.length}. My goal is survival. Should I HUNT nearby prey, FLEE from threats, or WANDER to find food? Respond with one single word: HUNT, FLEE, or WANDER.`;
-        
-        // Using the user-specified endpoint and key
-        const resp = await fetch('https://zandy-ai-api.onrender.com/v1/generate', {
-            method: 'POST',
-            headers: {
-                'Authorization': 'Bearer sk-nexus-7ab776c9',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                prompt: prompt,
-                tier: 'custom',
-                provider: 'aqua',
-                model: 'nova',
-                persona: 'You are a biological survival instinct.'
-            })
-        });
-
-        const data = await resp.json();
-        
-        if (data && data.response) {
-            const decision = data.response.trim().toUpperCase();
-            
-            // Apply decision to organism state
-            if (decision.includes("HUNT")) {
-                organism.aiState = "HUNT";
-                // Visual feedback for AI thought
-                showNotification(`AI Entity decided to: HUNT`, '#f87171');
-            } else if (decision.includes("FLEE")) {
-                organism.aiState = "FLEE";
-            } else {
-                organism.aiState = "WANDER";
-            }
-            
-            // Brief color flash to indicate AI processing
-            const originalColor = organism.color;
-            organism.color = "#ffffff";
-            setTimeout(() => organism.color = originalColor, 200);
-        }
-    } catch (e) {
-        // Silently fail if API is down or limited, revert to instinct
-        // console.log("AI Offline, using standard instinct.");
+function newTOrg() {
+  const o = {
+    reset() {
+      this.x = Math.random() * titleCanvas.width; this.y = Math.random() * titleCanvas.height;
+      this.r = Math.random() * 5 + 2; this.vx = (Math.random() - .5) * .5; this.vy = (Math.random() - .5) * .5 - .18;
+      this.alpha = Math.random() * .5 + .15;
+      this.col = ['#1fffd4','#12a4c4','#7dff9a','#ff9ee8'][0|Math.random()*4];
+      this.pulse = Math.random() * Math.PI * 2; this.type = 0|Math.random()*3;
+    },
+    update() { this.x += this.vx; this.y += this.vy; this.pulse += .05; if (this.y < -20 || this.x < -20 || this.x > titleCanvas.width + 20) this.reset(); },
+    draw(c) {
+      c.save(); c.globalAlpha = this.alpha * (.7 + .3 * Math.sin(this.pulse));
+      c.fillStyle = this.col; c.shadowColor = this.col; c.shadowBlur = 10;
+      c.beginPath();
+      if (this.type === 0) c.arc(this.x, this.y, this.r, 0, Math.PI*2);
+      else if (this.type === 1) c.ellipse(this.x, this.y, this.r*1.8, this.r, Math.atan2(this.vy, this.vx), 0, Math.PI*2);
+      else { for (let i=0; i<5; i++) { const a=(i/5)*Math.PI*2; i?c.lineTo(this.x+Math.cos(a)*this.r,this.y+Math.sin(a)*this.r):c.moveTo(this.x+Math.cos(a)*this.r,this.y+Math.sin(a)*this.r); } }
+      c.fill(); c.restore();
     }
+  };
+  o.reset(); return o;
+}
+for (let i = 0; i < 90; i++) titleParticles.push(newTOrg());
+function titleLoop() { if (!titleRunning) return; tctx.clearRect(0,0,titleCanvas.width,titleCanvas.height); titleParticles.forEach(p=>{p.update();p.draw(tctx);}); requestAnimationFrame(titleLoop); }
+titleLoop();
+
+// ══════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════
+const ERAS = [
+  {name:'Primordial Soup', t:0},
+  {name:'Archean Shallows', t:600},
+  {name:'Cambrian Bloom', t:2500},
+  {name:'Ordovician Deep', t:7000},
+  {name:'Silurian Reef', t:18000},
+  {name:'Devonian Ocean', t:40000},
+];
+const CELL_NAMES = ['Primordius','Archaeon','Proteus','Vorticella','Paramecia','Amoebidus','Euglenos','Noctiluca','Radiolarian','Foraminifera'];
+const FOOD_COLS = ['#1fffd4','#7dff9a','#ffd166','#ff9f59','#c77dff','#7ecaff'];
+
+// Every part has: full description, per-level stat lines, and unlock condition text
+const PARTS = [
+  { id:'membrane', icon:'🛡', name:'Membrane', locked:false, maxLvl:4, costs:[80,200,500,1200],
+    desc:'A thickened phospholipid outer wall. Reduces damage taken from all sources.',
+    levelStats:['Armor +20% — minor scrapes bounce off','Armor +38% — substantial protection','Armor +55% — nearly half damage negated','Armor +70% — elite defensive shell'],
+    unlockText:'' },
+  { id:'flagella', icon:'〜', name:'Flagella', locked:false, maxLvl:4, costs:[60,160,400,1000],
+    desc:'Whip-like protein filaments that propel the cell through viscous fluid.',
+    levelStats:['Speed ×1.3 — noticeably quicker','Speed ×1.6 — swift and agile','Speed ×2.0 — doubles base velocity','Speed ×2.6 — blur of motion'],
+    unlockText:'' },
+  { id:'pseudopod', icon:'🦾', name:'Pseudopod', locked:false, maxLvl:3, costs:[100,280,700],
+    desc:'Cytoplasm extensions that engulf prey. Lets you eat cells closer to your own size.',
+    levelStats:['Eat prey up to 30% larger','Eat prey up to 60% larger','Eat prey up to 100% your size'],
+    unlockText:'' },
+  { id:'chloroplast', icon:'🌿', name:'Chloroplast', locked:false, maxLvl:3, costs:[120,320,800],
+    desc:'Organelles captured from cyanobacteria. Convert light into energy passively — no eating required.',
+    levelStats:['Passive regen +0.4/s — slow trickle','Passive regen +0.9/s — steady flow','Passive regen +1.8/s — almost self-sufficient'],
+    unlockText:'' },
+  { id:'cilia', icon:'≋', name:'Cilia', locked:false, maxLvl:3, costs:[90,240,600],
+    desc:'Dense hair-like projections that sweep food particles toward the cell membrane.',
+    levelStats:['Absorb range ×1.4 — wider reach','Absorb range ×1.8 — vacuum effect','Absorb range ×2.4 — hoover radius'],
+    unlockText:'' },
+  { id:'spinule', icon:'⚡', name:'Spinule', locked:false, maxLvl:4, costs:[150,400,900,2000],
+    desc:'Rigid silica spines that deal damage during contact and power your active attack.',
+    levelStats:['Attack 15 dmg — visible spines','Attack 30 dmg — sharp bristles','Attack 50 dmg — piercing barbs','Attack 80 dmg — lethal lances'],
+    unlockText:'' },
+  { id:'vacuole', icon:'💧', name:'Vacuole', locked:false, maxLvl:3, costs:[120,350,900],
+    desc:'Fluid-filled sacs that increase cell volume and act as biological shock absorbers.',
+    levelStats:['Max HP ×1.4 — 40% more durable','Max HP ×2.0 — doubles your health pool','Max HP ×3.0 — near-indestructible bulk'],
+    unlockText:'' },
+  { id:'toxin', icon:'☠', name:'Toxin Sac', locked:true, maxLvl:3, costs:[200,550,1400],
+    desc:'A pressurised organelle that injects neurotoxin into prey on contact and during attacks.',
+    levelStats:['Poison 5/s on contact and attacks','Poison 15/s — rapid cellular breakdown','Poison 35/s — instant liquefaction'],
+    unlockText:'Unlocks in Archean Shallows (600 biomass)' },
+  { id:'nucleus', icon:'⚗', name:'Nucleus', locked:true, maxLvl:1, costs:[500],
+    desc:'A membrane-bound compartment for DNA. Dramatically accelerates evolutionary adaptation.',
+    levelStats:['Evolution rate ×2 — double progress speed'],
+    unlockText:'Unlocks in Archean Shallows (600 biomass)' },
+  { id:'mitochondria', icon:'🔋', name:'Mitochondria', locked:true, maxLvl:3, costs:[180,480,1200],
+    desc:'The powerhouse of the cell. Expands your total energy reservoir for sustained activity.',
+    levelStats:['Max energy ×1.5 — 50% larger tank','Max energy ×2.0 — twice the capacity','Max energy ×3.0 — almost tireless'],
+    unlockText:'Unlocks in Cambrian Bloom (2500 biomass)' },
+  { id:'eyespot', icon:'👁', name:'Eyespot', locked:true, maxLvl:2, costs:[300,800],
+    desc:'A photoreceptor patch that detects light gradients. Extends your ability to locate mates.',
+    levelStats:['Mate detection range ×1.5','Mate detection range ×2.5 — long-range sensing'],
+    unlockText:'Unlocks in Cambrian Bloom (2500 biomass)' },
+  { id:'secretion', icon:'✨', name:'Secretion', locked:true, maxLvl:2, costs:[250,700],
+    desc:'Chemical attractants released into the water. Draws food particles toward you passively.',
+    levelStats:['Attract nearby food particles','Strong chemical signal — pulls food from afar'],
+    unlockText:'Unlocks in Ordovician Deep (7000 biomass)' },
+];
+
+const EVO_EVENTS = [
+  { name:'Thermal Vent', desc:'Superheated minerals erupt from the ocean floor.', choices:[
+    {icon:'🔥',name:'Thermophile',desc:'+35% energy regen near heat',eff:()=>{G.player.heatResist=true;notify('🔥 Thermophilic adaptation!','gold');}},
+    {icon:'❄',name:'Cryophile',desc:'Cold zones restore health',eff:()=>{G.player.coldHeal=true;notify('❄ Cryophile adaptation!','gold');}},
+    {icon:'🏃',name:'Flee',desc:'+2 Evo Points, no cost',eff:()=>{G.evoPoints+=2;notify('+2 Evo Points — wise retreat');}},
+  ]},
+  { name:'Viral Bloom', desc:'Dormant viruses stir awake in the ancient ocean.', choices:[
+    {icon:'🛡',name:'Immunity',desc:'Permanently resist viruses',eff:()=>{G.player.virusImmune=true;notify('🛡 Viral immunity evolved!','gold');}},
+    {icon:'🧬',name:'Assimilation',desc:'Random part gains +1 level free',eff:()=>{const ps=PARTS.filter(p=>!p.locked&&G.player.parts[p.id]<p.maxLvl);if(ps.length){const t=ps[0|Math.random()*ps.length];G.player.parts[t.id]++;notify('🧬 '+t.name+' +1 via viral DNA!','gold');buildBottomParts();}else{G.evoPoints+=3;notify('+3 Evo Points');}}},
+    {icon:'💤',name:'Dormancy',desc:'Survive safely, lose 20 energy',eff:()=>{G.player.energy-=20;notify('Survived dormancy.');}},
+  ]},
+  { name:'Oxygen Revolution', desc:'Photosynthetic cells flood the ocean with O₂.', choices:[
+    {icon:'💨',name:'Aerobic',desc:'+50% max energy permanently',eff:()=>{G.player.aerobic=true;G.player.maxEnergy*=1.5;notify('💨 Aerobic respiration!','gold');}},
+    {icon:'🌿',name:'Photosynthesis',desc:'Chloroplast +1 free',eff:()=>{const cp=PARTS.find(p=>p.id==='chloroplast');if(G.player.parts.chloroplast<cp.maxLvl){G.player.parts.chloroplast++;notify('🌿 Photosynthesis evolved!','gold');buildBottomParts();}else{G.score+=300;notify('+300 Biomass');}}},
+    {icon:'🌑',name:'Anaerobic',desc:'+20% speed in darkness',eff:()=>{G.player.anaerobic=true;notify('Anaerobic specialist!');}},
+  ]},
+  { name:'Predator Surge', desc:'A massive predatory lineage has emerged.', choices:[
+    {icon:'⚡',name:'Aggression',desc:'Attack damage +25% permanently',eff:()=>{G.player.aggBonus=(G.player.aggBonus||1)*1.25;notify('⚡ Predatory instinct!','gold');}},
+    {icon:'🐚',name:'Shell',desc:'Permanent -15% damage taken',eff:()=>{G.player.extraArmor=(G.player.extraArmor||0)+.15;notify('🐚 Shell armor evolved!','gold');}},
+    {icon:'🫁',name:'Camouflage',desc:'60% chance enemies ignore you',eff:()=>{G.player.camo=true;notify('🫁 Camouflage evolved!','gold');}},
+  ]},
+  { name:'Nutrient Bloom', desc:'A vast algae bloom enriches the ocean.', choices:[
+    {icon:'🌊',name:'Filter Feed',desc:'Passively absorb ambient nutrients',eff:()=>{G.player.filterFeed=true;notify('🌊 Filter feeding evolved!','gold');}},
+    {icon:'📦',name:'Stockpile',desc:'+500 Biomass immediately',eff:()=>{G.score+=500;notify('+500 Biomass stockpiled!','gold');}},
+    {icon:'🔬',name:'Specialize',desc:'Unlock a random locked part',eff:()=>{const locked=PARTS.filter(p=>p.locked);if(locked.length){const t=locked[0|Math.random()*locked.length];t.locked=false;notify('🔬 '+t.name+' unlocked!','gold');buildBottomParts();}else{G.score+=600;notify('+600 Biomass bonus');}}},
+  ]},
+];
+
+// ══════════════════════════════════════════════
+// ENGINE
+// ══════════════════════════════════════════════
+const gameCanvas = document.getElementById('game-canvas');
+const ctx = gameCanvas.getContext('2d');
+const keys = {};
+let mouseX = 0, mouseY = 0, gameRunning = false;
+let G = {}, matingCell = null, combatFlash = 0;
+
+function resizeCanvas() { gameCanvas.width = innerWidth; gameCanvas.height = innerHeight; }
+resizeCanvas(); addEventListener('resize', resizeCanvas);
+
+document.addEventListener('keydown', e => {
+  if (keys[e.key.toLowerCase()]) return;
+  keys[e.key.toLowerCase()] = true;
+  if (e.key === ' ') { e.preventDefault(); doAttack(); }
+  if (e.key.toLowerCase() === 'f') openEditor();
+  if (e.key.toLowerCase() === 'e') eatNearest();
+  if (e.key === 'Escape') closeEditor();
+});
+document.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+document.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
+
+// ── Part stat helpers ──
+function pv(id) { const p = PARTS.find(x => x.id === id); const lvl = G.player.parts[id]; return (p && lvl > 0) ? p.vals[lvl-1] : null; }
+// vals attached at runtime below
+function playerSpeed() { return G.player.speed * (PARTS.find(x=>x.id==='flagella').vals[G.player.parts.flagella-1]||1) * (G.player.speedMult||1); }
+function playerArmor() { const mem = PARTS.find(x=>x.id==='membrane'); const lv = G.player.parts.membrane; return Math.min(.88, (lv>0?mem.vals[lv-1]:0)+(G.player.extraArmor||0)); }
+function playerAttack() { const sp=PARTS.find(x=>x.id==='spinule'); const lv=G.player.parts.spinule; return (lv>0?sp.vals[lv-1]:8)*(G.player.aggBonus||1); }
+function playerEatRatio() { const ps=PARTS.find(x=>x.id==='pseudopod'); const lv=G.player.parts.pseudopod; return lv>0?ps.vals[lv-1]:1; }
+function playerRange() { const ci=PARTS.find(x=>x.id==='cilia'); const lv=G.player.parts.cilia; return G.player.r*(lv>0?ci.vals[lv-1]:1)+6; }
+function playerMaxHP() { const vc=PARTS.find(x=>x.id==='vacuole'); const lv=G.player.parts.vacuole; return 100*(lv>0?vc.vals[lv-1]:1); }
+function playerMateRange() { const ey=PARTS.find(x=>x.id==='eyespot'); const lv=G.player.parts.eyespot; return 200*(lv>0?ey.vals[lv-1]:1); }
+function playerChloroRegen() { const cl=PARTS.find(x=>x.id==='chloroplast'); const lv=G.player.parts.chloroplast; return lv>0?cl.vals[lv-1]:0; }
+function playerMaxEnergy() { const mi=PARTS.find(x=>x.id==='mitochondria'); const lv=G.player.parts.mitochondria; return 100*(lv>0?mi.vals[lv-1]:1); }
+
+// Attach vals arrays to part definitions
+PARTS.find(x=>x.id==='membrane').vals = [.2,.38,.55,.70];
+PARTS.find(x=>x.id==='flagella').vals = [1.3,1.6,2.0,2.6];
+PARTS.find(x=>x.id==='pseudopod').vals = [1.3,1.6,2.0];
+PARTS.find(x=>x.id==='chloroplast').vals = [0.4,0.9,1.8];
+PARTS.find(x=>x.id==='cilia').vals = [1.4,1.8,2.4];
+PARTS.find(x=>x.id==='spinule').vals = [15,30,50,80];
+PARTS.find(x=>x.id==='vacuole').vals = [1.4,2.0,3.0];
+PARTS.find(x=>x.id==='toxin').vals = [5,15,35];
+PARTS.find(x=>x.id==='nucleus').vals = [2];
+PARTS.find(x=>x.id==='mitochondria').vals = [1.5,2.0,3.0];
+PARTS.find(x=>x.id==='eyespot').vals = [1.5,2.5];
+PARTS.find(x=>x.id==='secretion').vals = [1,2];
+
+function rw() { return Math.random()*G.world.w; }
+function rh() { return Math.random()*G.world.h; }
+function toRoman(n) { const v=[1000,900,500,400,100,90,50,40,10,9,5,4,1],r=['M','CM','D','CD','C','XC','L','XL','X','IX','V','IV','I'];let s='';v.forEach((x,i)=>{while(n>=x){s+=r[i];n-=x;}});return s; }
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+function initGame() {
+  G = {
+    score:0, biomassSpent:0, evoPoints:0, generation:1, era:0, frame:0, paused:false, kills:0, matings:0,
+    player:{
+      x:2500, y:2500, r:20, vx:0, vy:0,
+      health:100, maxHealth:100, energy:100, maxEnergy:100,
+      evoProgress:0, evoGoal:100,
+      parts:{membrane:0,flagella:0,pseudopod:0,chloroplast:0,cilia:0,spinule:0,vacuole:0,toxin:0,nucleus:0,mitochondria:0,eyespot:0,secretion:0},
+      speed:2.6, speedMult:1,
+      heatResist:false, coldHeal:false, virusImmune:false, aerobic:false, anaerobic:false, camo:false, filterFeed:false,
+      extraArmor:0, aggBonus:1, invincible:0, attackCooldown:0, name:CELL_NAMES[0],
+    },
+    entities:[], particles:[], projectiles:[],
+    camera:{x:0,y:0}, world:{w:5000,h:5000},
+    nextEvoEvent:800, spawnTimer:0, virusTimer:0,
+  };
+  for (let i=0; i<180; i++) G.entities.push(mkFood());
+  for (let i=0; i<22; i++) G.entities.push(mkCell(false));
+  for (let i=0; i<7; i++) G.entities.push(mkCell(true));
 }
 
-// --- PARTS ---
-const PARTS = {
-    // Starters
-    flagella: { id: 'flagella', name: 'Flagella', cost: 10, type: 'motor', stat: 'speed', val: 1.5, color: '#a3b8c2', render: 'flagella', unlocked: true },
-    filter:   { id: 'filter', name: 'Filter Mouth', cost: 15, type: 'mouth', stat: 'diet', diet: 'herbivore', val: 0, color: '#4ade80', render: 'filter', unlocked: true },
-    jaw:      { id: 'jaw', name: 'Carnivore Jaw', cost: 25, type: 'mouth', stat: 'damage', diet: 'carnivore', val: 10, color: '#ef4444', render: 'jaw', unlocked: true },
-    eye:      { id: 'eye', name: 'Simple Eye', cost: 15, type: 'sense', stat: 'view', val: 100, color: '#fff', render: 'eye', unlocked: true },
-    
-    // Motors
-    jet:      { id: 'jet', name: 'Cilia Jet', cost: 40, type: 'motor', stat: 'speed', val: 3.0, color: '#f472b6', render: 'jet', unlocked: false },
-    fin:      { id: 'fin', name: 'Stabilizer Fin', cost: 20, type: 'motor', stat: 'speed', val: 1.0, color: '#60a5fa', render: 'fin', unlocked: false },
-    tentacle: { id: 'tentacle', name: 'Whip Tentacle', cost: 30, type: 'motor', stat: 'speed', val: 2.0, color: '#d8b4fe', render: 'tentacle', unlocked: false },
-    wing:     { id: 'wing', name: 'Drift Wing', cost: 35, type: 'motor', stat: 'speed', val: 2.5, color: '#c084fc', render: 'wing', unlocked: false },
-    
-    // Weapons
-    spike:    { id: 'spike', name: 'Keratin Spike', cost: 30, type: 'weapon', stat: 'damage', val: 15, color: '#f87171', render: 'spike', unlocked: false },
-    poison:   { id: 'poison', name: 'Poison Sac', cost: 50, type: 'weapon', stat: 'damage', val: 25, color: '#a78bfa', render: 'poison', unlocked: false },
-    electric: { id: 'electric', name: 'Electric Lobe', cost: 60, type: 'weapon', stat: 'damage', val: 30, color: '#fde047', render: 'electric', unlocked: false },
-    saw:      { id: 'saw', name: 'Bone Saw', cost: 55, type: 'weapon', stat: 'damage', val: 28, color: '#94a3b8', render: 'saw', unlocked: false },
-    horn:     { id: 'horn', name: 'Ramming Horn', cost: 45, type: 'weapon', stat: 'damage', val: 20, color: '#fca5a5', render: 'horn', unlocked: false },
-
-    // Mouths
-    proboscis: { id: 'proboscis', name: 'Proboscis', cost: 35, type: 'mouth', stat: 'diet', diet: 'omnivore', val: 0, color: '#f9a8d4', render: 'proboscis', unlocked: false },
-    mandibles: { id: 'mandibles', name: 'Titan Mandibles', cost: 60, type: 'mouth', stat: 'damage', diet: 'carnivore', val: 20, color: '#b91c1c', render: 'mandibles', unlocked: false },
-
-    // Body/Defense
-    armor:    { id: 'armor', name: 'Chitin Plate', cost: 35, type: 'body', stat: 'health', val: 30, color: '#fbbf24', render: 'armor', unlocked: false },
-    shell_spiked: { id: 'shell_spiked', name: 'Spiked Shell', cost: 50, type: 'body', stat: 'health', val: 40, color: '#ea580c', render: 'shell_spiked', unlocked: false },
-    
-    // Senses
-    eye_stalk: { id: 'eye_stalk', name: 'Eye Stalk', cost: 25, type: 'sense', stat: 'view', val: 150, color: '#e2e8f0', render: 'eye_stalk', unlocked: false }
-};
-
-// --- RENDERERS (Canvas Drawing Functions) ---
-const Renderers = {
-    flagella: (ctx, size, color) => {
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.quadraticCurveTo(-size*1.5, size, -size*2.5, 0);
-        ctx.stroke();
-    },
-    jet: (ctx, size, color) => {
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.moveTo(0, 8);
-        ctx.lineTo(-size*1.2, 12);
-        ctx.lineTo(-size*1.2, -12);
-        ctx.lineTo(0, -8);
-        ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,0.5)'; // Flame
-        ctx.beginPath();
-        ctx.arc(-size*1.2, 0, 4, 0, Math.PI*2);
-        ctx.fill();
-    },
-    spike: (ctx, size, color) => {
-        ctx.fillStyle = '#eee'; 
-        ctx.beginPath();
-        ctx.moveTo(0, 6);
-        ctx.lineTo(size*1.5, 0);
-        ctx.lineTo(0, -6);
-        ctx.fill();
-        ctx.fillStyle = color; 
-        ctx.beginPath();
-        ctx.moveTo(size*0.5, 4);
-        ctx.lineTo(size*1.5, 0);
-        ctx.lineTo(size*0.5, -4);
-        ctx.fill();
-    },
-    poison: (ctx, size, color) => {
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.arc(0, 0, size*0.6, 0, Math.PI*2);
-        ctx.fill();
-        ctx.fillStyle = '#d1fae5'; 
-        ctx.beginPath();
-        ctx.arc(2, -2, 3, 0, Math.PI*2);
-        ctx.fill();
-    },
-    electric: (ctx, size, color) => {
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.moveTo(0, 5);
-        ctx.lineTo(size*0.5, 8);
-        ctx.lineTo(size*0.5, 2);
-        ctx.lineTo(size, 5);
-        ctx.lineTo(size*0.8, -2);
-        ctx.lineTo(size*1.2, -5);
-        ctx.lineTo(0, -5);
-        ctx.fill();
-        ctx.fillStyle = '#fff';
-        ctx.beginPath(); ctx.arc(size*0.8, 0, 3, 0, Math.PI*2); ctx.fill();
-    },
-    saw: (ctx, size, color) => {
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.arc(size*0.8, 0, size*0.6, 0, Math.PI*2);
-        ctx.fill();
-        ctx.strokeStyle = '#cbd5e1';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        for(let i=0; i<8; i++) {
-            let a = (i/8)*Math.PI*2;
-            ctx.moveTo(size*0.8 + Math.cos(a)*size*0.6, Math.sin(a)*size*0.6);
-            ctx.lineTo(size*0.8 + Math.cos(a+0.3)*size*0.8, Math.sin(a+0.3)*size*0.8);
-        }
-        ctx.stroke();
-    },
-    horn: (ctx, size, color) => {
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.moveTo(0, 8);
-        ctx.quadraticCurveTo(size*0.5, 5, size*1.5, 0);
-        ctx.quadraticCurveTo(size*0.5, -5, 0, -8);
-        ctx.fill();
-    },
-    jaw: (ctx, size, color) => {
-        ctx.fillStyle = color;
-        // Top
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(size*1.2, -size/2);
-        ctx.lineTo(size/2, -size*1.2);
-        ctx.fill();
-        // Bottom
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(size*1.2, size/2);
-        ctx.lineTo(size/2, size*1.2);
-        ctx.fill();
-        // Teeth
-        ctx.fillStyle = '#fff';
-        ctx.beginPath(); ctx.moveTo(size*0.5, -size*0.8); ctx.lineTo(size*0.8, -size*0.4); ctx.lineTo(size*0.2, -size*0.4); ctx.fill();
-        ctx.beginPath(); ctx.moveTo(size*0.5, size*0.8); ctx.lineTo(size*0.8, size*0.4); ctx.lineTo(size*0.2, size*0.4); ctx.fill();
-    },
-    mandibles: (ctx, size, color) => {
-        ctx.fillStyle = color;
-        // Left Pincer
-        ctx.beginPath(); ctx.moveTo(0, -4); ctx.quadraticCurveTo(size, -10, size*1.5, -2); ctx.quadraticCurveTo(size*0.8, -2, 0, -4); ctx.fill();
-        // Right Pincer
-        ctx.beginPath(); ctx.moveTo(0, 4); ctx.quadraticCurveTo(size, 10, size*1.5, 2); ctx.quadraticCurveTo(size*0.8, 2, 0, 4); ctx.fill();
-    },
-    proboscis: (ctx, size, color) => {
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 6;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(size, 0);
-        ctx.stroke();
-        ctx.fillStyle = '#000';
-        ctx.beginPath(); ctx.arc(size, 0, 2, 0, Math.PI*2); ctx.fill();
-    },
-    filter: (ctx, size, color) => {
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.arc(size/2, 0, size/1.8, 0, Math.PI*2);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(size/2, -size/3);
-        ctx.lineTo(size/2, size/3);
-        ctx.stroke();
-    },
-    armor: (ctx, size, color) => {
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, size*0.8, size*0.4, Math.PI/2, 0, Math.PI*2);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-        ctx.stroke();
-    },
-    shell_spiked: (ctx, size, color) => {
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, size*0.9, size*0.5, Math.PI/2, 0, Math.PI*2);
-        ctx.fill();
-        // Spikes on shell
-        ctx.fillStyle = '#fff';
-        ctx.beginPath(); ctx.moveTo(size*0.4, -size*0.4); ctx.lineTo(size*0.6, 0); ctx.lineTo(size*0.4, size*0.4); ctx.fill();
-        ctx.beginPath(); ctx.moveTo(-size*0.4, -size*0.4); ctx.lineTo(-size*0.6, 0); ctx.lineTo(-size*0.4, size*0.4); ctx.fill();
-    },
-    fin: (ctx, size, color) => {
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.moveTo(0,0);
-        ctx.quadraticCurveTo(size, size, 0, size*1.5);
-        ctx.fill();
-    },
-    wing: (ctx, size, color) => {
-        ctx.fillStyle = color;
-        ctx.globalAlpha = 0.8;
-        ctx.beginPath();
-        ctx.moveTo(0,0);
-        ctx.quadraticCurveTo(size*0.5, size*1.5, size*1.5, size);
-        ctx.quadraticCurveTo(size, 0, 0, 0);
-        ctx.fill();
-        ctx.globalAlpha = 1.0;
-    },
-    tentacle: (ctx, size, color) => {
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 4;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(0,0);
-        ctx.bezierCurveTo(-size, size/2, -size, -size/2, -size*2, 0);
-        ctx.stroke();
-    },
-    eye: (ctx, size, color) => {
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(size/2, 0, size/1.8, 0, Math.PI*2);
-        ctx.fill();
-        ctx.fillStyle = '#000';
-        ctx.beginPath();
-        ctx.arc(size/2 + 3, 0, size/4, 0, Math.PI*2);
-        ctx.fill();
-    },
-    eye_stalk: (ctx, size, color) => {
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(size*0.8, -size*0.5); ctx.stroke();
-        ctx.fillStyle = '#fff';
-        ctx.beginPath(); ctx.arc(size*0.8, -size*0.5, size*0.4, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#000';
-        ctx.beginPath(); ctx.arc(size*0.9, -size*0.5, size*0.15, 0, Math.PI*2); ctx.fill();
-    }
-};
-
-// --- MAIN ORGANISM CLASS ---
-class Organism {
-    constructor(x, y, isPlayer = false) {
-        this.pos = { x: x || 0, y: y || 0 };
-        this.vel = { x: 0, y: 0 };
-        this.acc = { x: 0, y: 0 };
-        this.angle = Math.random() * Math.PI * 2;
-        this.isPlayer = isPlayer;
-        this.targetAngle = this.angle;
-        
-        this.dna = 0;
-        this.color = isPlayer ? '#4ade80' : `hsl(${Math.random()*360}, 75%, 60%)`;
-        this.baseSize = CONSTANTS.BASE_SIZE;
-        this.growth = 0;
-        
-        this.parts = []; 
-        
-        // Stats
-        this.maxSpeed = 0;
-        this.turnSpeed = CONSTANTS.TURN_SPEED;
-        this.damage = 0;
-        this.maxHealth = 100;
-        this.health = 100;
-        this.diet = 'none'; // 'herbivore', 'carnivore', 'omnivore'
-        
-        this.tailWiggle = 0;
-        this.hitFlash = 0; // Visual flash when hit
-        this.isMate = false; // Is this a mate entity?
-        
-        // AI Properties
-        this.isSmart = (!isPlayer && Math.random() < 0.1); // 10% chance to be "Smart" (API driven)
-        this.lastAiUpdate = 0;
-        this.aiState = "WANDER"; // Default state
-
-        if (!isPlayer) this.randomize();
-        this.recalcStats();
-    }
-
-    randomize() {
-        let points = 40 + Math.random() * 100;
-        const types = Object.keys(PARTS);
-        
-        // AI Guarantee: Needs a mouth
-        const mouths = types.filter(t => PARTS[t].type === 'mouth');
-        const rMouth = mouths[Math.floor(Math.random()*mouths.length)];
-        this.addPart(rMouth, 0);
-
-        // Spend points on random parts
-        while(points > 0) {
-            const type = types[Math.floor(Math.random() * types.length)];
-            const part = PARTS[type];
-            if (points >= part.cost) {
-                this.addPart(part.id, Math.random() * Math.PI * 2);
-                points -= part.cost;
-            } else {
-                points = 0;
-            }
-        }
-    }
-
-    addPart(partId, angle) {
-        this.parts.push({ id: partId, angle: angle });
-        this.recalcStats();
-    }
-
-    removeLastPart() {
-        if(this.parts.length > 0) {
-            const p = this.parts.pop();
-            this.dna += PARTS[p.id].cost; 
-            this.recalcStats();
-        }
-    }
-
-    recalcStats() {
-        if (isNaN(this.growth)) this.growth = 0;
-
-        this.maxSpeed = CONSTANTS.MAX_SPEED_BASE;
-        this.damage = 0;
-        this.maxHealth = 50 + (this.growth * 5); 
-        
-        let hasPlantEater = false;
-        let hasMeatEater = false;
-
-        this.parts.forEach(p => {
-            const data = PARTS[p.id];
-            if (data.stat === 'speed') this.maxSpeed += data.val * 0.5;
-            if (data.stat === 'damage') this.damage += data.val;
-            if (data.stat === 'health') this.maxHealth += data.val;
-            
-            if (data.diet === 'herbivore') hasPlantEater = true;
-            if (data.diet === 'carnivore') hasMeatEater = true;
-            if (data.diet === 'omnivore') { hasPlantEater = true; hasMeatEater = true; }
-        });
-
-        // Determine Diet
-        if (hasPlantEater && hasMeatEater) this.diet = 'omnivore';
-        else if (hasMeatEater) this.diet = 'carnivore';
-        else if (hasPlantEater) this.diet = 'herbivore';
-        else this.diet = 'none';
-
-        // Size penalty
-        let size = this.getSize();
-        if (isNaN(size) || size < 1) size = CONSTANTS.BASE_SIZE;
-        
-        let sizeMult = size / CONSTANTS.BASE_SIZE;
-        this.maxSpeed /= Math.max(1, sizeMult * 0.4);
-        this.maxSpeed = Math.max(0.2, this.maxSpeed);
-    }
-
-    getSize() {
-        return this.baseSize + (this.growth || 0);
-    }
-
-    update() {
-        // Safety check for NaN
-        if (isNaN(this.pos.x) || isNaN(this.pos.y)) {
-            this.pos.x = 0; this.pos.y = 0; this.vel.x = 0; this.vel.y = 0;
-        }
-
-        // 1. Starvation / Metabolism
-        const starvationAmt = CONSTANTS.STARVATION_RATE * (this.getSize() / CONSTANTS.BASE_SIZE);
-        this.health -= starvationAmt;
-
-        // Physics
-        this.vel.x *= CONSTANTS.FRICTION;
-        this.vel.y *= CONSTANTS.FRICTION;
-        this.pos.x += this.vel.x;
-        this.pos.y += this.vel.y;
-        
-        const speed = Math.hypot(this.vel.x, this.vel.y);
-        this.tailWiggle += 0.1 + (isNaN(speed) ? 0 : speed * 0.2);
-
-        // Flash decay
-        if (this.hitFlash > 0) this.hitFlash -= 0.1;
-
-        // Death logic
-        if (this.health <= 0) {
-            this.die();
-            return false; 
-        }
-        
-        // AI Logic
-        if (!this.isPlayer && !this.isMate) {
-            // Trigger GenAI update if smart
-            if (this.isSmart) {
-                fetchZandyDecision(this);
-            }
-            this.updateAI();
-        } else if (this.isMate) {
-            const d = Math.hypot(player.pos.x - this.pos.x, player.pos.y - this.pos.y);
-            if (d < 300) {
-                this.targetAngle = Math.atan2(player.pos.y - this.pos.y, player.pos.x - this.pos.x);
-                this.applyForce(0.05, this.angle);
-            }
-            let diff = this.targetAngle - this.angle;
-            while (diff < -Math.PI) diff += Math.PI * 2;
-            while (diff > Math.PI) diff -= Math.PI * 2;
-            this.angle += diff * 0.05;
-        }
-
-        return true; 
-    }
-
-    updateAI() {
-        // Heuristic AI (The fallback/executing layer)
-        // If GenAI set a high-level state (HUNT, FLEE), we follow it here.
-        
-        let target = null;
-        let minDist = 400; // View distance
-
-        // Override logic if Zandy AI set a specific mode
-        if (this.aiState === "HUNT") {
-            // Prioritize finding prey
-            if (this.diet === 'carnivore' || this.diet === 'omnivore') {
-                let distPlayer = Math.hypot(player.pos.x - this.pos.x, player.pos.y - this.pos.y);
-                // Aggressively target player if nearby
-                if (distPlayer < minDist) {
-                    minDist = distPlayer;
-                    target = player.pos;
-                }
-                // Or other entities
-                entities.forEach(e => {
-                    if (e !== this && e.getSize() < this.getSize()) {
-                        let d = Math.hypot(e.pos.x - this.pos.x, e.pos.y - this.pos.y);
-                        if (d < minDist) {
-                            minDist = d;
-                            target = e.pos;
-                        }
-                    }
-                });
-            }
-        } else if (this.aiState === "FLEE") {
-            // Run away from closest entity larger than self
-            let closestThreat = null;
-            let closestDist = 400;
-            
-            entities.forEach(e => {
-                if (e !== this && e.getSize() > this.getSize()) {
-                    let d = Math.hypot(e.pos.x - this.pos.x, e.pos.y - this.pos.y);
-                    if (d < closestDist) {
-                        closestDist = d;
-                        closestThreat = e;
-                    }
-                }
-            });
-            
-            if (closestThreat) {
-                this.targetAngle = Math.atan2(this.pos.y - closestThreat.pos.y, this.pos.x - closestThreat.pos.x);
-                this.applyForce(0.2, this.angle);
-                return; // Priority exit
-            }
-        }
-
-        // Standard Behavior (WANDER or if HUNT found nothing)
-        if (!target) {
-            // Check Food
-            particles.forEach(p => {
-                if (this.canEat(p.type)) {
-                    let d = Math.hypot(p.pos.x - this.pos.x, p.pos.y - this.pos.y);
-                    if (d < minDist) {
-                        minDist = d;
-                        target = p.pos;
-                    }
-                }
-            });
-        }
-
-        // Standard Predator Logic (if not in explicit state)
-        if (!target && this.aiState === "WANDER" && (this.diet === 'carnivore' || this.diet === 'omnivore')) {
-             // Standard hunt logic
-             // ... existing hunt logic ...
-        }
-
-        if (target) {
-            this.targetAngle = Math.atan2(target.y - this.pos.y, target.x - this.pos.x);
-            this.applyForce(0.1, this.angle);
-        } else {
-            if (Math.random() < 0.02) this.targetAngle = Math.random() * Math.PI * 2;
-            this.applyForce(0.05, this.angle);
-        }
-
-        let diff = this.targetAngle - this.angle;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        this.angle += diff * 0.05;
-    }
-
-    die() {
-        // Drop Meat
-        spawnFood(this.pos.x, this.pos.y, 'meat', this.getSize());
-        let chunks = Math.floor(this.getSize() / 5);
-        for(let i=0; i<chunks; i++) {
-             spawnFood(this.pos.x + (Math.random()*40-20), this.pos.y + (Math.random()*40-20), 'meat', this.getSize()*0.5);
-        }
-
-        if (this.isPlayer) {
-            // Trigger Game Over
-            gameState = 'GAMEOVER';
-            document.getElementById('game-over-screen').style.display = 'flex';
-            document.getElementById('final-dna').innerText = Math.floor(this.dna);
-        }
-    }
-
-    canEat(foodType) {
-        if (this.diet === 'omnivore') return true;
-        if (this.diet === 'carnivore' && foodType === 'meat') return true;
-        if (this.diet === 'herbivore' && foodType === 'plant') return true;
-        return false;
-    }
-
-    applyForce(force, angle) {
-        if (isNaN(angle)) return;
-        this.acc.x = Math.cos(angle) * force;
-        this.acc.y = Math.sin(angle) * force;
-        this.vel.x += this.acc.x;
-        this.vel.y += this.acc.y;
-    }
-
-    draw(ctx, isPreview = false) {
-        if (isNaN(this.pos.x) || isNaN(this.pos.y) || isNaN(this.getSize())) return;
-
-        ctx.save();
-        if (!isPreview) ctx.translate(this.pos.x, this.pos.y);
-        ctx.rotate(this.angle);
-
-        const r = this.getSize();
-
-        // Aura for Smart/AI Bots
-        if (this.isSmart && !this.isPlayer) {
-            ctx.beginPath();
-            ctx.strokeStyle = `rgba(100, 200, 255, ${0.3 + Math.sin(Date.now()/500)*0.2})`;
-            ctx.lineWidth = 2;
-            ctx.arc(0, 0, r + 8, 0, Math.PI*2);
-            ctx.stroke();
-        }
-
-        // Mate Aura
-        if (this.isMate) {
-            ctx.beginPath();
-            ctx.strokeStyle = '#ec4899';
-            ctx.lineWidth = 2 + Math.sin(Date.now()/200)*2;
-            ctx.arc(0, 0, r + 15, 0, Math.PI*2);
-            ctx.stroke();
-        }
-
-        // Draw Parts (Back layer)
-        this.parts.forEach(p => {
-            const data = PARTS[p.id];
-            if (data.type === 'motor') {
-                ctx.save();
-                ctx.rotate(p.angle);
-                ctx.translate(-r * 0.85, 0); 
-                ctx.rotate(Math.sin(this.tailWiggle) * 0.3); 
-                Renderers[data.render](ctx, r, data.color);
-                ctx.restore();
-            }
-        });
-
-        // Body
-        ctx.beginPath();
-        if (this.hitFlash > 0) {
-            ctx.fillStyle = '#ffffff'; // Flash white on hit
-        } else {
-            ctx.fillStyle = this.color;
-        }
-        
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = this.color;
-        ctx.arc(0, 0, r, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-        
-        // Nucleus
-        ctx.fillStyle = 'rgba(0,0,0,0.2)';
-        ctx.beginPath();
-        ctx.arc(0, 0, r*0.4, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Draw Parts (Front layer)
-        this.parts.forEach(p => {
-            const data = PARTS[p.id];
-            if (data.type !== 'motor') {
-                ctx.save();
-                ctx.rotate(p.angle);
-                ctx.translate(r, 0); 
-                Renderers[data.render](ctx, r, data.color);
-                ctx.restore();
-            }
-        });
-
-        // Health Bar (only if hurt)
-        if (!isPreview && this.health < this.maxHealth) {
-            ctx.rotate(-this.angle);
-            ctx.fillStyle = 'red';
-            ctx.fillRect(-r, -r - 15, r*2, 5);
-            ctx.fillStyle = '#4ade80';
-            ctx.fillRect(-r, -r - 15, (r*2) * (this.health/this.maxHealth), 5);
-        }
-
-        ctx.restore();
-    }
+// ══════════════════════════════════════════════
+// ENTITY FACTORIES
+// ══════════════════════════════════════════════
+function mkFood(x,y) {
+  return { type:'food', x:x||rw(), y:y||rh(), r:Math.random()*5+3, col:FOOD_COLS[0|Math.random()*FOOD_COLS.length], energy:Math.random()*10+4, pulse:Math.random()*Math.PI*2 };
+}
+function mkCell(hostile, r_) {
+  const r = r_ || (Math.random()*14+7), e = G.era||0;
+  return {
+    type:hostile?'predator':'prey', x:rw(), y:rh(), r,
+    vx:(Math.random()-.5)*1.5, vy:(Math.random()-.5)*1.5,
+    health:r*4*(1+e*.2), maxHealth:r*4*(1+e*.2),
+    col:hostile?`hsl(${Math.random()*30+340},75%,55%)`:FOOD_COLS[0|Math.random()*FOOD_COLS.length],
+    agroRange:hostile?(160+e*40):0, poison:0,
+    wanderA:Math.random()*Math.PI*2, wobble:Math.random()*Math.PI*2,
+    trail:[], attackCd:0, matable:!hostile&&Math.random()<.3,
+    parts:{membrane:0|Math.random()*(2+e),flagella:0|Math.random()*(2+e),spinule:0|Math.random()*(1+e)},
+  };
+}
+function mkVirus() { return { type:'virus', x:rw(), y:rh(), r:8, col:'#ff77ff', vx:(Math.random()-.5)*3, vy:(Math.random()-.5)*3, dmg:15+(G.era||0)*5, pulse:0 }; }
+function mkMateCell() {
+  const p = G.player;
+  const c = mkCell(false, p.r*.8+Math.random()*p.r*.5);
+  c.matable = true; c.seeking = true; c.col = '#ff9ee8'; c.type = 'mate';
+  c.x = p.x + (Math.random()-.5)*500; c.y = p.y + (Math.random()-.5)*500;
+  return c;
 }
 
-class Food {
-    constructor(x, y, type, size = 5) {
-        this.pos = { x, y };
-        this.type = type; 
-        this.size = size;
-        this.angle = Math.random() * 6.28;
-    }
-
-    draw(ctx) {
-        ctx.save();
-        ctx.translate(this.pos.x, this.pos.y);
-        ctx.rotate(this.angle);
-        
-        if (this.type === 'plant') {
-            ctx.fillStyle = '#4ade80';
-            ctx.shadowColor = '#4ade80';
-            ctx.shadowBlur = 8;
-            ctx.beginPath();
-            ctx.arc(0, 0, this.size, 0, Math.PI*2);
-            ctx.fill();
-        } else {
-            ctx.fillStyle = '#f87171';
-            ctx.shadowColor = '#f87171';
-            ctx.shadowBlur = 5;
-            ctx.beginPath();
-            ctx.moveTo(-this.size, -this.size/2);
-            ctx.lineTo(this.size, -this.size);
-            ctx.lineTo(this.size/2, this.size);
-            ctx.lineTo(-this.size/2, this.size/2);
-            ctx.fill();
-        }
-        ctx.restore();
-    }
+// ══════════════════════════════════════════════
+// GAME LOOP
+// ══════════════════════════════════════════════
+function gameLoop() {
+  if (!gameRunning) return;
+  G.frame++;
+  if (!G.paused) { update(); render(); }
+  updateHUD();
+  requestAnimationFrame(gameLoop);
 }
 
-class Secret {
-    constructor(x, y) {
-        this.pos = {x, y};
-        this.size = 20;
-        this.pulse = 0;
-    }
-    
-    draw(ctx) {
-        this.pulse += 0.05;
-        const scale = 1 + Math.sin(this.pulse) * 0.1;
-        ctx.save();
-        ctx.translate(this.pos.x, this.pos.y);
-        ctx.scale(scale, scale);
-        ctx.shadowColor = '#fbbf24';
-        ctx.shadowBlur = 20;
-        ctx.fillStyle = '#fbbf24';
-        ctx.beginPath();
-        for(let i=0; i<5; i++) {
-            ctx.lineTo(Math.cos((18 + i*72)/180*Math.PI)*15, -Math.sin((18 + i*72)/180*Math.PI)*15);
-            ctx.lineTo(Math.cos((54 + i*72)/180*Math.PI)*7, -Math.sin((54 + i*72)/180*Math.PI)*7);
-        }
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
-    }
+function update() { updatePlayer(); updateEntities(); updateProjectiles(); updateParticles(); checkCollisions(); manageSpawn(); checkEra(); checkEvolution(); }
+
+// ── PLAYER ──
+function updatePlayer() {
+  const p = G.player;
+  const spd = playerSpeed();
+  let dx=0, dy=0;
+  if (keys['w']||keys['arrowup']) dy-=1;
+  if (keys['s']||keys['arrowdown']) dy+=1;
+  if (keys['a']||keys['arrowleft']) dx-=1;
+  if (keys['d']||keys['arrowright']) dx+=1;
+  const cx=gameCanvas.width/2, cy=gameCanvas.height/2;
+  const mx=mouseX-cx, my=mouseY-cy, md=Math.sqrt(mx*mx+my*my);
+  if (md>50) { dx+=(mx/md)*.6; dy+=(my/md)*.6; }
+  const len = Math.sqrt(dx*dx+dy*dy)||1;
+  p.vx = p.vx*.84+(dx/len)*spd*.16; p.vy = p.vy*.84+(dy/len)*spd*.16;
+  p.x = Math.max(p.r, Math.min(G.world.w-p.r, p.x+p.vx));
+  p.y = Math.max(p.r, Math.min(G.world.h-p.r, p.y+p.vy));
+  G.camera.x = p.x-gameCanvas.width/2; G.camera.y = p.y-gameCanvas.height/2;
+
+  const chloro = playerChloroRegen();
+  p.energy = Math.min(playerMaxEnergy(), p.energy + .05 + chloro*.025 + (p.filterFeed?.02:0));
+  const mv = Math.sqrt(p.vx*p.vx+p.vy*p.vy);
+  p.energy -= .025+mv*.012;
+  if (p.energy<=0) { p.energy=0; p.health-=.2; }
+  if (p.energy>60 && p.health<p.maxHealth) p.health = Math.min(p.maxHealth, p.health+.06);
+
+  const targetHP = playerMaxHP();
+  if (p.maxHealth !== targetHP) p.maxHealth = targetHP;
+  const targetE = playerMaxEnergy();
+  if (p.maxEnergy !== targetE) p.maxEnergy = targetE;
+
+  if (p.attackCooldown>0) p.attackCooldown--;
+  if (p.invincible>0) p.invincible--;
+  const rate = G.player.parts.nucleus>0 ? 2 : 1;
+  p.evoProgress += .012*rate;
+  if (p.health<=0) endGame();
 }
 
-// --- INITIALIZATION ---
+// ── COMBAT ──
+function doAttack() {
+  if (!gameRunning || G.paused) return;
+  const p = G.player; if (p.attackCooldown>0) return;
+  const atk = playerAttack(); const atkRange = p.r*2.8;
+  let hit = false;
+  G.entities.forEach(e => {
+    if (e.type!=='predator'&&e.type!=='prey'&&e.type!=='mate') return;
+    const dx=e.x-p.x, dy=e.y-p.y, dist=Math.sqrt(dx*dx+dy*dy)||1;
+    if (dist < atkRange+e.r) {
+      e.health -= atk;
+      const txLv = G.player.parts.toxin;
+      if (txLv>0) { const txV=PARTS.find(x=>x.id==='toxin').vals[txLv-1]; e.poison+=txV; }
+      e.vx+=(dx/dist)*4; e.vy+=(dy/dist)*4;
+      spawnParticles(e.x, e.y, e.col||'#ff4d6d', 10); hit=true;
+      if (e.health<=0) killEntity(e);
+    }
+  });
+  G.projectiles.push({x:p.x, y:p.y, r:atkRange, life:10, maxLife:10});
+  p.attackCooldown = 20; combatFlash = 35;
+}
 
-function init() {
-    canvas = document.getElementById('gameCanvas');
-    ctx = canvas.getContext('2d');
-    resize();
-    window.addEventListener('resize', resize);
-    
-    window.addEventListener('mousemove', e => {
-        mouse.x = e.clientX;
-        mouse.y = e.clientY;
-    });
-    
-    window.addEventListener('keydown', e => {
-        if (e.key === 'c' || e.key === 'C') callMate();
-        if (e.key === 'k' || e.key === 'K') {
-            if (player && gameState === 'PLAY') player.die();
-        }
+function eatNearest() {
+  if (!gameRunning || G.paused) return;
+  const p=G.player; let best=null, bestD=Infinity;
+  G.entities.forEach(e => {
+    if (e.type!=='prey'&&e.type!=='food') return;
+    const d=Math.sqrt((e.x-p.x)**2+(e.y-p.y)**2);
+    if (d<bestD && d<playerRange()+e.r+20) { best=e; bestD=d; }
+  });
+  if (best) absorbEntity(best);
+}
+
+function killEntity(e) {
+  const idx=G.entities.indexOf(e); if (idx===-1) return;
+  const reward=Math.ceil(e.r*8*(1+G.era*.3));
+  G.score+=reward; G.kills++; G.player.evoProgress+=e.r*.8;
+  spawnParticles(e.x, e.y, e.col, 22);
+  notify('💀 +'+reward+' biomass','gold');
+  G.entities.splice(idx,1);
+}
+
+function absorbEntity(e) {
+  const idx=G.entities.indexOf(e); if (idx===-1) return;
+  const p=G.player;
+  if (e.type==='food') {
+    G.score+=Math.ceil(e.energy); p.energy=Math.min(p.maxEnergy, p.energy+e.energy); p.evoProgress+=.4;
+    spawnParticles(e.x, e.y, e.col, 5); G.entities.splice(idx,1);
+  } else if (e.type==='prey') {
+    if (p.r >= e.r*playerEatRatio()*.85) {
+      const reward=Math.ceil(e.r*5*(1+G.era*.2));
+      G.score+=reward; p.energy=Math.min(p.maxEnergy, p.energy+e.r*2);
+      p.evoProgress+=e.r*.5; p.r=Math.min(65, p.r+e.r*.07); G.kills++;
+      spawnParticles(e.x, e.y, '#7dff9a', 14); notify('Absorbed! +'+reward);
+      G.entities.splice(idx,1);
+    }
+  }
+}
+
+// ══════════════════════════════════════════════
+// CELL EDITOR (was mate screen)
+// ══════════════════════════════════════════════
+function openEditor() {
+  if (!gameRunning) return;
+  G.paused = true;
+
+  // Find or spawn a mate cell for display/reproduction
+  let mate = G.entities.find(e=>(e.type==='prey'||e.type==='mate')&&e.matable);
+  if (!mate) { mate = mkMateCell(); G.entities.push(mate); }
+  matingCell = mate;
+
+  // Draw your cell
+  const yc = document.getElementById('you-canvas');
+  drawCellPreview(yc.getContext('2d'), 90, 90, 28, '#1fffd4', G.player.parts);
+  document.getElementById('editor-cell-name').textContent = G.player.name;
+  document.getElementById('editor-gen').textContent = toRoman(G.generation);
+  document.getElementById('editor-biomass').textContent = G.score.toLocaleString();
+  buildLiveStats();
+
+  // Draw mate cell
+  const mc = document.getElementById('mate-canvas');
+  drawCellPreview(mc.getContext('2d'), 80, 80, mate.r*.9||18, mate.col||'#ff9ee8', mate.parts||{});
+  document.getElementById('mate-cell-name').textContent = 'Wild ' + (mate.col==='#ff9ee8'?'Pink Cell':'Ocean Cell');
+  document.getElementById('mate-cell-traits').innerHTML = previewStatLines(mate.parts||{});
+
+  // Offspring
+  const off = combineTraits(G.player.parts, mate.parts||{});
+  document.getElementById('offspring-traits').innerHTML = offspringHTML(off);
+  const cost = mateCost();
+  document.getElementById('mate-cost-line').textContent = 'Cost: '+cost+' Biomass (15% of current)';
+  document.getElementById('reproduce-btn').disabled = G.score < cost;
+
+  // Build editor grid
+  buildEditorGrid();
+
+  document.getElementById('mate-screen').classList.remove('hidden');
+}
+
+function closeEditor() {
+  document.getElementById('mate-screen').classList.add('hidden');
+  G.paused = false;
+}
+
+function mateCost() { return Math.max(80, Math.floor(G.score*.15)); }
+
+function buildLiveStats() {
+  const p = G.player;
+  const armor = Math.round(playerArmor()*100);
+  const speed = playerSpeed().toFixed(1);
+  const atk = Math.round(playerAttack());
+  const eatR = playerEatRatio().toFixed(1)+'×';
+  const range = Math.round(playerRange());
+  const hp = Math.round(p.maxHealth);
+  const en = Math.round(playerMaxEnergy());
+  const regen = playerChloroRegen().toFixed(1);
+  const rows = [
+    ['Max Health', hp+'hp', hp>100],
+    ['Max Energy', en, en>100],
+    ['Move Speed', speed, speed>2.6],
+    ['Attack Dmg', atk, atk>8],
+    ['Armor', armor+'%', armor>0],
+    ['Eat Size', eatR, playerEatRatio()>1],
+    ['Absorb Range', range+'px', range>G.player.r+6],
+    ['Passive Regen', regen+'/s', parseFloat(regen)>0],
+  ];
+  document.getElementById('live-stats').innerHTML = rows.map(([l,v,b])=>
+    `<div class="live-stat"><span class="live-stat-label">${l}</span><span class="live-stat-val${b?' boosted':''}">${v}</span></div>`
+  ).join('');
+}
+
+function buildEditorGrid() {
+  const grid = document.getElementById('editor-parts-grid');
+  grid.innerHTML = '';
+  PARTS.forEach(part => {
+    const lvl = G.player.parts[part.id];
+    const isMax = lvl >= part.maxLvl;
+    const isLocked = part.locked;
+    const cost = part.costs[lvl];
+    const canAfford = G.score >= (cost||0);
+
+    const el = document.createElement('div');
+    el.className = 'editor-part' + (isLocked?' ep-locked':(isMax?' ep-maxed':(lvl>0?' ep-owned':'')));
+
+    // Pips
+    let pips = '';
+    for (let i=0; i<part.maxLvl; i++) pips += `<div class="ep-pip${i<lvl?' filled':''}"></div>`;
+
+    // Per-level breakdown
+    let levelsHTML = '';
+    part.levelStats.forEach((stat, i) => {
+      let cls = 'ep-level-row';
+      if (i === lvl-1) cls += ' ep-current';
+      else if (i === lvl) cls += ' ep-next';
+      levelsHTML += `<div class="${cls}"><span>Lv${i+1}</span><span>${stat}</span></div>`;
     });
 
-    renderPartsList();
-    
-    // Editor Palette
-    const colors = ['#f87171', '#fbbf24', '#4ade80', '#60a5fa', '#a78bfa', '#f472b6', '#ffffff', '#94a3b8', '#1e293b'];
-    const picker = document.getElementById('color-picker');
-    colors.forEach(c => {
-        const d = document.createElement('div');
-        d.className = 'color-swatch';
-        d.style.backgroundColor = c;
-        d.onclick = () => { player.color = c; updateEditorPreview(); };
-        picker.appendChild(d);
-    });
-
-    initBackground();
-}
-
-function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
-
-function initBackground() {
-    backgroundParticles = [];
-    for(let i=0; i<80; i++) {
-        backgroundParticles.push({
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height,
-            size: Math.random() * 40 + 5,
-            speed: Math.random() * 0.3,
-            alpha: Math.random() * 0.08
-        });
+    // Action
+    let actionHTML = '';
+    if (isLocked) {
+      actionHTML = `<div class="ep-lock-badge">🔒 ${part.unlockText}</div>`;
+    } else if (isMax) {
+      actionHTML = `<div class="ep-max-badge">✦ Fully Evolved</div>`;
+    } else {
+      const btnCls = canAfford ? 'ep-buy-btn' : 'ep-buy-btn ep-disabled';
+      actionHTML = `<div class="ep-action"><span class="ep-cost">${cost} BM</span><button class="${btnCls}" onclick="buyPartEditor('${part.id}')">Evolve</button></div>`;
     }
+
+    el.innerHTML = `
+      <div class="ep-top">
+        <div class="ep-icon">${part.icon}</div>
+        <div>
+          <div class="ep-name">${part.name}</div>
+          <div class="ep-pips">${pips}</div>
+        </div>
+      </div>
+      <div class="ep-desc">${part.desc}</div>
+      <div class="ep-levels">${levelsHTML}</div>
+      ${actionHTML}
+    `;
+    grid.appendChild(el);
+  });
+}
+
+function buyPartEditor(id) {
+  const part = PARTS.find(x=>x.id===id);
+  if (!part||part.locked) return;
+  const lvl = G.player.parts[id];
+  if (lvl>=part.maxLvl) return;
+  const cost = part.costs[lvl];
+  if (G.score<cost) { notify('⚠ Need '+cost+' Biomass','danger'); return; }
+  G.score-=cost; G.biomassSpent+=cost;
+  G.player.parts[id]++;
+  notify(part.icon+' '+part.name+' Lv'+G.player.parts[id]+' evolved!');
+  // Refresh editor
+  document.getElementById('editor-biomass').textContent = G.score.toLocaleString();
+  document.getElementById('mate-cost-line').textContent = 'Cost: '+mateCost()+' Biomass';
+  document.getElementById('reproduce-btn').disabled = G.score < mateCost();
+  buildEditorGrid();
+  buildLiveStats();
+  buildBottomParts();
+  // Redraw your cell preview
+  const yc = document.getElementById('you-canvas');
+  drawCellPreview(yc.getContext('2d'), 90, 90, 28, '#1fffd4', G.player.parts);
+}
+
+function confirmMating() {
+  const cost = mateCost();
+  if (G.score<cost) { notify('⚠ Not enough biomass!','danger'); return; }
+  G.score-=cost; G.biomassSpent+=cost;
+  const off = combineTraits(G.player.parts, matingCell?.parts||{});
+  G.player.parts = off;
+  G.player.health = playerMaxHP(); G.player.energy = playerMaxEnergy();
+  G.player.r = Math.max(18, G.player.r*.95);
+  G.generation++; G.matings++; G.evoPoints+=3;
+  if (G.generation <= CELL_NAMES.length) G.player.name = CELL_NAMES[Math.min(G.generation-1, CELL_NAMES.length-1)];
+  document.getElementById('cell-name').textContent = G.player.name;
+  document.getElementById('gen-display').textContent = 'Generation '+toRoman(G.generation);
+  if (matingCell) { const i=G.entities.indexOf(matingCell); if(i>-1) G.entities.splice(i,1); }
+  matingCell = null;
+  notify('💕 Generation '+toRoman(G.generation)+' born! +3 Evo Points','mate');
+  spawnParticles(G.player.x, G.player.y, '#ff9ee8', 30);
+  buildBottomParts();
+  closeEditor();
+}
+
+function combineTraits(a, b) {
+  const result = {};
+  PARTS.forEach(p => {
+    const av=a[p.id]||0, bv=b[p.id]||0;
+    const bonus = Math.random()<.25?1:0;
+    result[p.id] = Math.min(p.maxLvl, Math.floor((av+bv)/2)+bonus);
+  });
+  return result;
+}
+
+function previewStatLines(parts) {
+  const lines = [];
+  PARTS.forEach(p => { if (parts[p.id]) lines.push(p.icon+' '+p.name+' Lv'+parts[p.id]); });
+  return lines.length ? lines.join('<br>') : '<span style="color:var(--muted)">Primitive cell</span>';
+}
+
+function offspringHTML(traits) {
+  const lines = [];
+  PARTS.forEach(p => { if (traits[p.id]>0) lines.push(p.icon+' '+p.name+' Lv'+traits[p.id]); });
+  return lines.length ? lines.join('<br>') : '<span style="color:var(--muted)">All primitive</span>';
+}
+
+// ── CELL PREVIEW DRAW ──
+function drawCellPreview(c, cx, cy, r, col, parts) {
+  c.clearRect(0,0,c.canvas.width,c.canvas.height);
+  // Glow
+  const g = c.createRadialGradient(cx,cy,r*.3,cx,cy,r*2.5);
+  g.addColorStop(0,'rgba(31,255,212,.08)'); g.addColorStop(1,'transparent');
+  c.fillStyle=g; c.beginPath(); c.arc(cx,cy,r*2.5,0,Math.PI*2); c.fill();
+  // Body
+  c.save(); c.shadowColor=col; c.shadowBlur=18; c.fillStyle=col;
+  c.beginPath();
+  for (let i=0;i<=14;i++){const a=(i/14)*Math.PI*2;const rr=r+Math.sin(a*4)*r*.12;c.lineTo(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr);}
+  c.closePath(); c.fill(); c.restore();
+  // Nucleus
+  c.fillStyle='rgba(0,0,0,.5)'; c.beginPath(); c.arc(cx,cy,r*.32,0,Math.PI*2); c.fill();
+  c.fillStyle=col; c.globalAlpha=.8; c.beginPath(); c.arc(cx+r*.08,cy-r*.08,r*.13,0,Math.PI*2); c.fill(); c.globalAlpha=1;
+  // Flagella
+  if (parts.flagella>0) {
+    c.save(); c.strokeStyle=col; c.lineWidth=1.5; c.globalAlpha=.5;
+    for (let f=0;f<parts.flagella+1;f++){const ba=(f/(parts.flagella+1))*Math.PI*2;c.beginPath();c.moveTo(cx+Math.cos(ba)*r,cy+Math.sin(ba)*r);for(let s=1;s<=5;s++)c.lineTo(cx+Math.cos(ba+Math.sin(s*.8)*.5)*(r+s*6),cy+Math.sin(ba+Math.sin(s*.8)*.5)*(r+s*6));c.stroke();}
+    c.restore();
+  }
+  // Spinule
+  if (parts.spinule>0) {
+    c.save(); c.strokeStyle='#ffd166'; c.lineWidth=1.5; c.globalAlpha=.7;
+    for (let i=0;i<parts.spinule*3;i++){const a=(i/(parts.spinule*3))*Math.PI*2;c.beginPath();c.moveTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r);c.lineTo(cx+Math.cos(a)*(r+9),cy+Math.sin(a)*(r+9));c.stroke();}
+    c.restore();
+  }
+  // Chloroplast
+  if (parts.chloroplast>0) {
+    c.save(); c.fillStyle='rgba(50,200,80,.65)'; c.shadowColor='#7dff9a'; c.shadowBlur=5;
+    for (let i=0;i<parts.chloroplast*2;i++){const a=(i/(parts.chloroplast*2))*Math.PI*2;c.beginPath();c.arc(cx+Math.cos(a)*r*.75,cy+Math.sin(a)*r*.75,r*.11,0,Math.PI*2);c.fill();}
+    c.restore();
+  }
+  // Vacuole ring
+  if (parts.vacuole>0) { c.save(); c.strokeStyle='rgba(100,200,255,.3)'; c.lineWidth=1.2; c.setLineDash([4,8]); c.beginPath(); c.arc(cx,cy,r*1.18,0,Math.PI*2); c.stroke(); c.restore(); }
+  // Eyespot
+  if (parts.eyespot>0) { c.save(); c.fillStyle='rgba(255,255,255,.8)'; c.beginPath(); c.arc(cx+r*.4,cy-r*.3,r*.1,0,Math.PI*2); c.fill(); c.fillStyle='rgba(0,0,0,.8)'; c.beginPath(); c.arc(cx+r*.42,cy-r*.32,r*.05,0,Math.PI*2); c.fill(); c.restore(); }
+  // Mitochondria
+  if (parts.mitochondria>0) {
+    c.save(); c.strokeStyle='rgba(255,180,50,.4)'; c.lineWidth=2;
+    for (let i=0;i<parts.mitochondria;i++){const a=(i/parts.mitochondria)*Math.PI*2;c.beginPath();c.arc(cx+Math.cos(a)*r*.62,cy+Math.sin(a)*r*.62,r*.18,0,Math.PI);c.stroke();}
+    c.restore();
+  }
+}
+
+// ══════════════════════════════════════════════
+// ENTITIES AI
+// ══════════════════════════════════════════════
+function updateEntities() {
+  G.entities.forEach(e => {
+    if (e.type==='food') { e.pulse+=.05; return; }
+    if (e.type==='virus') { e.pulse+=.08; e.x+=e.vx; e.y+=e.vy; if(e.x<0||e.x>G.world.w)e.vx*=-1; if(e.y<0||e.y>G.world.h)e.vy*=-1; return; }
+    e.wobble+=.07;
+    e.trail.push({x:e.x,y:e.y}); if(e.trail.length>10) e.trail.shift();
+    const p=G.player; const dx=p.x-e.x, dy=p.y-e.y, dist=Math.sqrt(dx*dx+dy*dy)||1;
+    if (e.type==='predator') {
+      if (dist<e.agroRange && !(p.camo&&Math.random()<.6)) { e.vx+=(dx/dist)*.1*(1+G.era*.12); e.vy+=(dy/dist)*.1*(1+G.era*.12); }
+      else { e.wanderA+=(Math.random()-.5)*.3; e.vx+=Math.cos(e.wanderA)*.06; e.vy+=Math.sin(e.wanderA)*.06; }
+      G.entities.forEach(f=>{
+        if(f===e||f.type!=='prey') return;
+        const fd=Math.sqrt((f.x-e.x)**2+(f.y-e.y)**2);
+        if(fd<e.r+f.r&&e.r>f.r*.8&&e.attackCd<=0){f.health-=3;e.attackCd=30;spawnParticles(f.x,f.y,'#ff4d6d',3);}
+      });
+    } else if (e.type==='mate') {
+      if (dist>60) { e.vx+=(dx/dist)*.14; e.vy+=(dy/dist)*.14; }
+    } else {
+      e.wanderA+=(Math.random()-.5)*.2; e.vx+=Math.cos(e.wanderA)*.04; e.vy+=Math.sin(e.wanderA)*.04;
+    }
+    const maxSpd=e.type==='predator'?2.3+G.era*.18:(e.type==='mate'?2.2:1.5);
+    const sp=Math.sqrt(e.vx*e.vx+e.vy*e.vy); if(sp>maxSpd){e.vx=e.vx/sp*maxSpd;e.vy=e.vy/sp*maxSpd;}
+    e.vx*=.96; e.vy*=.96;
+    e.x=Math.max(e.r,Math.min(G.world.w-e.r,e.x+e.vx));
+    e.y=Math.max(e.r,Math.min(G.world.h-e.r,e.y+e.vy));
+    if(e.poison>0){e.health-=e.poison*.1;e.poison=Math.max(0,e.poison-.06);}
+    if(e.attackCd>0)e.attackCd--;
+  });
+  G.entities = G.entities.filter(e=>(e.type==='predator'||e.type==='prey'||e.type==='mate')?e.health>0:true);
+}
+
+function updateProjectiles() { G.projectiles.forEach(p=>p.life--); G.projectiles=G.projectiles.filter(p=>p.life>0); }
+function updateParticles() {
+  G.particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vx*=.93;p.vy*=.93;p.life--;p.alpha=p.life/p.maxLife;});
+  G.particles=G.particles.filter(p=>p.life>0);
+}
+
+// ══════════════════════════════════════════════
+// COLLISIONS
+// ══════════════════════════════════════════════
+function checkCollisions() {
+  const p=G.player; const range=playerRange();
+  G.entities.forEach((e,i)=>{
+    const dx=e.x-p.x, dy=e.y-p.y, dist=Math.sqrt(dx*dx+dy*dy)||1;
+    if (e.type==='food'&&dist<range+e.r) {
+      G.score+=Math.ceil(e.energy); p.energy=Math.min(p.maxEnergy,p.energy+e.energy); p.evoProgress+=.4;
+      spawnParticles(e.x,e.y,e.col,5); G.entities.splice(i,1);
+    } else if (e.type==='prey'&&dist<p.r+e.r*playerEatRatio()) {
+      if (p.r>=e.r*.85) {
+        const reward=Math.ceil(e.r*5*(1+G.era*.2));
+        G.score+=reward; p.energy=Math.min(p.maxEnergy,p.energy+e.r*2); p.evoProgress+=e.r*.5;
+        p.r=Math.min(65,p.r+e.r*.07); G.kills++;
+        spawnParticles(e.x,e.y,'#7dff9a',14); notify('Absorbed! +'+reward); G.entities.splice(i,1);
+      } else if (p.invincible<=0) {
+        const dmg=(5+G.era*1.5)*(1-playerArmor()); p.health-=dmg; p.invincible=22; spawnParticles(p.x,p.y,'#ff4d6d',6);
+      }
+    } else if (e.type==='predator'&&dist<p.r+e.r) {
+      if (p.invincible<=0) {
+        const dmg=(10+G.era*3)*(1-playerArmor()); p.health-=dmg; p.invincible=40;
+        spawnParticles(p.x,p.y,'#ff4d6d',14);
+        if (p.r>=e.r*.9) { e.health-=playerAttack()*.4; if(e.health<=0)killEntity(e); }
+      }
+    } else if (e.type==='virus'&&dist<p.r+e.r) {
+      if (!p.virusImmune&&p.invincible<=0) {
+        p.health-=e.dmg*(1-playerArmor()); p.invincible=60;
+        spawnParticles(p.x,p.y,'#ff77ff',10); notify('☣ Viral infection! -'+Math.ceil(e.dmg)+' HP','danger');
+        G.entities.splice(i,1);
+      } else if (p.virusImmune) { G.entities.splice(i,1); G.score+=60; }
+    }
+  });
+}
+
+// ══════════════════════════════════════════════
+// SPAWNING / ERA / EVOLUTION
+// ══════════════════════════════════════════════
+function manageSpawn() {
+  G.spawnTimer++;
+  const food=G.entities.filter(e=>e.type==='food').length;
+  if (food<160+G.era*30&&G.spawnTimer%16===0) G.entities.push(mkFood());
+  const prey=G.entities.filter(e=>e.type==='prey').length;
+  if (prey<20+G.era*7&&G.spawnTimer%90===0) G.entities.push(mkCell(false));
+  const pred=G.entities.filter(e=>e.type==='predator').length;
+  if (pred<6+G.era*2&&G.spawnTimer%220===0) G.entities.push(mkCell(true));
+  G.virusTimer++;
+  if (G.era>=1&&G.virusTimer>480) { G.virusTimer=0; if(Math.random()<.5)G.entities.push(mkVirus()); }
+}
+
+function checkEra() {
+  const next=ERAS[G.era+1];
+  if (next&&G.score>=next.t) {
+    G.era++;
+    notify('🌊 New Era: '+ERAS[G.era].name,'gold');
+    document.getElementById('era-name').textContent=ERAS[G.era].name;
+    G.evoPoints+=3;
+    if (G.era>=1) ['toxin','nucleus'].forEach(id=>{const p=PARTS.find(x=>x.id===id);if(p)p.locked=false;});
+    if (G.era>=2) ['mitochondria','eyespot'].forEach(id=>{const p=PARTS.find(x=>x.id===id);if(p)p.locked=false;});
+    if (G.era>=3) ['secretion'].forEach(id=>{const p=PARTS.find(x=>x.id===id);if(p)p.locked=false;});
+    buildBottomParts();
+  }
+}
+
+function checkEvolution() {
+  const p=G.player;
+  if (p.evoProgress>=p.evoGoal) {
+    p.evoProgress=0; p.evoGoal*=1.5; G.evoPoints+=2;
+    notify('🧬 Evolution! +2 Evo Points');
+    if (G.score>=G.nextEvoEvent) { G.nextEvoEvent=G.score+1200+G.era*900; triggerEvoEvent(); }
+  }
+}
+
+function triggerEvoEvent() {
+  G.paused=true;
+  const ev=EVO_EVENTS[0|Math.random()*EVO_EVENTS.length];
+  document.getElementById('evo-event-name').textContent=ev.name;
+  document.getElementById('evo-event-desc').textContent=ev.desc;
+  const ch=document.getElementById('evo-choices'); ch.innerHTML='';
+  ev.choices.forEach(c=>{
+    const btn=document.createElement('div'); btn.className='evo-choice';
+    btn.innerHTML=`<div class="choice-icon">${c.icon}</div><div class="choice-name">${c.name}</div><div class="choice-desc">${c.desc}</div>`;
+    btn.addEventListener('click',()=>{c.eff();document.getElementById('evo-event').classList.add('hidden');G.paused=false;});
+    ch.appendChild(btn);
+  });
+  document.getElementById('evo-event').classList.remove('hidden');
+}
+
+function spawnParticles(x,y,col,n) {
+  for (let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=Math.random()*3+1;G.particles.push({x,y,col,vx:Math.cos(a)*s,vy:Math.sin(a)*s,r:Math.random()*3+1,life:0|Math.random()*30+20,maxLife:50,alpha:1});}
+}
+
+// ══════════════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════════════
+function render() {
+  const W=gameCanvas.width, H=gameCanvas.height;
+  ctx.clearRect(0,0,W,H);
+  const bg=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W*.9);
+  bg.addColorStop(0,'#071a2a'); bg.addColorStop(1,'#020810');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+  ctx.save(); ctx.translate(-G.camera.x,-G.camera.y);
+  ctx.strokeStyle='rgba(12,164,196,.04)'; ctx.lineWidth=1;
+  for(let x=0;x<G.world.w;x+=200){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,G.world.h);ctx.stroke();}
+  for(let y=0;y<G.world.h;y+=200){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(G.world.w,y);ctx.stroke();}
+  ctx.strokeStyle='rgba(31,255,212,.14)'; ctx.lineWidth=2; ctx.strokeRect(0,0,G.world.w,G.world.h);
+  G.entities.forEach(drawEntity);
+  G.projectiles.forEach(pr=>{
+    ctx.save(); ctx.globalAlpha=pr.life/pr.maxLife*.6;
+    ctx.strokeStyle='rgba(31,255,212,.5)'; ctx.lineWidth=2; ctx.shadowColor='#1fffd4'; ctx.shadowBlur=14;
+    ctx.beginPath(); ctx.arc(pr.x,pr.y,pr.r,0,Math.PI*2); ctx.stroke(); ctx.restore();
+  });
+  G.particles.forEach(p=>{ctx.save();ctx.globalAlpha=p.alpha;ctx.fillStyle=p.col;ctx.shadowColor=p.col;ctx.shadowBlur=5;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();ctx.restore();});
+  drawPlayer();
+  ctx.restore();
+}
+
+function drawEntity(e) {
+  if (e.type==='food') {
+    ctx.save(); ctx.globalAlpha=.8+.2*Math.sin(e.pulse); ctx.fillStyle=e.col; ctx.shadowColor=e.col; ctx.shadowBlur=8+4*Math.sin(e.pulse);
+    ctx.beginPath(); ctx.arc(e.x,e.y,e.r,0,Math.PI*2); ctx.fill(); ctx.restore(); return;
+  }
+  if (e.type==='virus') {
+    ctx.save(); ctx.strokeStyle='#ff77ff'; ctx.fillStyle='rgba(255,119,255,.12)'; ctx.shadowColor='#ff77ff'; ctx.shadowBlur=12+6*Math.sin(e.pulse); ctx.lineWidth=1.5;
+    ctx.beginPath(); for(let i=0;i<12;i++){const a=(i/12)*Math.PI*2,rr=i%2===0?e.r+5:e.r;ctx.lineTo(e.x+Math.cos(a)*rr,e.y+Math.sin(a)*rr);}
+    ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); return;
+  }
+  e.trail.forEach((t,i)=>{ctx.save();ctx.globalAlpha=(i/e.trail.length)*.15;ctx.fillStyle=e.col;ctx.beginPath();ctx.arc(t.x,t.y,e.r*.5,0,Math.PI*2);ctx.fill();ctx.restore();});
+  ctx.save(); ctx.fillStyle=e.col; ctx.shadowColor=e.col;
+  ctx.shadowBlur=e.type==='predator'?18:(e.type==='mate'?22:9);
+  ctx.globalAlpha=e.type==='predator'?.88:(e.type==='mate'?.96:.72);
+  ctx.beginPath();
+  for(let i=0;i<=9;i++){const a=(i/9)*Math.PI*2,rr=e.r+Math.sin(a*3+e.wobble)*e.r*.15;ctx.lineTo(e.x+Math.cos(a)*rr,e.y+Math.sin(a)*rr);}
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle='rgba(0,0,0,.4)'; ctx.beginPath(); ctx.arc(e.x,e.y,e.r*.28,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+  if (e.type==='predator') {
+    ctx.save(); ctx.strokeStyle=e.col; ctx.lineWidth=1.5; ctx.globalAlpha=.5;
+    for(let i=0;i<8;i++){const a=(i/8)*Math.PI*2+e.wobble*.2;ctx.beginPath();ctx.moveTo(e.x+Math.cos(a)*e.r,e.y+Math.sin(a)*e.r);ctx.lineTo(e.x+Math.cos(a)*(e.r+9),e.y+Math.sin(a)*(e.r+9));ctx.stroke();}
+    ctx.restore();
+  }
+  if (e.health<e.maxHealth) {
+    const bw=e.r*2.5;ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(e.x-bw/2,e.y-e.r-9,bw,4);
+    ctx.fillStyle=e.type==='predator'?'#ff4d6d':(e.type==='mate'?'#ff9ee8':'#7dff9a');
+    ctx.fillRect(e.x-bw/2,e.y-e.r-9,bw*(e.health/e.maxHealth),4);
+  }
+  if (e.matable||e.type==='mate') {
+    ctx.save(); ctx.font=(e.type==='mate'?'14':'10')+'px serif'; ctx.fillStyle='#ff9ee8'; ctx.globalAlpha=.5+.5*Math.sin(G.frame*.08); ctx.fillText('💕',e.x-6,e.y-e.r-12); ctx.restore();
+  }
+  if (e.poison>0) { ctx.save(); ctx.font='10px serif'; ctx.fillStyle='rgba(150,255,80,.7)'; ctx.fillText('☠',e.x-5,e.y-e.r-22); ctx.restore(); }
+}
+
+function drawPlayer() {
+  const p=G.player;
+  if (p.invincible>0&&Math.floor(p.invincible/4)%2===0) return;
+  const gr=ctx.createRadialGradient(p.x,p.y,p.r*.4,p.x,p.y,p.r*3.2);
+  gr.addColorStop(0,'rgba(31,255,212,.09)'); gr.addColorStop(1,'rgba(31,255,212,0)');
+  ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(p.x,p.y,p.r*3.2,0,Math.PI*2); ctx.fill();
+  if (combatFlash>0) { combatFlash--; const cf=ctx.createRadialGradient(p.x,p.y,p.r*.4,p.x,p.y,p.r*2.5);cf.addColorStop(0,'rgba(255,77,109,.18)');cf.addColorStop(1,'rgba(255,77,109,0)');ctx.fillStyle=cf;ctx.beginPath();ctx.arc(p.x,p.y,p.r*2.5,0,Math.PI*2);ctx.fill(); }
+  ctx.save(); ctx.shadowColor='#1fffd4'; ctx.shadowBlur=24; ctx.fillStyle='rgba(31,255,212,.88)';
+  ctx.beginPath();
+  for(let i=0;i<=14;i++){const a=(i/14)*Math.PI*2;const rr=p.r+Math.sin(a*4+G.frame*.05)*p.r*.1+Math.sin(a*2+G.frame*.03)*p.r*.05;ctx.lineTo(p.x+Math.cos(a)*rr,p.y+Math.sin(a)*rr);}
+  ctx.closePath(); ctx.fill(); ctx.restore();
+  ctx.save(); ctx.fillStyle='rgba(2,8,16,.55)'; ctx.beginPath(); ctx.arc(p.x,p.y,p.r*.35,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(31,255,212,.9)'; ctx.beginPath(); ctx.arc(p.x+p.r*.08,p.y-p.r*.08,p.r*.14,0,Math.PI*2); ctx.fill(); ctx.restore();
+  const fl=p.parts.flagella;
+  if (fl>0) { for(let f=0;f<fl+1;f++){const ba=(f/(fl+1))*Math.PI*2+G.frame*.06;ctx.save();ctx.strokeStyle='rgba(31,255,212,.42)';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(p.x+Math.cos(ba)*p.r,p.y+Math.sin(ba)*p.r);for(let s=1;s<=7;s++){const fa=ba+Math.sin(G.frame*.1+s)*.6;ctx.lineTo(p.x+Math.cos(fa)*(p.r+s*8),p.y+Math.sin(fa)*(p.r+s*8));}ctx.stroke();ctx.restore();} }
+  const sp=p.parts.spinule;
+  if (sp>0) { ctx.save();ctx.strokeStyle='rgba(255,180,50,.65)';ctx.lineWidth=1.8;ctx.shadowColor='#ffd166';ctx.shadowBlur=8;for(let i=0;i<sp*3;i++){const a=(i/(sp*3))*Math.PI*2+G.frame*.02;ctx.beginPath();ctx.moveTo(p.x+Math.cos(a)*p.r,p.y+Math.sin(a)*p.r);ctx.lineTo(p.x+Math.cos(a)*(p.r+11),p.y+Math.sin(a)*(p.r+11));ctx.stroke();}ctx.restore(); }
+  if (p.parts.chloroplast>0) { ctx.save();ctx.fillStyle='rgba(50,200,80,.5)';ctx.shadowColor='#7dff9a';ctx.shadowBlur=6;for(let i=0;i<p.parts.chloroplast*2;i++){const a=(i/(p.parts.chloroplast*2))*Math.PI*2;ctx.beginPath();ctx.arc(p.x+Math.cos(a)*p.r*.75,p.y+Math.sin(a)*p.r*.75,p.r*.12,0,Math.PI*2);ctx.fill();}ctx.restore(); }
+  if (p.parts.toxin>0) { ctx.save();ctx.strokeStyle='rgba(100,255,80,.3)';ctx.lineWidth=1;ctx.setLineDash([3,6]);ctx.beginPath();ctx.arc(p.x,p.y,p.r+5,0,Math.PI*2);ctx.stroke();ctx.restore(); }
+  if (p.parts.vacuole>0) { ctx.save();ctx.strokeStyle='rgba(100,200,255,.22)';ctx.lineWidth=1.2;ctx.setLineDash([4,9]);ctx.beginPath();ctx.arc(p.x,p.y,p.r*1.18,0,Math.PI*2);ctx.stroke();ctx.restore(); }
+  if (p.parts.mitochondria>0) { ctx.save();ctx.strokeStyle='rgba(255,180,50,.3)';ctx.lineWidth=2;for(let i=0;i<p.parts.mitochondria;i++){const a=(i/p.parts.mitochondria)*Math.PI*2+G.frame*.03;ctx.beginPath();ctx.arc(p.x+Math.cos(a)*p.r*.6,p.y+Math.sin(a)*p.r*.6,p.r*.18,0,Math.PI);ctx.stroke();}ctx.restore(); }
+  if (p.parts.eyespot>0) { ctx.save();ctx.fillStyle='rgba(255,255,255,.7)';ctx.shadowColor='#fff';ctx.shadowBlur=6;ctx.beginPath();ctx.arc(p.x+p.r*.4,p.y-p.r*.3,p.r*.1,0,Math.PI*2);ctx.fill();ctx.fillStyle='rgba(0,0,0,.8)';ctx.beginPath();ctx.arc(p.x+p.r*.42,p.y-p.r*.32,p.r*.05,0,Math.PI*2);ctx.fill();ctx.restore(); }
+  const range=playerRange(); if(range>p.r+10){ctx.save();ctx.strokeStyle='rgba(31,255,212,.06)';ctx.lineWidth=1;ctx.setLineDash([4,10]);ctx.beginPath();ctx.arc(p.x,p.y,range,0,Math.PI*2);ctx.stroke();ctx.restore();}
+}
+
+// ══════════════════════════════════════════════
+// HUD
+// ══════════════════════════════════════════════
+function updateHUD() {
+  const p=G.player;
+  document.getElementById('health-bar').style.width=(p.health/p.maxHealth*100)+'%';
+  document.getElementById('energy-bar').style.width=(p.energy/p.maxEnergy*100)+'%';
+  document.getElementById('evo-bar').style.width=(p.evoProgress/p.evoGoal*100)+'%';
+  document.getElementById('score-val').textContent=G.score.toLocaleString();
+  document.getElementById('spent-val').textContent=G.biomassSpent.toLocaleString();
+  document.getElementById('evo-pts').textContent=G.evoPoints;
+}
+
+// Bottom mini-parts bar (hover for tooltip)
+function buildBottomParts() {
+  const row=document.getElementById('parts-row'); row.innerHTML='';
+  PARTS.forEach(part=>{
+    const lvl=G.player.parts[part.id]; const isMax=lvl>=part.maxLvl; const isLocked=part.locked;
+    const cost=part.costs[lvl]||null;
+    const btn=document.createElement('div');
+    btn.className='part-btn'+(isLocked?' locked-part':(isMax?' maxed':(lvl>0?' owned':'')));
+    let pips=''; for(let i=0;i<part.maxLvl;i++) pips+=`<div class="part-pip${i<lvl?' filled':''}"></div>`;
+    // Tooltip
+    let ttLevels='';
+    part.levelStats.forEach((s,i)=>{ ttLevels+=`<div class="tt-level-row${i===lvl-1?' current':''}"><span>Lv${i+1}</span><span>${s.split(' — ')[0]}</span></div>`; });
+    const ttLock=isLocked?`<div class="tt-lock">🔒 ${part.unlockText}</div>`:'';
+    btn.innerHTML=`
+      <div class="part-icon">${part.icon}</div>
+      <div class="part-name">${part.name}</div>
+      <div class="part-pips">${pips}</div>
+      ${!isMax&&!isLocked?`<div class="part-cost">${cost} BM</div>`:(isMax?'<div class="part-cost" style="color:var(--gold)">MAX</div>':'')}
+      <div class="part-tooltip">
+        <div class="tt-name">${part.icon} ${part.name}</div>
+        <div class="tt-effect">${part.desc}</div>
+        <div class="tt-levels">${ttLevels}</div>
+        ${ttLock}
+      </div>`;
+    // Click opens editor
+    if (!isLocked) { btn.addEventListener('click', openEditor); btn.style.pointerEvents='all'; }
+    row.appendChild(btn);
+  });
+}
+
+// ══════════════════════════════════════════════
+// NOTIFICATIONS
+// ══════════════════════════════════════════════
+function notify(msg, type='') {
+  const el=document.createElement('div'); el.className='notif'+(type?' '+type:''); el.textContent=msg;
+  document.getElementById('notifications').appendChild(el);
+  setTimeout(()=>el.remove(), 3200);
+}
+
+// ══════════════════════════════════════════════
+// SCREENS
+// ══════════════════════════════════════════════
+function showTitle() {
+  gameRunning=false;
+  document.getElementById('title-screen').classList.remove('hidden');
+  ['game-screen','death-screen','mate-screen','evo-event'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  titleRunning=true; titleLoop();
 }
 
 function startGame() {
-    document.getElementById('start-screen').style.display = 'none';
-    resetGame();
+  titleRunning=false;
+  ['title-screen','death-screen','mate-screen','evo-event'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  document.getElementById('game-screen').classList.remove('hidden');
+  PARTS.forEach(p=>{ p.locked=['toxin','nucleus','mitochondria','eyespot','secretion'].includes(p.id); });
+  initGame(); buildBottomParts();
+  document.getElementById('cell-name').textContent=G.player.name;
+  document.getElementById('gen-display').textContent='Generation I';
+  document.getElementById('era-name').textContent=ERAS[0].name;
+  gameRunning=true; G.paused=false; gameLoop();
 }
 
-function resetGame() {
-    document.getElementById('game-over-screen').style.display = 'none';
-    player = new Organism(0, 0, true);
-    player.addPart('flagella', Math.PI);
-    player.addPart('filter', 0);
-    spawnWorld();
-    gameState = 'PLAY';
-    animate();
+function endGame() {
+  gameRunning=false;
+  document.getElementById('death-score').textContent=G.score.toLocaleString()+' Biomass';
+  document.getElementById('d-era').textContent=ERAS[G.era].name;
+  document.getElementById('d-gen').textContent=toRoman(G.generation);
+  document.getElementById('d-kills').textContent=G.kills;
+  document.getElementById('d-mate').textContent=G.matings;
+  document.getElementById('game-screen').classList.add('hidden');
+  document.getElementById('death-screen').classList.remove('hidden');
 }
-
-function spawnWorld() {
-    entities = []; 
-    particles = []; 
-    secrets = [];
-    mate = null;
-    damageFlash = 0;
-    
-    // Initial spawns - Meat rare spawn added
-    for(let i=0; i<150; i++) {
-        let type = Math.random() < 0.05 ? 'meat' : 'plant';
-        spawnFood(Math.random()*3000 - 1500, Math.random()*3000 - 1500, type);
-    }
-    
-    for(let i=0; i<25; i++) {
-        let e = new Organism(Math.random()*3000 - 1500, Math.random()*3000 - 1500);
-        entities.push(e);
-    }
-    
-    spawnSecret();
-    spawnSecret();
-}
-
-function spawnFood(x, y, type, size) {
-    particles.push(new Food(x, y, type, size));
-}
-
-function spawnSecret() {
-    let angle = Math.random() * Math.PI * 2;
-    let dist = 1000 + Math.random() * 1000;
-    secrets.push(new Secret(player.pos.x + Math.cos(angle)*dist, player.pos.y + Math.sin(angle)*dist));
-}
-
-// --- MATE SYSTEM ---
-
-function callMate() {
-    if (mate) return; // Already called
-    
-    // Spawn mate nearby
-    let angle = Math.random() * Math.PI * 2;
-    let dist = 600;
-    mate = new Organism(player.pos.x + Math.cos(angle)*dist, player.pos.y + Math.sin(angle)*dist);
-    mate.isMate = true;
-    
-    // Copy player appearance to mate
-    mate.parts = JSON.parse(JSON.stringify(player.parts));
-    mate.color = player.color;
-    mate.recalcStats();
-    
-    showNotification("Mate Called! Find the ♥ signal!", "#ec4899");
-    document.getElementById('mate-arrow').style.display = 'flex';
-}
-
-function updateMateUI() {
-    const arrow = document.getElementById('mate-arrow');
-    if (!mate) {
-        arrow.style.display = 'none';
-        return;
-    }
-    
-    const dx = mate.pos.x - player.pos.x;
-    const dy = mate.pos.y - player.pos.y;
-    const dist = Math.hypot(dx, dy);
-    
-    if (dist < 300) {
-        arrow.style.opacity = 0; 
-    } else {
-        arrow.style.opacity = 1;
-        const angle = Math.atan2(dy, dx);
-        const cx = canvas.width/2;
-        const cy = canvas.height/2;
-        const r = Math.min(cx, cy) - 50;
-        
-        arrow.style.left = (cx + Math.cos(angle)*r - 20) + 'px';
-        arrow.style.top = (cy + Math.sin(angle)*r - 20) + 'px';
-        arrow.style.transform = `rotate(${angle + Math.PI/2}rad)`;
-    }
-}
-
-// --- MAIN LOOP ---
-
-function animate(time) {
-    const dt = time - lastTime;
-    lastTime = time;
-
-    if (gameState === 'PLAY') {
-        updateGame();
-        drawGame();
-    } else if (gameState === 'EDITOR') {
-        updateEditorPreview(); 
-    } else if (gameState === 'GAMEOVER') {
-        // Stop updating, just draw the frozen game in background?
-        // Actually just stop requesting frames or draw static
-        drawGame();
-    }
-
-    if (gameState !== 'GAMEOVER') {
-        requestAnimationFrame(animate);
-    }
-}
-
-function updateGame() {
-    // 1. Player Move
-    const dx = mouse.x - canvas.width/2;
-    const dy = mouse.y - canvas.height/2;
-    const targetAngle = Math.atan2(dy, dx);
-    const dist = Math.hypot(dx, dy);
-
-    let diff = targetAngle - player.angle;
-    while (diff < -Math.PI) diff += Math.PI * 2;
-    while (diff > Math.PI) diff -= Math.PI * 2;
-    player.angle += diff * 0.1;
-
-    if (dist > 20) {
-        player.applyForce(0.2, player.angle);
-    }
-    
-    // Speed Limit
-    const speed = Math.hypot(player.vel.x, player.vel.y);
-    if (speed > player.maxSpeed) {
-        const ratio = player.maxSpeed / speed;
-        player.vel.x *= ratio;
-        player.vel.y *= ratio;
-    }
-
-    if (!player.update()) return; // Player died
-    camera.x = player.pos.x - canvas.width/2;
-    camera.y = player.pos.y - canvas.height/2;
-
-    // 2. Mate Logic
-    if (mate) {
-        mate.update();
-        if (Math.hypot(mate.pos.x - player.pos.x, mate.pos.y - player.pos.y) < player.getSize() + mate.getSize()) {
-            enterEditor();
-            mate = null; // Consume mate
-        }
-    }
-    updateMateUI();
-
-    // 3. AI Entities & Combat
-    for(let i = entities.length - 1; i >= 0; i--) {
-        let e = entities[i];
-        
-        if (!e.update()) {
-            entities.splice(i, 1);
-            continue;
-        }
-
-        checkCollision(player, e);
-        
-        for(let j = i - 1; j >= 0; j--) {
-            checkCollision(e, entities[j]);
-        }
-
-        if (Math.hypot(e.pos.x - player.pos.x, e.pos.y - player.pos.y) > 2500) {
-             entities.splice(i, 1);
-        }
-    }
-    
-    // Repopulate Entities
-    if (entities.length < 25) {
-        let angle = Math.random() * Math.PI * 2;
-        let d = 900 + Math.random() * 300;
-        entities.push(new Organism(player.pos.x + Math.cos(angle) * d, player.pos.y + Math.sin(angle) * d));
-    }
-
-    // 4. Food Eating Logic
-    for (let i = particles.length - 1; i >= 0; i--) {
-        let p = particles[i];
-        
-        let pDist = Math.hypot(p.pos.x - player.pos.x, p.pos.y - player.pos.y);
-        if (pDist < player.getSize() + p.size) {
-            if (player.canEat(p.type)) {
-                eatFood(player, p, i);
-                continue;
-            }
-        }
-        
-        for(let e of entities) {
-            let eDist = Math.hypot(p.pos.x - e.pos.x, p.pos.y - e.pos.y);
-            if (eDist < e.getSize() + p.size) {
-                if (e.canEat(p.type)) {
-                    eatFood(e, p, i);
-                    break;
-                }
-            }
-        }
-    }
-    
-    // Secrets
-    for (let i = secrets.length - 1; i >= 0; i--) {
-        let s = secrets[i];
-        if (Math.hypot(s.pos.x - player.pos.x, s.pos.y - player.pos.y) < player.getSize() + s.size) {
-            unlockRandomPart();
-            secrets.splice(i, 1);
-        }
-    }
-    
-    // Respawn Food
-    if (particles.length < 100) {
-        let angle = Math.random() * Math.PI * 2;
-        let d = 500 + Math.random() * 500;
-        let type = Math.random() < 0.05 ? 'meat' : 'plant';
-        spawnFood(player.pos.x + Math.cos(angle)*d, player.pos.y + Math.sin(angle)*d, type);
-    }
-}
-
-function eatFood(organism, food, index) {
-    if (organism.isPlayer) {
-        organism.dna += (food.type === 'meat' ? CONSTANTS.MEAT_VALUE : CONSTANTS.FOOD_VALUE);
-        showNotification(`+${food.type === 'meat' ? CONSTANTS.MEAT_VALUE : CONSTANTS.FOOD_VALUE} DNA`);
-        document.getElementById('dna-val').innerText = Math.floor(organism.dna);
-    }
-    
-    // Eating restores health and adds growth
-    organism.health = Math.min(organism.maxHealth, organism.health + 20); 
-
-    let currentGrowth = parseFloat(organism.growth) || 0;
-    organism.growth = Math.min(CONSTANTS.GROWTH_CAP, currentGrowth + 1);
-    
-    organism.recalcStats();
-    particles.splice(index, 1);
-    
-    if (organism.isPlayer) {
-        let pct = (organism.growth / CONSTANTS.GROWTH_CAP) * 100;
-        document.getElementById('growth-bar-fill').style.width = pct + '%';
-    }
-}
-
-function checkCollision(a, b) {
-    let dist = Math.hypot(a.pos.x - b.pos.x, a.pos.y - b.pos.y);
-    let range = a.getSize() + b.getSize();
-    
-    if (dist < range) {
-        let angle = Math.atan2(b.pos.y - a.pos.y, b.pos.x - a.pos.x);
-        if (isNaN(angle)) angle = 0;
-        
-        let force = 2.0; // Stronger pushback on hit
-        a.vel.x -= Math.cos(angle) * force;
-        a.vel.y -= Math.sin(angle) * force;
-        b.vel.x += Math.cos(angle) * force;
-        b.vel.y += Math.sin(angle) * force;
-        
-        // Damage Logic with visual feedback
-        let hit = false;
-        
-        if (a.damage > 0) {
-            b.health -= a.damage * 0.1;
-            b.hitFlash = 1.0;
-            hit = true;
-            if (b.isPlayer) damageFlash = 0.5;
-        }
-        
-        if (b.damage > 0) {
-            a.health -= b.damage * 0.1;
-            a.hitFlash = 1.0;
-            hit = true;
-            if (a.isPlayer) damageFlash = 0.5;
-        }
-    }
-}
-
-function drawGame() {
-    ctx.fillStyle = '#051e26';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.save();
-    backgroundParticles.forEach(p => {
-        p.y += p.speed; 
-        if(p.y > canvas.height) p.y = -50;
-        ctx.beginPath();
-        ctx.fillStyle = `rgba(255,255,255,${p.alpha})`;
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
-        ctx.fill();
-    });
-    ctx.restore();
-
-    ctx.save();
-    ctx.translate(-camera.x, -camera.y);
-
-    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
-    ctx.lineWidth = 5;
-    ctx.beginPath(); ctx.arc(0,0, 2500, 0, Math.PI*2); ctx.stroke();
-
-    particles.forEach(p => p.draw(ctx));
-    secrets.forEach(s => s.draw(ctx));
-    entities.forEach(e => e.draw(ctx));
-    if (mate) mate.draw(ctx);
-    if (player && gameState !== 'GAMEOVER') player.draw(ctx);
-    if (gameState === 'GAMEOVER') player.draw(ctx); // Draw one last time for background
-
-    ctx.restore();
-
-    // Damage Flash Overlay
-    if (damageFlash > 0) {
-        ctx.fillStyle = `rgba(220, 38, 38, ${damageFlash})`;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        damageFlash -= 0.05;
-    }
-}
-
-// --- EDITOR LOGIC ---
-
-let editorPreviewAngle = 0;
-
-function enterEditor() {
-    gameState = 'EDITOR';
-    document.getElementById('editor-overlay').style.display = 'flex';
-    document.getElementById('mate-arrow').style.display = 'none';
-    renderPartsList();
-    updateEditorPreview();
-}
-
-function exitEditor() {
-    gameState = 'PLAY';
-    document.getElementById('editor-overlay').style.display = 'none';
-}
-
-function renderPartsList() {
-    const partsList = document.getElementById('parts-list');
-    partsList.innerHTML = ''; 
-    
-    Object.values(PARTS).forEach(p => {
-        const div = document.createElement('div');
-        div.className = `part-card ${!p.unlocked ? 'locked' : ''}`;
-        
-        div.innerHTML = `
-            <div>
-                <div style="font-weight:bold; font-size:18px;">${p.name}</div>
-                <div style="font-size:13px; opacity:0.7; margin-top:2px;">
-                    ${p.type.toUpperCase()} • ${p.stat === 'diet' ? p.diet.toUpperCase() : '+' + p.val + ' ' + p.stat.toUpperCase()}
-                </div>
-            </div>
-            <div style="font-weight:bold; color:#4ade80; font-size: 18px;">${p.cost}</div>
-        `;
-        
-        if (p.unlocked) {
-            div.onclick = () => buyPart(p.id);
-        }
-        partsList.appendChild(div);
-    });
-}
-
-function buyPart(id) {
-    const part = PARTS[id];
-    if (player.dna >= part.cost) {
-        player.dna -= part.cost;
-        let angle = (Math.PI * 2 / 8) * player.parts.length; 
-        if (part.type === 'motor') angle = Math.PI + (Math.random()-0.5); 
-        if (part.type === 'mouth') angle = 0 + (Math.random()-0.5);
-        if (part.type === 'weapon') angle = (Math.random() > 0.5 ? Math.PI/2 : -Math.PI/2);
-        player.addPart(id, angle);
-        updateEditorPreview();
-    }
-}
-
-document.getElementById('previewCanvas').addEventListener('click', () => {
-    player.removeLastPart();
-    updateEditorPreview();
-});
-
-document.getElementById('previewCanvas').addEventListener('wheel', (e) => {
-    editorPreviewAngle += e.deltaY * 0.005;
-    updateEditorPreview();
-});
-
-function updateEditorPreview() {
-    const pCanvas = document.getElementById('previewCanvas');
-    const pCtx = pCanvas.getContext('2d');
-    pCtx.clearRect(0,0, pCanvas.width, pCanvas.height);
-    
-    pCtx.save();
-    pCtx.translate(pCanvas.width/2, pCanvas.height/2);
-    pCtx.scale(1.5, 1.5);
-    pCtx.rotate(editorPreviewAngle);
-    
-    const tempPlayer = new Organism(0,0,true);
-    Object.assign(tempPlayer, player); 
-    tempPlayer.angle = 0;
-    tempPlayer.tailWiggle = Math.sin(Date.now() / 200) * 0.2; 
-    tempPlayer.draw(pCtx, true);
-    
-    pCtx.restore();
-
-    document.getElementById('dna-val').innerText = Math.floor(player.dna);
-    
-    document.getElementById('stat-speed').style.width = Math.min(100, (player.maxSpeed/10)*100) + '%';
-    document.getElementById('stat-health').style.width = Math.min(100, (player.maxHealth/300)*100) + '%';
-    document.getElementById('stat-dmg').style.width = Math.min(100, (player.damage/100)*100) + '%';
-    
-    const dietLabel = document.getElementById('stat-diet');
-    dietLabel.innerText = player.diet.toUpperCase();
-    dietLabel.style.color = player.diet === 'herbivore' ? '#4ade80' : (player.diet === 'carnivore' ? '#ef4444' : '#60a5fa');
-}
-
-function unlockRandomPart() {
-    const lockedKeys = Object.keys(PARTS).filter(k => !PARTS[k].unlocked);
-    if (lockedKeys.length > 0) {
-        const key = lockedKeys[Math.floor(Math.random() * lockedKeys.length)];
-        PARTS[key].unlocked = true;
-        renderPartsList(); 
-        showNotification(`UNLOCKED: ${PARTS[key].name}!`, '#fcd34d');
-    } else {
-        player.dna += 100;
-        showNotification("All parts unlocked! +100 DNA", '#4ade80');
-    }
-}
-
-function showNotification(text, color = '#4ade80') {
-    const area = document.getElementById('notifications');
-    const el = document.createElement('div');
-    el.className = 'notification';
-    el.style.borderColor = color;
-    el.style.color = color;
-    el.innerHTML = text;
-    area.appendChild(el);
-    setTimeout(() => el.remove(), 3000);
-}
-
-init();
-
 </script>
 </body>
 </html>
