@@ -1,1133 +1,1132 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Cell Factory: Nucleus Defense</title>
-    <style>
-        :root {
-            --bg-color: #0b0b15;
-            --panel-bg: rgba(15, 23, 42, 0.98);
-            --text-color: #e94560;
-            --accent-color: #1e293b;
-            --highlight: #4ecca3;
-            --gold: #ffd700;
-            --shield: #38bdf8;
-            --danger: #ef4444;
-            --purple: #a855f7;
-        }
+<meta charset="UTF-8">
+<title>Cell Factory</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+:root{
+  --atp:#00ffaa;--atpd:#005533;--threat:#ff3355;--bg:#010a06;
+  --bord:#081f10;--nuc:#cc44ff;--vac:#44ccff;--gold:#ffcc33;--warn:#ff9500;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--atp);font-family:'Share Tech Mono',monospace;display:flex;flex-direction:column}
 
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: var(--bg-color);
-            color: white;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow: hidden;
-            display: flex;
-            flex-direction: row;
-            width: 100vw;
-            height: 100vh;
-            user-select: none;
-        }
+/* ── BAR ── */
+#bar{display:flex;align-items:center;justify-content:space-between;padding:5px 14px;border-bottom:1px solid var(--bord);background:rgba(0,14,8,.95);flex-shrink:0;gap:8px}
+#bar h1{font-family:'Orbitron',sans-serif;font-size:.88em;font-weight:900;letter-spacing:.18em;text-shadow:0 0 14px var(--atp);white-space:nowrap}
+#bar h1 span{color:#fff}
+#topstats{display:flex;gap:14px;flex:1;justify-content:center}
+.sb{text-align:right}
+.sl{font-size:.46em;color:var(--atpd);letter-spacing:.07em}
+.sv{font-family:'Orbitron',sans-serif;font-weight:700;font-size:.78em}
+.sv.g{color:var(--atp);text-shadow:0 0 7px var(--atp)}
+.sv.r{color:var(--threat)}
+.sv.b{color:var(--vac)}
+.sv.gold{color:var(--gold)}
+.sv.warn{color:var(--warn)}
+#barbtns{display:flex;gap:4px;flex-shrink:0}
+.bbtn{font-family:'Orbitron',sans-serif;font-size:.46em;letter-spacing:.08em;padding:4px 9px;border:1px solid;cursor:pointer;transition:all .15s;background:transparent}
+.bbtn.save{border-color:var(--atpd);color:var(--atpd)}.bbtn.save:hover{border-color:var(--atp);color:var(--atp)}
+.bbtn.rebirth{border-color:#553300;color:#886622}.bbtn.rebirth:hover{border-color:var(--gold);color:var(--gold)}
+.bbtn.reset{border-color:#330000;color:#663333}.bbtn.reset:hover{border-color:var(--threat);color:var(--threat)}
 
-        #game-container {
-            position: relative;
-            flex: 1;
-            background: radial-gradient(circle at center, #1e1e2e 0%, #0b0b15 100%);
-            cursor: crosshair;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+/* ── LAYOUT ── */
+#main{display:grid;grid-template-columns:1fr 262px 226px;flex:1;overflow:hidden;min-height:0}
 
-        canvas {
-            display: block;
-        }
+/* ── CELL VIEW ── */
+#view{position:relative;overflow:hidden;border-right:1px solid var(--bord)}
+#cv{position:absolute;inset:0;width:100%;height:100%}
+#hbwrap{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:185px;pointer-events:none;z-index:5}
+.hbl{font-size:.44em;letter-spacing:.09em;color:#335;text-align:center;margin-bottom:2px;font-family:'Orbitron',sans-serif}
+.hbt{height:6px;background:rgba(255,50,80,.1);border:1px solid rgba(255,50,80,.2);overflow:hidden}
+#hbf{height:100%;background:linear-gradient(90deg,#880022,#ff3355);transition:width .25s;box-shadow:0 0 6px rgba(255,50,80,.4)}
+.hbv{font-size:.44em;text-align:center;color:var(--threat);margin-top:2px;font-family:'Orbitron',sans-serif}
+/* rebirth overlay */
+#rebirthoverlay{position:absolute;inset:0;background:rgba(0,0,0,.88);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:50}
+#rebirthoverlay.show{display:flex}
+.rbo-title{font-family:'Orbitron',sans-serif;font-size:1.6em;font-weight:900;color:var(--gold);text-shadow:0 0 30px var(--gold)}
+.rbo-sub{font-size:.65em;color:#998;letter-spacing:.1em;text-align:center;max-width:280px;line-height:1.6}
+.rbo-gain{font-size:.7em;color:var(--warn);font-family:'Orbitron',sans-serif;text-align:center}
+#rboconfirm{font-family:'Orbitron',sans-serif;font-size:.65em;padding:10px 24px;background:rgba(255,200,50,.08);border:1px solid var(--gold);color:var(--gold);cursor:pointer;letter-spacing:.12em;transition:all .2s}
+#rboconfirm:hover{background:rgba(255,200,50,.18);box-shadow:0 0 20px rgba(255,200,50,.3)}
+#rbocancel{font-family:'Orbitron',sans-serif;font-size:.52em;padding:6px 16px;background:transparent;border:1px solid #333;color:#555;cursor:pointer;letter-spacing:.08em}
+#rbocancel:hover{color:#888;border-color:#666}
+/* wave alert */
+#walert{position:absolute;top:36%;left:50%;transform:translate(-50%,-50%) scale(.85);background:rgba(255,20,50,.09);border:1px solid var(--threat);padding:11px 24px;text-align:center;font-family:'Orbitron',sans-serif;pointer-events:none;opacity:0;transition:all .28s;z-index:20}
+#walert.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.wn{font-size:1.4em;font-weight:900;color:var(--threat);text-shadow:0 0 16px var(--threat)}
+.ws{font-size:.5em;color:#aa8;letter-spacing:.18em;margin-top:2px}
+/* click zone */
+#clickzone{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;z-index:5}
+#clickbtn{background:rgba(0,255,150,.07);border:1px solid var(--atp);color:var(--atp);font-family:'Orbitron',sans-serif;font-size:.57em;letter-spacing:.1em;padding:7px 18px;cursor:pointer;transition:all .1s;text-shadow:0 0 8px var(--atp);box-shadow:0 0 10px rgba(0,255,150,.16)}
+#clickbtn:hover{background:rgba(0,255,150,.14);box-shadow:0 0 20px rgba(0,255,150,.38)}
+#clickbtn:active{transform:scale(.95)}
+#clabel{font-size:.46em;color:var(--atpd);letter-spacing:.06em}
 
-        #ui-panel {
-            width: 340px;
-            flex: 0 0 340px;
-            background-color: var(--panel-bg);
-            border-left: 2px solid #334155;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            box-shadow: -5px 0 20px rgba(0,0,0,0.6);
-            z-index: 10;
-            box-sizing: border-box;
-        }
+/* ── SHOP ── */
+#shop{display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--bord);background:rgba(1,7,4,.97)}
+.ph{padding:7px 11px;font-family:'Orbitron',sans-serif;font-size:.56em;letter-spacing:.14em;color:var(--atpd);border-bottom:1px solid var(--bord);flex-shrink:0}
+#orglist{flex:1;overflow-y:auto;padding:5px;display:flex;flex-direction:column;gap:3px}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--bord)}
+.ocard{border:1px solid var(--bord);background:rgba(0,10,6,.75);padding:7px 9px;cursor:pointer;transition:border-color .1s,background .1s;position:relative;overflow:hidden}
+.ocard::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:#0a0a0a}
+.ocard.can::before{background:var(--atp);box-shadow:0 0 5px var(--atp)}
+.ocard.can:hover{border-color:rgba(0,255,150,.3);background:rgba(0,255,150,.04)}
+.ocard.cant{cursor:not-allowed}.ocard.locked{opacity:.24;cursor:not-allowed}
+.otop{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px}
+.oname{font-family:'Orbitron',sans-serif;font-size:.55em;font-weight:700}
+.obadge{display:flex;gap:3px;align-items:center}
+.ocount{font-size:.56em;font-family:'Orbitron',sans-serif;font-weight:700;background:rgba(255,255,255,.07);padding:1px 5px}
+.orole{font-size:.42em;padding:1px 4px;font-family:'Orbitron',sans-serif;letter-spacing:.04em}
+.orole.prod{background:rgba(0,255,100,.08);color:#00bb77;border:1px solid #003322}
+.orole.def{background:rgba(255,50,80,.08);color:#ff5566;border:1px solid #440011}
+.orole.hybrid{background:rgba(180,100,255,.08);color:#bb88ff;border:1px solid #330044}
+.odesc{font-size:.48em;color:#2e4a38;margin-bottom:2px;line-height:1.3}
+.ostats{display:flex;justify-content:space-between;align-items:center}
+.ocost{font-size:.54em;font-family:'Orbitron',sans-serif}
+.oprod{font-size:.46em;color:#1e3828}
+.obonus{font-size:.44em;font-style:italic;margin-top:2px;color:#1e3040}
 
-        h1 {
-            margin: 0 0 5px 0;
-            font-size: 18px;
-            color: var(--highlight);
-            text-align: center;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            border-bottom: 1px solid #334155;
-            padding-bottom: 10px;
-        }
+/* ── RIGHT ── */
+#right{display:flex;flex-direction:column;overflow:hidden;background:rgba(1,5,9,.97)}
+#tabs{display:flex;border-bottom:1px solid var(--bord);flex-shrink:0}
+.tab{flex:1;padding:6px 2px;font-family:'Orbitron',sans-serif;font-size:.48em;letter-spacing:.08em;text-align:center;cursor:pointer;color:#223;border-bottom:2px solid transparent;transition:all .13s}
+.tab:hover{color:#445}
+.tab.active{color:var(--atp);border-bottom-color:var(--atp)}
+.tpanel{display:none;flex:1;overflow:hidden;flex-direction:column;min-height:0}
+.tpanel.active{display:flex}
+/* upg */
+#ulist{flex:1;overflow-y:auto;padding:4px;display:flex;flex-direction:column;gap:2px}
+.ucard{border:1px solid var(--bord);background:rgba(0,6,14,.65);padding:5px 7px;font-size:.5em;transition:all .12s}
+.ucard.can{cursor:pointer}.ucard.can:hover{border-color:rgba(100,200,255,.3);background:rgba(100,200,255,.04)}
+.ucard.cant{cursor:not-allowed}.ucard.locked{opacity:.17;cursor:not-allowed}
+.uname{font-family:'Orbitron',sans-serif;font-size:1em;color:var(--vac);margin-bottom:1px}
+.ueff{color:#2e4060;margin-bottom:1px}.ucost{font-family:'Orbitron',sans-serif}
+/* ach */
+#achlist{flex:1;overflow-y:auto;padding:4px;display:flex;flex-direction:column;gap:2px}
+.acard{border:1px solid var(--bord);background:rgba(0,6,5,.6);padding:5px 7px;font-size:.48em}
+.acard.earned{border-color:rgba(255,200,50,.28);background:rgba(255,200,50,.03)}
+.aname{font-family:'Orbitron',sans-serif;font-size:1em;color:#334;margin-bottom:1px}
+.acard.earned .aname{color:var(--gold)}
+.adesc{color:#283830;margin-bottom:1px}
+.apbar{height:2px;background:#0a1510;margin-top:3px;overflow:hidden}
+.apfill{height:100%;background:var(--gold);transition:width .3s}
+/* rebirth */
+#rblist{flex:1;overflow-y:auto;padding:6px;display:flex;flex-direction:column;gap:4px}
+.rbcard{border:1px solid #2a1a00;background:rgba(8,5,0,.8);padding:7px 9px;font-size:.5em}
+.rbcard.earned{border-color:rgba(255,200,50,.3);background:rgba(20,12,0,.8)}
+.rbname{font-family:'Orbitron',sans-serif;font-size:1em;color:#886622;margin-bottom:1px}
+.rbcard.earned .rbname{color:var(--gold)}
+.rbdesc{color:#4a3a20;margin-bottom:1px}
+.rbeff{color:var(--warn);font-style:italic}
+.rbreq{color:#3a2a10;font-size:.9em;margin-top:2px}
+/* log */
+#log{flex:1;overflow-y:auto;padding:4px 8px;display:flex;flex-direction:column-reverse;gap:1px}
+.le{font-size:.47em;line-height:1.35;padding:1px 0;border-bottom:1px solid rgba(255,255,255,.015);animation:fin .2s ease}
+@keyframes fin{from{opacity:0;transform:translateX(-2px)}to{opacity:1}}
+.la{color:var(--threat)}.ld{color:var(--atp)}.lp{color:#223}.lev{color:var(--vac)}.lu{color:var(--nuc)}.lw{color:var(--warn)}.lac{color:var(--gold)}.lrb{color:var(--gold)}
 
-        .resource-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            background: rgba(0,0,0,0.2);
-            padding: 10px;
-            border-radius: 8px;
-        }
+/* floaters */
+.fnum{position:absolute;font-family:'Orbitron',sans-serif;font-size:.68em;font-weight:700;pointer-events:none;animation:fup 1s ease forwards;z-index:50;white-space:nowrap}
+@keyframes fup{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-42px)}}
 
-        .res-item { font-size: 14px; font-weight: bold; }
-        .res-label { color: #94a3b8; font-size: 11px; display: block; }
-        
-        .health-box {
-            background: rgba(0,0,0,0.3);
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #334155;
-        }
+/* ach popup */
+#achpop{position:fixed;top:55px;right:16px;background:rgba(8,6,0,.97);border:1px solid var(--gold);padding:10px 14px;font-size:.56em;max-width:205px;z-index:400;transform:translateX(240px);transition:transform .4s cubic-bezier(.34,1.56,.64,1);box-shadow:0 0 22px rgba(255,200,50,.18)}
+#achpop.show{transform:translateX(0)}
+.apt{font-family:'Orbitron',sans-serif;color:var(--gold);margin-bottom:2px}
+.apd{color:#776}
 
-        .bar-container {
-            width: 100%; height: 8px; background: #1e293b; 
-            border-radius: 4px; overflow: hidden; margin-top: 5px;
-            border: 1px solid #334155;
-        }
-        .bar-fill { height: 100%; transition: width 0.2s; }
-
-        .controls-container {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding-right: 5px;
-            margin-top: 10px;
-        }
-        
-        .controls-container::-webkit-scrollbar { width: 6px; }
-        .controls-container::-webkit-scrollbar-track { background: #1e293b; }
-        .controls-container::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
-
-        .category-header {
-            font-size: 11px; color: #94a3b8; text-transform: uppercase; 
-            font-weight: bold; margin: 12px 0 5px 0; border-bottom: 1px solid #334155;
-        }
-
-        .build-btn {
-            background: #1e293b;
-            color: white;
-            border: 1px solid #334155;
-            padding: 8px;
-            border-radius: 6px;
-            cursor: pointer;
-            width: 100%;
-            text-align: left;
-            margin-bottom: 6px;
-            transition: all 0.2s;
-            display: grid;
-            grid-template-columns: 1fr auto;
-            align-items: center;
-        }
-
-        .build-btn:hover:not(:disabled) {
-            background: #334155;
-            border-color: var(--highlight);
-            transform: translateX(2px);
-        }
-
-        .build-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-        .btn-info { display: flex; flex-direction: column; }
-        .btn-name { font-weight: bold; font-size: 13px; }
-        .btn-desc { font-size: 10px; color: #94a3b8; }
-        .btn-cost { text-align: right; font-size: 12px; color: var(--gold); font-weight: bold; }
-
-        #ui-bottom {
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px solid #334155;
-        }
-
-        .extract-btn {
-            width: 100%;
-            background: #991b1b;
-            color: white;
-            border: 1px solid #f87171;
-            padding: 10px;
-            border-radius: 6px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .extract-btn:hover {
-            background: #dc2626;
-            box-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
-        }
-
-        #message-area {
-            position: absolute;
-            top: 20px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.85);
-            padding: 8px 20px; border-radius: 20px;
-            color: #fff; font-weight: bold; opacity: 0;
-            transition: opacity 0.3s; pointer-events: none;
-            border: 1px solid var(--highlight); z-index: 20;
-            font-size: 14px;
-        }
-
-        #click-cd-bar {
-            position: fixed; bottom: 20px; left: 20px; width: 150px; height: 10px;
-            background: #1e293b; border: 1px solid #334155; border-radius: 5px; overflow: hidden; z-index: 50;
-        }
-        #click-cd-fill { height: 100%; width: 100%; background: var(--highlight); transition: width 0.1s linear; }
-
-        .fs-menu {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(11, 11, 21, 0.98);
-            display: flex; flex-direction: column;
-            z-index: 100; overflow-y: auto;
-        }
-        
-        .menu-center { align-items: center; justify-content: center; text-align: center; }
-        .fs-title { font-size: 3.5em; color: var(--highlight); text-shadow: 0 0 20px rgba(78, 204, 163, 0.4); margin-bottom: 15px; }
-        
-        .menu-btn-main {
-            background: var(--highlight); color: #0b0b15;
-            font-size: 1.1em; padding: 12px 35px; border-radius: 8px;
-            border: none; cursor: pointer; font-weight: bold; margin: 8px;
-            transition: transform 0.2s;
-        }
-        .menu-btn-main:hover { transform: scale(1.05); }
-
-        .hidden { display: none !important; }
-
-        /* Complex Tree Styles */
-        .shop-tabs { display: flex; justify-content: center; background: #0f172a; padding: 10px; border-bottom: 1px solid #334155; flex-shrink: 0;}
-        .tab-btn { background: transparent; border: none; color: #94a3b8; font-size: 16px; font-weight: bold; padding: 10px 20px; cursor: pointer; border-bottom: 2px solid transparent; }
-        .tab-btn.active { color: white; border-bottom-color: var(--highlight); }
-        
-        .tree-scroll-area { 
-            flex: 1; overflow: auto; padding: 40px; 
-            background: radial-gradient(circle at center, #1e293b 0%, #0b0b15 100%);
-        }
-        
-        .tf-tree-wrapper { display: flex; justify-content: center; min-width: max-content; margin: auto; }
-        .tf-tree { display: flex; flex-direction: column; align-items: center; }
-        .tf-node-content { 
-            background: #1e293b; border: 2px solid #475569; padding: 10px; width: 160px; border-radius: 8px; 
-            text-align: center; position: relative; z-index: 2; cursor: default; margin-bottom: 30px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: transform 0.2s;
-        }
-        .tf-node-content:hover { transform: scale(1.05); }
-        .tf-node-content.bought { border-color: var(--gold); background: #322a10; }
-        .tf-node-content.locked { opacity: 0.6; filter: grayscale(1); }
-        .tf-children { display: flex; flex-direction: row; gap: 30px; justify-content: center; position: relative; }
-        
-        .tf-children::before {
-            content: ''; position: absolute; top: -15px; left: 50%; width: 2px; height: 15px; background: #475569;
-        }
-        .tf-tree.root > .tf-node-content { margin-top: 0; }
-        .tf-tree.root > .tf-children::before { display: none; }
-        
-        .tf-child-connector {
-            display: flex; flex-direction: column; align-items: center; position: relative;
-        }
-        .tf-child-connector::before {
-            content: ''; position: absolute; top: -15px; left: 0; right: 0; height: 2px; background: #475569;
-        }
-        .tf-child-connector:first-child::before { left: 50%; }
-        .tf-child-connector:last-child::before { right: 50%; }
-        .tf-child-connector:only-child::before { display: none; }
-        .tf-child-connector::after {
-            content: ''; position: absolute; top: -15px; left: 50%; width: 2px; height: 15px; background: #475569;
-        }
-
-        .node-name { font-weight: bold; font-size: 12px; color: #f1f5f9; }
-        .node-desc { font-size: 10px; color: #94a3b8; margin: 4px 0; min-height: 24px; }
-        .buy-node { 
-            width: 100%; background: #334155; border: none; color: white; padding: 6px; 
-            font-size: 11px; cursor: pointer; border-radius: 4px; font-weight: bold;
-        }
-        .buy-node:hover:not(:disabled) { background: var(--highlight); color: #0b0b15; }
-        .buy-node:disabled { opacity: 0.5; cursor: not-allowed; }
-        .bought-badge { color: var(--gold); font-size: 11px; font-weight: bold; padding: 6px; }
-
-        #extract-modal {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: #0f172a; padding: 25px; border: 2px solid var(--highlight);
-            border-radius: 12px; z-index: 200; text-align: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-        }
-
-    </style>
+/* save indicator */
+#sind{position:fixed;bottom:12px;left:12px;font-size:.44em;color:var(--atpd);font-family:'Orbitron',sans-serif;letter-spacing:.07em;opacity:0;transition:opacity .4s;z-index:100}
+#sind.show{opacity:1}
+</style>
 </head>
 <body>
+<div id="bar">
+  <h1>CELL <span>FACTORY</span></h1>
+  <div id="topstats">
+    <div class="sb"><div class="sl">ATP</div><div class="sv g" id="datp">0</div></div>
+    <div class="sb"><div class="sl">ATP/SEC</div><div class="sv g" id="daps">0.0</div></div>
+    <div class="sb"><div class="sl">CELL HP</div><div class="sv r" id="dhp">100/100</div></div>
+    <div class="sb"><div class="sl">WAVE</div><div class="sv b" id="dwav">1</div></div>
+    <div class="sb"><div class="sl">DEFENSE</div><div class="sv b" id="ddef">0</div></div>
+    <div class="sb"><div class="sl">REBIRTHS</div><div class="sv gold" id="drb">0</div></div>
+    <div class="sb"><div class="sl">RB MULT</div><div class="sv warn" id="drbm">×1.00</div></div>
+  </div>
+  <div id="barbtns">
+    <button class="bbtn save" id="savebtn">💾 SAVE</button>
+    <button class="bbtn rebirth" id="rebirthbtn">🔁 REBIRTH</button>
+    <button class="bbtn reset" id="resetbtn">✕ RESET</button>
+  </div>
+</div>
 
-    <div id="game-container">
-        <canvas id="gameCanvas"></canvas>
-        <div id="message-area">Wave Incoming</div>
-        
-        <div id="click-cd-bar" class="hidden">
-            <div style="font-size: 9px; position: absolute; width: 100%; text-align: center; top: -12px;">LYSIS COOLDOWN</div>
-            <div id="click-cd-fill"></div>
-        </div>
-
-        <div id="main-menu" class="fs-menu menu-center">
-            <h1 class="fs-title">CELL FACTORY<br><span style="font-size:0.4em; color:white;">EVOLVED DEFENSE</span></h1>
-            <p style="color: #94a3b8; max-width: 500px; line-height: 1.5; font-size: 14px;">
-                Protect the <b>Nucleus</b>. The cell wall is your shield. Viruses adapt and fight back.
-                <br>Build complex organelles and unlock deep genetic upgrades.
-            </p>
-            <div style="margin-top: 25px;">
-                <button class="menu-btn-main" onclick="game.startGame()">START</button>
-                <button class="menu-btn-main btn-sec" onclick="game.openShop()">GENETICS</button>
-            </div>
-        </div>
-
-        <div id="shop-screen" class="fs-menu hidden">
-            <div style="background: #0f172a; padding: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; flex-shrink: 0;">
-                <button class="menu-btn-main" style="padding: 8px 20px; font-size: 1em; margin:0;" onclick="game.closeShop()">BACK</button>
-                <h2 style="margin:0; color:var(--gold);">EP: <span id="shop-ep">0</span></h2>
-            </div>
-            <div class="shop-tabs">
-                <button class="tab-btn active" onclick="game.switchTab('defense')">DEFENSE</button>
-                <button class="tab-btn" onclick="game.switchTab('offense')">OFFENSE</button>
-                <button class="tab-btn" onclick="game.switchTab('economy')">ECONOMY</button>
-            </div>
-            <div class="tree-scroll-area">
-                <div class="tf-tree-wrapper" id="tree-container">
-                    <!-- Tree render here -->
-                </div>
-            </div>
-        </div>
-
-        <div id="game-over-screen" class="fs-menu hidden menu-center">
-            <h1 id="go-title" style="color: var(--danger); font-size: 3em;">CELLULAR DEATH</h1>
-            <div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 12px; margin: 20px 0; min-width: 300px;">
-                <h2 style="margin:5px 0;">Score: <span id="final-score" style="color: var(--highlight);">0</span></h2>
-                <h3 style="color: #94a3b8; margin:5px 0;">Wave: <span id="final-wave">0</span></h3>
-                <div style="font-size: 1.4em; color: var(--gold); margin-top: 15px;">+<span id="earned-ep">0</span> EP Earned</div>
-            </div>
-            <!-- Soft reload to save state effectively -->
-            <button class="menu-btn-main" onclick="game.returnToMenu()">RETURN TO MENU</button>
-        </div>
-
-        <!-- Extract Modal -->
-        <div id="extract-modal" class="hidden">
-            <h2 style="color: white; margin-top: 0;">Initiate Extraction?</h2>
-            <p style="color: #94a3b8; font-size: 14px;">This will end your current run immediately.<br>You will secure all EP earned so far.</p>
-            <div style="margin-top:20px; display:flex; gap:10px; justify-content:center;">
-                <button class="menu-btn-main" onclick="game.confirmExtract()">EXTRACT</button>
-                <button class="menu-btn-main" style="background:#475569; color:white;" onclick="game.cancelExtract()">CANCEL</button>
-            </div>
-        </div>
+<div id="main">
+  <div id="view">
+    <canvas id="cv"></canvas>
+    <div id="hbwrap">
+      <div class="hbl">MEMBRANE INTEGRITY</div>
+      <div class="hbt"><div id="hbf" style="width:100%"></div></div>
+      <div class="hbv" id="hbv">100/100</div>
     </div>
-
-    <div id="ui-panel" class="hidden">
-        <h1>Cell OS</h1>
-        <div class="health-box">
-            <div style="display:flex; justify-content:space-between; font-size:11px;">
-                <span class="res-label">MEMBRANE</span>
-                <span id="health-txt" style="color:var(--highlight); font-weight:bold;">150/150</span>
-            </div>
-            <div class="bar-container"><div id="health-bar" class="bar-fill" style="background: var(--highlight); width: 100%;"></div></div>
-        </div>
-        <div class="resource-grid">
-            <div><span class="res-label">ATP</span><span id="atp-txt" class="res-item" style="color: var(--gold)">100</span></div>
-            <div><span class="res-label">Proteins</span><span id="prot-txt" class="res-item" style="color: #f472b6">0</span></div>
-            <div><span class="res-label">AA</span><span id="aa-txt" class="res-item" style="color: #4ecca3">10</span></div>
-            <div><span class="res-label">Wave</span><span id="wave-txt" class="res-item">1</span></div>
-        </div>
-        
-        <div class="controls-container" id="build-list"></div>
-
-        <div id="ui-bottom">
-            <button class="extract-btn" onclick="game.requestExtract()">Extract (End Run)</button>
-        </div>
+    <div id="walert"><div class="wn" id="wnum">WAVE 1</div><div class="ws">VIRUS INCURSION DETECTED</div></div>
+    <div id="rebirthoverlay">
+      <div class="rbo-title">⬡ CELLULAR REBIRTH</div>
+      <div class="rbo-sub">Reset your cell's progress in exchange for permanent Cytokine multipliers that persist across all future runs.</div>
+      <div class="rbo-gain" id="rbogain"></div>
+      <button id="rboconfirm">CONFIRM REBIRTH</button>
+      <button id="rbocancel">Cancel</button>
     </div>
+    <div id="clickzone">
+      <button id="clickbtn">⚡ SYNTHESIZE ATP</button>
+      <div id="clabel">+1 ATP PER CLICK</div>
+    </div>
+  </div>
 
-    <script>
-        const STORAGE_KEY = 'cell_factory_v6_expanded';
-        
-        // --- Game Database ---
-        const DB = {
-            buildings: {
-                mitochondria: { name: "Mitochondria", desc: "ATP Prod. (Minor Stacking Penalty)", cost: 40, time: 80, cat: "Energy", hp: 30 },
-                chloroplast: { name: "Chloroplast", desc: "Passive ATP bursts.", cost: 150, time: 180, cat: "Energy", hp: 40, unlock: 'eco-chloro' },
-                ribosome: { name: "Ribosome", desc: "AA to Protein.", cost: 80, time: 120, cat: "Production", hp: 25 },
-                golgi: { name: "Golgi App.", desc: "2x Protein Value.", cost: 400, time: 250, cat: "Production", hp: 50, unlock: 'eco-golgi' },
-                lysosome: { name: "Lysosome", desc: "Patrolling Defender.", cost: 100, time: 150, cat: "Defense", hp: 40 },
-                peroxisome: { name: "Peroxisome", desc: "Toxic Aura (AoE).", cost: 200, time: 200, cat: "Defense", hp: 60, unlock: 'off-perox' },
-                centriole: { name: "Centriole", desc: "Ranged Turret.", cost: 250, time: 220, cat: "Defense", hp: 50, unlock: 'off-cent' },
-                vacuole: { name: "Vacuole", desc: "+Resource Cap.", cost: 120, time: 100, cat: "Utility", hp: 100, unlock: 'eco-vacuole' },
-                er: { name: "Endo. Reticulum", desc: "Auto-collects.", cost: 350, time: 300, cat: "Utility", hp: 60, unlock: 'eco-er' },
-                nucleolus: { name: "Nucleolus", desc: "Build Speed +20%.", cost: 500, time: 400, cat: "Utility", hp: 80, unlock: 'eco-nucleolus' },
-                repair: { name: "Repair Wall", desc: "Heal 50 Wall HP.", cost: 30, time: 0, cat: "Actions", instant: true }
-            },
-            
-            // Expanded Tree Structure
-            trees: {
-                defense: {
-                    id: 'def-root', name: 'Membrane I', desc: 'Wall HP +50', cost: 100,
-                    children: [
-                        {
-                            id: 'def-mem2', name: 'Membrane II', desc: 'Wall HP +100', cost: 300,
-                            children: [{ id: 'def-mem3', name: 'Membrane III', desc: 'Wall HP +200', cost: 700, children:[] }]
-                        },
-                        {
-                            id: 'def-thorn', name: 'Thorns I', desc: 'Wall deals 2 DMG', cost: 250,
-                            children: [
-                                { 
-                                    id: 'def-thorn2', name: 'Thorns II', desc: 'Wall deals 5 DMG', cost: 500, 
-                                    children:[{ id: 'def-thorn3', name: 'Spiked Shell', desc: 'Wall deals 10 DMG', cost: 1000, children:[] }] 
-                                }
-                            ]
-                        },
-                        {
-                            id: 'def-armor', name: 'Hardening', desc: 'Armor +1 (Reduce DMG)', cost: 400,
-                            children: [
-                                { 
-                                    id: 'def-armor2', name: 'Calcification', desc: 'Armor +2', cost: 800, 
-                                    children:[{ id: 'def-armor3', name: 'Diamond Wall', desc: 'Armor +4', cost: 1500, children:[] }] 
-                                },
-                                { 
-                                    id: 'def-regen', name: 'Active Transport', desc: 'Wall Regen 0.1/s', cost: 600, 
-                                    children: [{ id: 'def-regen2', name: 'Rapid Repair', desc: 'Wall Regen 0.25/s', cost: 1200, children:[] }] 
-                                }
-                            ]
-                        }
-                    ]
-                },
-                offense: {
-                    id: 'off-root', name: 'Receptors I', desc: 'Click Dmg +5', cost: 100,
-                    children: [
-                        { id: 'off-rec2', name: 'Receptors II', desc: 'Click Dmg +10', cost: 300, children: [] },
-                        {
-                            id: 'off-lyso', name: 'Enzymes I', desc: 'Lysosome Dmg x2', cost: 200,
-                            children: [
-                                { 
-                                    id: 'off-lyso-range', name: 'Chemotaxis', desc: 'Lysosome Patrol Radius +75%', cost: 350, 
-                                    children: [
-                                        { id: 'off-apex', name: 'Apex Predator', desc: 'Lysosome Dmg x4', cost: 800, children: [] }
-                                    ]
-                                },
-                                { 
-                                    id: 'off-lyso-spd', name: 'Motility', desc: 'Lysosome Speed +30%', cost: 300, 
-                                    children: [{ id: 'off-lyso-spd2', name: 'Hyper-Motility', desc: 'Lysosome Speed +60%', cost: 600, children: [] }] 
-                                },
-                                { 
-                                    id: 'off-perox', name: 'Peroxisome', desc: 'Unlock Toxic Defender', cost: 400, 
-                                    children: [
-                                        { id: 'off-aoe', name: 'Gas Cloud', desc: 'Peroxisome Range +20%', cost: 600, 
-                                          children: [{ id: 'off-aoe2', name: 'Toxic Nova', desc: 'Peroxisome Range +50%', cost: 1000, children: [] }] }
-                                    ]
-                                }
-                            ]
-                        },
-                        {
-                            id: 'off-cent', name: 'Sentry', desc: 'Unlock Centriole', cost: 300,
-                            children: [
-                                { 
-                                    id: 'off-rate', name: 'Rapid Fire', desc: 'Centriole Rate +20%', cost: 500, 
-                                    children: [{ id: 'off-rate2', name: 'Heavy Caliber', desc: 'Centriole Rate +40%', cost: 900, children: [] }] 
-                                },
-                                { 
-                                    id: 'off-loot', name: 'Scavenger', desc: '20% Chance Double Loot', cost: 700, 
-                                    children: [{ id: 'off-loot2', name: 'Bounty Hunter', desc: '40% Chance Double Loot', cost: 1200, children: [] }] 
-                                }
-                            ]
-                        }
-                    ]
-                },
-                economy: {
-                    id: 'eco-root', name: 'Glycolysis', desc: 'Mito Speed +20%', cost: 100,
-                    children: [
-                        {
-                            id: 'eco-krebs', name: 'Krebs Cycle', desc: 'Halves Mito Stacking Penalty', cost: 300,
-                            children: [
-                                { id: 'eco-oxi', name: 'Oxi-Phosphorylation', desc: 'Base Mito ATP 15 -> 25', cost: 800, children: [] }
-                            ]
-                        },
-                        {
-                            id: 'eco-chloro', name: 'Photosynthesis', desc: 'Unlock Chloroplast', cost: 250,
-                            children: [
-                                { 
-                                    id: 'eco-solar', name: 'Solar Flare', desc: 'Chloroplast Burst Chance', cost: 500, 
-                                    children: [{ id: 'eco-solar2', name: 'Eternal Sun', desc: 'Higher Burst Chance', cost: 900, children: [] }] 
-                                }
-                            ]
-                        },
-                        {
-                            id: 'eco-er', name: 'Transport', desc: 'Unlock ER (Auto-Loot)', cost: 300,
-                            children: [
-                                { 
-                                    id: 'eco-golgi', name: 'Packaging', desc: 'Unlock Golgi', cost: 500, 
-                                    children: [
-                                        { id: 'eco-prot', name: 'Protein Folding', desc: 'Protein Value +50%', cost: 800, 
-                                          children: [{ id: 'eco-prot2', name: 'Advanced Packaging', desc: 'Protein Value +100%', cost: 1500, children: [] }] }
-                                    ]
-                                },
-                                {
-                                    id: 'eco-vacuole', name: 'Storage', desc: 'Unlock Vacuole', cost: 400,
-                                    children: [
-                                        { 
-                                            id: 'eco-nucleolus', name: 'Genetics', desc: 'Unlock Nucleolus', cost: 1000, 
-                                            children: [{ id: 'eco-epi', name: 'Epigenetics', desc: 'Build Speed +40%', cost: 2000, children: [] }] 
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
-                    ]
-                }
-            }
-        };
+  <div id="shop">
+    <div class="ph">▸ ORGANELLE MARKET</div>
+    <div id="orglist"></div>
+  </div>
 
-        class Game {
-            constructor() {
-                this.canvas = document.getElementById('gameCanvas');
-                this.container = document.getElementById('game-container');
-                this.ctx = this.canvas.getContext('2d');
-                
-                this.entities = [];
-                this.particles = [];
-                this.projectiles = [];
-                this.orbs = [];
-                this.mouse = { x: 0, y: 0 };
-                this.isRunning = false;
-                
-                // Config
-                this.clickDmg = 8;
-                this.clickMaxCooldown = 15;
-                this.clickCooldown = 0;
-                this.atpPerKill = 3;
-                this.activeTab = 'defense';
-                this.mitoCount = 0;
+  <div id="right">
+    <div id="tabs">
+      <div class="tab active" data-tab="upg">UPGRADES</div>
+      <div class="tab" data-tab="ach">ACHIEVE</div>
+      <div class="tab" data-tab="rb">REBIRTH</div>
+      <div class="tab" data-tab="log">LOG</div>
+    </div>
+    <div class="tpanel active" id="upgpanel"><div id="ulist"></div></div>
+    <div class="tpanel" id="achpanel"><div id="achlist"></div></div>
+    <div class="tpanel" id="rbpanel"><div id="rblist"></div></div>
+    <div class="tpanel" id="logpanel"><div id="log"></div></div>
+  </div>
+</div>
 
-                this.loadData();
+<div id="achpop"><div class="apt" id="apopt"></div><div class="apd" id="apopd"></div></div>
+<div id="sind">✓ SAVED</div>
 
-                window.addEventListener('resize', () => this.resize());
-                this.canvas.addEventListener('mousemove', e => this.handleMouse(e));
-                this.canvas.addEventListener('mousedown', () => this.handleClick());
-                
-                this.loop = this.loop.bind(this);
-                this.resize();
-            }
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════
+const G = {
+  // economy
+  atp:0, totalAtp:0,
+  // cell
+  hp:100, maxHp:100,
+  // waves
+  wave:1, waveTimer:0, nextWave:18, inWave:false,
+  // clicking
+  clickPower:1, totalClicks:0,
+  // combat
+  viruses:[], particles:[], projectiles:[],
+  // timing
+  lastTick:Date.now(),
+  // multipliers (reset on rebirth)
+  upgMult:{}, defMult:{}, globalMult:1, hpRegen:0,
+  // persistent (survive rebirth)
+  rebirths:0, cytokines:0, totalCytokines:0,
+  rebirthMult:1,  // computed from cytokines
+  // stats (persist)
+  virusesKilled:0, wavesCleared:0, totalAtpEver:0,
+  // ui
+  achPopQ:[], achPopBusy:false,
+};
 
-            loadData() {
-                try {
-                    this.saveData = JSON.parse(localStorage.getItem(STORAGE_KEY));
-                    if (!this.saveData || typeof this.saveData.ep !== 'number') throw new Error("Invalid Save");
-                } catch (e) {
-                    this.saveData = { ep: 0, unlocks: [] };
-                }
-            }
+// ═══════════════════════════════════════════════════════════════════
+// ORGANELLES
+// shape: unique canvas rendering
+// role: prod/def/hybrid
+// Defenders actively SHOOT projectiles at viruses
+// ═══════════════════════════════════════════════════════════════════
+const ORGS = [
+  { id:'ribosome', name:'Ribosome',             color:'#3388ff', role:'prod', roleLabel:'PRODUCER',
+    desc:'Translates mRNA into ATP. The grind never stops.',
+    bonus:'Per 10: +5% global ATP',
+    baseCost:10, costMult:1.18, baseAps:0.15, baseDef:0, count:0, unlock:0, shape:'cluster',
+    shootInterval:0, shootTimer:0, dmgPerShot:0 },
 
-            save() {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(this.saveData));
-            }
+  { id:'mito',    name:'Mitochondria',          color:'#ff9500', role:'prod', roleLabel:'PRODUCER',
+    desc:'Oxidative phosphorylation. Converts fuel to raw ATP.',
+    bonus:'Per 5: +1 passive HP regen/min',
+    baseCost:120, costMult:1.20, baseAps:2.0, baseDef:0, count:0, unlock:70, shape:'bean',
+    shootInterval:0, shootTimer:0, dmgPerShot:0 },
 
-            resize() {
-                const r = this.container.getBoundingClientRect();
-                this.canvas.width = r.width;
-                this.canvas.height = r.height;
-                this.cx = this.canvas.width/2;
-                this.cy = this.canvas.height/2;
-                this.radius = Math.min(this.canvas.width, this.canvas.height) * 0.38;
-                if(this.nucleus) { this.nucleus.x = this.cx; this.nucleus.y = this.cy; }
-            }
+  { id:'lyso',    name:'Lysosome',              color:'#ff2266', role:'def', roleLabel:'DEFENDER',
+    desc:'Acid vesicle. Fires digestive bolts at nearby viruses.',
+    bonus:'Per 5: viruses take +8% damage',
+    baseCost:500, costMult:1.22, baseAps:0.5, baseDef:0, count:0, unlock:350, shape:'circle',
+    shootInterval:2.5, shootTimer:0, dmgPerShot:8 },
 
-            startGame() {
-                document.getElementById('main-menu').classList.add('hidden');
-                document.getElementById('ui-panel').classList.remove('hidden');
-                document.getElementById('click-cd-bar').classList.remove('hidden');
-                this.initSession();
-                
-                if (!this.isRunning) {
-                    this.isRunning = true;
-                    this.resize();
-                    this.loop();
-                }
-            }
+  { id:'vacuole', name:'Vacuole',               color:'#44ccff', role:'def', roleLabel:'DEFENDER',
+    desc:'Pressure chamber. Absorbs virus impacts and slows them.',
+    bonus:'Per 1: +3 max HP · passively slows viruses 2%',
+    baseCost:1000, costMult:1.20, baseAps:0.2, baseDef:0, count:0, unlock:750, shape:'oval',
+    shootInterval:0, shootTimer:0, dmgPerShot:0 },
 
-            initSession() {
-                const ul = this.saveData.unlocks;
-                
-                let baseWall = 150;
-                if (ul.includes('def-root')) baseWall += 50;
-                if (ul.includes('def-mem2')) baseWall += 100;
-                if (ul.includes('def-mem3')) baseWall += 200;
-                
-                this.res = { atp: 100, aa: 10, prot: 0, wallHp: baseWall, maxWallHp: baseWall };
-                
-                // Significantly Reduced Stacking Penalty (1.05 down from 1.15, and 1.02 down from 1.08)
-                this.stats = {
-                    mitoSpeed: ul.includes('eco-root') ? 1.2 : 1.0,
-                    mitoPenaltyMult: ul.includes('eco-krebs') ? 1.02 : 1.05, 
-                    mitoBaseATP: ul.includes('eco-oxi') ? 25 : 15,
-                    
-                    clickBonus: ul.includes('off-rec2') ? 15 : (ul.includes('off-root') ? 5 : 0),
-                    
-                    lysoRange: ul.includes('off-lyso-range') ? 350 : 200,
-                    lysoDmg: ul.includes('off-apex') ? 4 : (ul.includes('off-lyso') ? 2 : 1),
-                    lysoSpeed: ul.includes('off-lyso-spd2') ? 1.6 : (ul.includes('off-lyso-spd') ? 1.3 : 1.0),
-                    
-                    buildSpeed: ul.includes('eco-epi') ? 1.4 : 1.0,
-                    proteinMult: ul.includes('eco-prot2') ? 2.0 : (ul.includes('eco-prot') ? 1.5 : 1.0),
-                    
-                    wallRegen: ul.includes('def-regen2') ? 0.25 : (ul.includes('def-regen') ? 0.1 : 0),
-                    thorns: ul.includes('def-thorn3') ? 10 : (ul.includes('def-thorn2') ? 5 : (ul.includes('def-thorn') ? 2 : 0)),
-                    armor: ul.includes('def-armor3') ? 4 : (ul.includes('def-armor2') ? 2 : (ul.includes('def-armor') ? 1 : 0)),
-                    
-                    scavengerChance: ul.includes('off-loot2') ? 0.4 : (ul.includes('off-loot') ? 0.2 : 0),
-                    solarBurstChance: ul.includes('eco-solar2') ? 0.2 : (ul.includes('eco-solar') ? 0.1 : 0),
-                    
-                    toxinRange: ul.includes('off-aoe2') ? 1.5 : (ul.includes('off-aoe') ? 1.2 : 1.0),
-                    centrioleRate: ul.includes('off-rate2') ? 30 : (ul.includes('off-rate') ? 40 : 50),
-                    autoCollect: false
-                };
+  { id:'nucleus', name:'Nucleus',               color:'#cc44ff', role:'hybrid', roleLabel:'HYBRID',
+    desc:'Command center. Boosts ALL output per nucleus owned.',
+    bonus:'Per 1: ×1.12 ALL ATP (stacks multiplicatively)',
+    baseCost:6000, costMult:1.35, baseAps:6, baseDef:0, count:0, unlock:4000, shape:'nucleus',
+    shootInterval:0, shootTimer:0, dmgPerShot:0 },
 
-                this.entities = []; this.particles = []; this.projectiles = []; this.orbs = [];
-                this.wave = 1; this.waveTimer = 0; 
-                this.nucleus = new Nucleus(this.cx, this.cy);
-                this.addEnt(this.nucleus);
-                this.refreshBuildMenu();
-                this.prepWave();
-            }
+  { id:'chloro',  name:'Chloroplast',           color:'#33ff77', role:'prod', roleLabel:'PRODUCER',
+    desc:'Photosynthesis. Generates ATP from photon capture.',
+    bonus:'Wave clear bonus ×1.5 per chloro owned',
+    baseCost:20000, costMult:1.28, baseAps:15, baseDef:0, count:0, unlock:12000, shape:'disc',
+    shootInterval:0, shootTimer:0, dmgPerShot:0 },
 
-            prepWave() {
-                this.waveState = 'spawning';
-                this.spawnCount = 0;
-                this.totalToSpawn = 5 + Math.floor(this.wave * 2.5);
-                this.spawnTimer = 0;
-                this.spawnDelay = Math.max(20, 60 - (this.wave * 2)); 
-                this.spawnMsg(`WAVE ${this.wave}`);
-            }
+  { id:'golgi',   name:'Golgi Apparatus',       color:'#ffcc00', role:'hybrid', roleLabel:'HYBRID',
+    desc:'Protein sorter. Amplifies all organelle output.',
+    bonus:'Per 1: +0.4% to ALL ATP',
+    baseCost:70000, costMult:1.32, baseAps:10, baseDef:0, count:0, unlock:45000, shape:'stack',
+    shootInterval:0, shootTimer:0, dmgPerShot:0 },
 
-            update() {
-                if (this.clickCooldown > 0) this.clickCooldown--;
-                document.getElementById('click-cd-fill').style.width = (100 - (this.clickCooldown/this.clickMaxCooldown)*100)+'%';
+  { id:'centriole',name:'Centriole',            color:'#ff5533', role:'def', roleLabel:'DEFENDER',
+    desc:'Microtubule barrel. Fires spindle snares at viruses.',
+    bonus:'Per 1: virus speed −3% · snares slow on hit',
+    baseCost:250000, costMult:1.38, baseAps:3, baseDef:0, count:0, unlock:160000, shape:'barrel',
+    shootInterval:1.8, shootTimer:0, dmgPerShot:20 },
 
-                if (this.res.wallHp > 0 && this.res.wallHp < this.res.maxWallHp) 
-                    this.res.wallHp += this.stats.wallRegen;
+  { id:'er',      name:'Endoplasmic Reticulum', color:'#9977ff', role:'hybrid', roleLabel:'HYBRID',
+    desc:'Membrane superhighway. Routes signals, amplifies everything.',
+    bonus:'Per 1: +1.5% globalMult permanently',
+    baseCost:800000, costMult:1.40, baseAps:40, baseDef:0, count:0, unlock:500000, shape:'web',
+    shootInterval:0, shootTimer:0, dmgPerShot:0 },
 
-                this.mitoCount = this.entities.filter(e => e instanceof Mitochondria).length;
+  { id:'peroxi',  name:'Peroxisome',            color:'#ff4400', role:'def', roleLabel:'DEFENDER',
+    desc:'Hydrogen peroxide torpedo. Heavy single-target burst damage.',
+    bonus:'Per 3: +5% to all defender damage',
+    baseCost:3000000, costMult:1.42, baseAps:2, baseDef:0, count:0, unlock:2000000, shape:'hex',
+    shootInterval:1.2, shootTimer:0, dmgPerShot:60 },
 
-                this.entities = this.entities.filter(e => !e.dead);
-                this.entities.forEach(e => e.update(this));
-                this.projectiles = this.projectiles.filter(p => !p.dead);
-                this.projectiles.forEach(p => p.update(this));
-                this.particles = this.particles.filter(p => p.life > 0);
-                this.particles.forEach(p => p.update());
+  { id:'telomere',name:'Telomere Complex',      color:'#00ffee', role:'prod', roleLabel:'PRODUCER',
+    desc:'Genetic stability engine. Massive late-game ATP scaling.',
+    bonus:'Per 1: ×1.05 ALL production',
+    baseCost:10000000, costMult:1.45, baseAps:200, baseDef:0, count:0, unlock:7000000, shape:'helix',
+    shootInterval:0, shootTimer:0, dmgPerShot:0 },
+];
 
-                // Spawning
-                if (this.waveState === 'spawning') {
-                    this.spawnTimer++;
-                    if (this.spawnTimer > this.spawnDelay) {
-                        this.spawnVirus();
-                        this.spawnCount++;
-                        this.spawnTimer = 0;
-                        if (this.spawnCount >= this.totalToSpawn) this.waveState = 'clearing';
-                    }
-                } else if (this.waveState === 'clearing') {
-                    if (!this.entities.some(e => e.isEnemy)) {
-                        this.wave++;
-                        this.prepWave();
-                    }
-                }
+function getOrg(id){ return ORGS.find(o=>o.id===id); }
+function orgCost(o){ return Math.ceil(o.baseCost * Math.pow(o.costMult, o.count)); }
 
-                // Orbs
-                this.orbs.forEach((o, i) => {
-                    const d = Math.hypot(this.mouse.x - o.x, this.mouse.y - o.y);
-                    if (d < 45 || this.stats.autoCollect) {
-                        if (this.stats.autoCollect) {
-                            o.x += (this.cx - o.x) * 0.1; o.y += (this.cy - o.y) * 0.1;
-                            if (Math.hypot(this.cx - o.x, this.cy - o.y) < 20) this.collectOrb(o, i);
-                        } else {
-                            this.collectOrb(o, i);
-                        }
-                    }
-                });
+function totalAps(){
+  let t = 0;
+  const ribBonus  = 1 + Math.floor(getOrg('ribosome').count / 10) * 0.05;
+  const nucBonus  = Math.pow(1.12, getOrg('nucleus').count);
+  const golgiB    = 1 + getOrg('golgi').count * 0.004;
+  const erB       = 1 + getOrg('er').count * 0.015;
+  const telomereB = Math.pow(1.05, getOrg('telomere').count);
+  for(const o of ORGS) t += o.baseAps * o.count * (G.upgMult[o.id]||1);
+  return t * G.globalMult * ribBonus * nucBonus * golgiB * erB * telomereB * G.rebirthMult;
+}
 
-                this.updateUI();
-            }
+function vacuoleSlow(){ return Math.max(0.2, 1 - getOrg('vacuole').count * 0.02); }
+function lysoDmgMult(){ return 1 + Math.floor(getOrg('lyso').count/5) * 0.08; }
+function peroxiDefBonus(){ return 1 + Math.floor(getOrg('peroxi').count/3) * 0.05; }
+function mitoRegen(){ return G.hpRegen + Math.floor(getOrg('mito').count/5) / 60; }
+function chloroWaveBonus(){ return 1 + getOrg('chloro').count * 0.5; }
+function centSlow(){ return Math.max(0.1, 1 - getOrg('centriole').count * 0.03); }
 
-            collectOrb(o, i) {
-                if (o.type === 'atp') { this.res.atp += o.val; this.spawnText(o.x, o.y, `+${Math.floor(o.val)}`, '#ffd700'); }
-                if (o.type === 'prot') { this.res.prot += o.val; this.spawnText(o.x, o.y, `+${Math.floor(o.val)}`, '#f472b6'); }
-                this.orbs.splice(i, 1);
-            }
+// ═══════════════════════════════════════════════════════════════════
+// UPGRADES  — long grind tree
+// ═══════════════════════════════════════════════════════════════════
+const UPGRADES = [
+  // click tree
+  {id:'c1', name:'Cytoplasm Flow',      eff:'×2 Click Power',           cost:40,
+   ul:()=>G.totalAtp>=20,               ap:()=>{ G.clickPower*=2; }},
+  {id:'c2', name:'Phosphate Surge',     eff:'×3 Click Power',           cost:600,
+   ul:()=>G.totalAtp>=400,              ap:()=>{ G.clickPower*=3; }},
+  {id:'c3', name:'ATP Synthase I',      eff:'×5 Click Power',           cost:8000,
+   ul:()=>G.totalClicks>=200,           ap:()=>{ G.clickPower*=5; }},
+  {id:'c4', name:'ATP Synthase II',     eff:'×8 Click Power',           cost:80000,
+   ul:()=>G.totalClicks>=1000,          ap:()=>{ G.clickPower*=8; }},
+  {id:'c5', name:'Kinase Cascade',      eff:'×15 Click Power',          cost:1000000,
+   ul:()=>G.totalClicks>=5000,          ap:()=>{ G.clickPower*=15; }},
+  // ribosome tree
+  {id:'r1', name:'Enhanced mRNA',       eff:'×2 Ribosome ATP',          cost:400,
+   ul:()=>getOrg('ribosome').count>=10, ap:()=>{ G.upgMult.ribosome=(G.upgMult.ribosome||1)*2; }},
+  {id:'r2', name:'Polysome Complex',    eff:'×3 Ribosome ATP',          cost:3000,
+   ul:()=>getOrg('ribosome').count>=25, ap:()=>{ G.upgMult.ribosome=(G.upgMult.ribosome||1)*3; }},
+  {id:'r3', name:'Codon Optimization',  eff:'×5 Ribosome ATP',          cost:50000,
+   ul:()=>getOrg('ribosome').count>=60, ap:()=>{ G.upgMult.ribosome=(G.upgMult.ribosome||1)*5; }},
+  {id:'r4', name:'Translational Burst', eff:'×10 Ribosome ATP',         cost:5000000,
+   ul:()=>getOrg('ribosome').count>=150,ap:()=>{ G.upgMult.ribosome=(G.upgMult.ribosome||1)*10; }},
+  // mito tree
+  {id:'m1', name:'Cristae Expansion',   eff:'×2 Mitochondria ATP',      cost:1500,
+   ul:()=>getOrg('mito').count>=5,      ap:()=>{ G.upgMult.mito=(G.upgMult.mito||1)*2; }},
+  {id:'m2', name:'ETC Optimization',    eff:'×3 Mitochondria ATP',      cost:12000,
+   ul:()=>getOrg('mito').count>=15,     ap:()=>{ G.upgMult.mito=(G.upgMult.mito||1)*3; }},
+  {id:'m3', name:'Oxidative Burst',     eff:'×5 Mitochondria ATP',      cost:100000,
+   ul:()=>getOrg('mito').count>=35,     ap:()=>{ G.upgMult.mito=(G.upgMult.mito||1)*5; }},
+  {id:'m4', name:'Proton Gradient',     eff:'×8 Mito ATP',              cost:3000000,
+   ul:()=>getOrg('mito').count>=80,     ap:()=>{ G.upgMult.mito=(G.upgMult.mito||1)*8; }},
+  // lyso / defense tree
+  {id:'l1', name:'Hydrolase Upgrade',   eff:'×2 Lyso shot damage',      cost:4000,
+   ul:()=>getOrg('lyso').count>=5,      ap:()=>{ G.upgMult.lyso=(G.upgMult.lyso||1)*2; }},
+  {id:'l2', name:'Autophagy Loop',      eff:'×4 Lyso shot damage',      cost:40000,
+   ul:()=>getOrg('lyso').count>=15,     ap:()=>{ G.upgMult.lyso=(G.upgMult.lyso||1)*4; }},
+  {id:'l3', name:'Acid Overload',       eff:'×8 Lyso + faster fire',    cost:600000,
+   ul:()=>getOrg('lyso').count>=40,     ap:()=>{ G.upgMult.lyso=(G.upgMult.lyso||1)*8; getOrg('lyso').shootInterval*=0.7; }},
+  {id:'ct1',name:'Spindle Snare I',     eff:'×3 Centriole damage',      cost:600000,
+   ul:()=>getOrg('centriole').count>=3, ap:()=>{ G.upgMult.centriole=(G.upgMult.centriole||1)*3; }},
+  {id:'ct2',name:'Spindle Snare II',    eff:'×5 Centriole + faster',    cost:5000000,
+   ul:()=>getOrg('centriole').count>=10,ap:()=>{ G.upgMult.centriole=(G.upgMult.centriole||1)*5; getOrg('centriole').shootInterval*=0.65; }},
+  {id:'px1',name:'H2O2 Concentrate',   eff:'×4 Peroxisome damage',     cost:20000000,
+   ul:()=>getOrg('peroxi').count>=3,   ap:()=>{ G.upgMult.peroxi=(G.upgMult.peroxi||1)*4; }},
+  // nucleus / global tree
+  {id:'n1', name:'Chromatin Remodel',   eff:'×2 ALL ATP',               cost:50000,
+   ul:()=>getOrg('nucleus').count>=1,   ap:()=>{ G.globalMult*=2; }},
+  {id:'n2', name:'Gene Expression',     eff:'×2 Nucleus + ×2 ALL',     cost:400000,
+   ul:()=>getOrg('nucleus').count>=5,   ap:()=>{ G.upgMult.nucleus=(G.upgMult.nucleus||1)*2; G.globalMult*=2; }},
+  {id:'n3', name:'Epigenetic Rewrite',  eff:'×3 ALL ATP',               cost:5000000,
+   ul:()=>getOrg('nucleus').count>=12,  ap:()=>{ G.globalMult*=3; }},
+  {id:'g1', name:'Vesicle Overflow',    eff:'×2 Golgi + ×1.5 ALL',     cost:250000,
+   ul:()=>getOrg('golgi').count>=3,     ap:()=>{ G.upgMult.golgi=(G.upgMult.golgi||1)*2; G.globalMult*=1.5; }},
+  {id:'g2', name:'Trans-Golgi Network', eff:'×4 Golgi + ×2 ALL',       cost:8000000,
+   ul:()=>getOrg('golgi').count>=10,    ap:()=>{ G.upgMult.golgi=(G.upgMult.golgi||1)*4; G.globalMult*=2; }},
+  {id:'er1',name:'ER Stress Response',  eff:'×3 ER + ×2 ALL',          cost:5000000,
+   ul:()=>getOrg('er').count>=3,        ap:()=>{ G.upgMult.er=(G.upgMult.er||1)*3; G.globalMult*=2; }},
+  // regen tree
+  {id:'rg1',name:'Membrane Repair',     eff:'+0.5 HP regen/sec',        cost:18000,
+   ul:()=>G.totalAtp>=10000,            ap:()=>{ G.hpRegen+=0.5; }},
+  {id:'rg2',name:'Stem Cell Reserve',   eff:'+1.5 HP regen/sec',        cost:200000,
+   ul:()=>G.totalAtp>=120000,           ap:()=>{ G.hpRegen+=1.5; }},
+  {id:'rg3',name:'Regenerative Core',   eff:'+5 HP regen/sec',          cost:5000000,
+   ul:()=>G.totalAtp>=3000000,          ap:()=>{ G.hpRegen+=5; }},
+  // late game
+  {id:'tl1',name:'Telomere Boost',      eff:'×5 Telomere ATP',          cost:50000000,
+   ul:()=>getOrg('telomere').count>=3,  ap:()=>{ G.upgMult.telomere=(G.upgMult.telomere||1)*5; }},
+  {id:'gl1',name:'Cell Specialization', eff:'×3 ALL production',        cost:2000000,
+   ul:()=>G.totalAtp>=1500000,          ap:()=>{ G.globalMult*=3; }},
+  {id:'gl2',name:'Hypermetabolism',     eff:'×5 ALL production',        cost:50000000,
+   ul:()=>G.totalAtp>=30000000,         ap:()=>{ G.globalMult*=5; }},
+  {id:'gl3',name:'Transcendence',       eff:'×10 ALL production',       cost:500000000,
+   ul:()=>G.totalAtp>=200000000,        ap:()=>{ G.globalMult*=10; }},
+];
+UPGRADES.forEach(u=>u.bought=false);
 
-            spawnVirus() {
-                const angle = Math.random() * Math.PI * 2;
-                const d = this.radius + 400;
-                const x = this.cx + Math.cos(angle) * d;
-                const y = this.cy + Math.sin(angle) * d;
-                
-                let type = 'standard';
-                const r = Math.random();
-                if (this.wave > 9 && r < 0.05) type = 'titan';
-                else if (this.wave > 7 && r < 0.1) type = 'sniper';
-                else if (this.wave > 6 && r < 0.15) type = 'weaver';
-                else if (this.wave > 5 && r < 0.2) type = 'vampire';
-                else if (this.wave > 4 && r < 0.2) type = 'ghost';
-                else if (this.wave > 3 && r < 0.25) type = 'infector';
-                else if (this.wave > 2 && r < 0.3) type = 'breacher';
-                else if (this.wave > 1 && r < 0.4) type = 'speedster';
-                else if (this.wave > 1 && r < 0.5) type = 'tank';
-                else if (this.wave > 2 && r < 0.6) type = 'swarm';
+// ═══════════════════════════════════════════════════════════════════
+// ACHIEVEMENTS  — cosmetic/tracking only, no gameplay rewards
+// ═══════════════════════════════════════════════════════════════════
+const ACHS = [
+  {id:'a_atp1', ic:'⚡', name:'First Spark',        desc:'Earn 100 ATP total',         chk:()=>G.totalAtpEver>=100,       pg:()=>[G.totalAtpEver,100]},
+  {id:'a_atp2', ic:'⚡', name:'Energy Surge',        desc:'Earn 10K ATP total',         chk:()=>G.totalAtpEver>=10000,     pg:()=>[G.totalAtpEver,10000]},
+  {id:'a_atp3', ic:'⚡', name:'Megajoule',           desc:'Earn 1M ATP total',          chk:()=>G.totalAtpEver>=1e6,       pg:()=>[G.totalAtpEver,1e6]},
+  {id:'a_atp4', ic:'⚡', name:'Gigacell',            desc:'Earn 1B ATP total',          chk:()=>G.totalAtpEver>=1e9,       pg:()=>[G.totalAtpEver,1e9]},
+  {id:'a_atp5', ic:'⚡', name:'The Infinite Cell',   desc:'Earn 1T ATP total',          chk:()=>G.totalAtpEver>=1e12,      pg:()=>[G.totalAtpEver,1e12]},
+  {id:'a_w1',   ic:'🦠', name:'First Contact',       desc:'Clear 1 wave',               chk:()=>G.wavesCleared>=1,         pg:()=>[G.wavesCleared,1]},
+  {id:'a_w2',   ic:'🦠', name:'Veteran Cell',        desc:'Clear 10 waves',             chk:()=>G.wavesCleared>=10,        pg:()=>[G.wavesCleared,10]},
+  {id:'a_w3',   ic:'🦠', name:'Viral War',           desc:'Clear 25 waves',             chk:()=>G.wavesCleared>=25,        pg:()=>[G.wavesCleared,25]},
+  {id:'a_w4',   ic:'🦠', name:'Pandemic Survivor',   desc:'Clear 50 waves',             chk:()=>G.wavesCleared>=50,        pg:()=>[G.wavesCleared,50]},
+  {id:'a_w5',   ic:'🦠', name:'Pathogen Destroyer',  desc:'Clear 100 waves',            chk:()=>G.wavesCleared>=100,       pg:()=>[G.wavesCleared,100]},
+  {id:'a_k1',   ic:'💀', name:'Exterminator',        desc:'Kill 50 viruses',            chk:()=>G.virusesKilled>=50,       pg:()=>[G.virusesKilled,50]},
+  {id:'a_k2',   ic:'💀', name:'Viral Predator',      desc:'Kill 500 viruses',           chk:()=>G.virusesKilled>=500,      pg:()=>[G.virusesKilled,500]},
+  {id:'a_k3',   ic:'💀', name:'Immune Legend',       desc:'Kill 2000 viruses',          chk:()=>G.virusesKilled>=2000,     pg:()=>[G.virusesKilled,2000]},
+  {id:'a_k4',   ic:'💀', name:'Virucidal God',       desc:'Kill 10000 viruses',         chk:()=>G.virusesKilled>=10000,    pg:()=>[G.virusesKilled,10000]},
+  {id:'a_o1',   ic:'🔬', name:'Organelle Builder',   desc:'Own 50 organelles',          chk:()=>ORGS.reduce((s,o)=>s+o.count,0)>=50, pg:()=>[ORGS.reduce((s,o)=>s+o.count,0),50]},
+  {id:'a_o2',   ic:'🔬', name:'Cellular Hive',       desc:'Own 200 organelles',         chk:()=>ORGS.reduce((s,o)=>s+o.count,0)>=200, pg:()=>[ORGS.reduce((s,o)=>s+o.count,0),200]},
+  {id:'a_o3',   ic:'🔬', name:'Ribosome Farm',       desc:'Own 100 ribosomes',          chk:()=>getOrg('ribosome').count>=100, pg:()=>[getOrg('ribosome').count,100]},
+  {id:'a_o4',   ic:'🔬', name:'Mito Matrix',         desc:'Own 50 mitochondria',        chk:()=>getOrg('mito').count>=50, pg:()=>[getOrg('mito').count,50]},
+  {id:'a_o5',   ic:'🔬', name:'Nucleus Cluster',     desc:'Own 10 nuclei',              chk:()=>getOrg('nucleus').count>=10, pg:()=>[getOrg('nucleus').count,10]},
+  {id:'a_cl1',  ic:'👆', name:'Clicker',             desc:'Click 100 times',            chk:()=>G.totalClicks>=100,        pg:()=>[G.totalClicks,100]},
+  {id:'a_cl2',  ic:'👆', name:'Rapid Synthesis',     desc:'Click 2000 times',           chk:()=>G.totalClicks>=2000,       pg:()=>[G.totalClicks,2000]},
+  {id:'a_cl3',  ic:'👆', name:'Fingerbreaker',       desc:'Click 10000 times',          chk:()=>G.totalClicks>=10000,      pg:()=>[G.totalClicks,10000]},
+  {id:'a_aps1', ic:'📈', name:'ATP Factory',         desc:'Reach 100 ATP/sec',          chk:()=>totalAps()>=100,           pg:()=>[totalAps(),100]},
+  {id:'a_aps2', ic:'📈', name:'Reactor Cell',        desc:'Reach 10K ATP/sec',          chk:()=>totalAps()>=10000,         pg:()=>[totalAps(),10000]},
+  {id:'a_aps3', ic:'📈', name:'Stellar Metabolism',  desc:'Reach 1M ATP/sec',           chk:()=>totalAps()>=1000000,       pg:()=>[totalAps(),1000000]},
+  {id:'a_rb1',  ic:'🔁', name:'Reborn',              desc:'Rebirth once',               chk:()=>G.rebirths>=1,             pg:()=>[G.rebirths,1]},
+  {id:'a_rb2',  ic:'🔁', name:'Eternal Cell',        desc:'Rebirth 5 times',            chk:()=>G.rebirths>=5,             pg:()=>[G.rebirths,5]},
+  {id:'a_rb3',  ic:'🔁', name:'Infinite Loop',       desc:'Rebirth 20 times',           chk:()=>G.rebirths>=20,            pg:()=>[G.rebirths,20]},
+  {id:'a_x1',   ic:'🌟', name:'Full Spectrum',       desc:'Unlock all 11 organelles',   chk:()=>ORGS.every(o=>o.count>0),  pg:()=>[ORGS.filter(o=>o.count>0).length,ORGS.length]},
+  {id:'a_x2',   ic:'🌟', name:'Impenetrable',        desc:'200+ defense organelles active', chk:()=>ORGS.filter(o=>o.role==='def').reduce((s,o)=>s+o.count,0)>=200, pg:()=>[ORGS.filter(o=>o.role==='def').reduce((s,o)=>s+o.count,0),200]},
+];
+ACHS.forEach(a=>a.earned=false);
 
-                if (type === 'swarm') for(let i=0;i<3;i++) this.addEnt(new Virus(x+Math.random()*20, y+Math.random()*20, type, this.wave));
-                else this.addEnt(new Virus(x, y, type, this.wave));
-            }
+// ═══════════════════════════════════════════════════════════════════
+// REBIRTH PERKS  — permanent, unlocked after each rebirth milestone
+// ═══════════════════════════════════════════════════════════════════
+const RB_PERKS = [
+  { id:'rb0', name:'Cytokine Storm I',    desc:'First rebirth unlocks cytokine bonuses.',
+    req:1,  eff:'Cytokines grant ×1.5 base mult',   check:()=>G.rebirths>=1 },
+  { id:'rb1', name:'Metabolic Memory',    desc:'Organelle costs reduced 5% per rebirth (max 50%).',
+    req:2,  eff:'Cost reduction active',             check:()=>G.rebirths>=2 },
+  { id:'rb2', name:'Viral Immunity',      desc:'Cell starts each run at 120% max HP.',
+    req:3,  eff:'+20% starting max HP',              check:()=>G.rebirths>=3 },
+  { id:'rb3', name:'Cytokine Storm II',   desc:'Cytokine multiplier formula improved.',
+    req:5,  eff:'Cytokines grant ×1.8 base mult',   check:()=>G.rebirths>=5 },
+  { id:'rb4', name:'Ancestral Enzymes',   desc:'Start each run with 5 free ribosomes.',
+    req:6,  eff:'5 free ribosomes on new run',       check:()=>G.rebirths>=6 },
+  { id:'rb5', name:'Accelerated Growth',  desc:'First 10 seconds of each run: ×5 income.',
+    req:8,  eff:'10s boost on run start',            check:()=>G.rebirths>=8 },
+  { id:'rb6', name:'Cytokine Storm III',  desc:'Cytokine multiplier is now cubic.',
+    req:10, eff:'Cytokines grant ×2.0 base mult',   check:()=>G.rebirths>=10 },
+  { id:'rb7', name:'Membrane Hardening',  desc:'Viruses deal 20% less damage per rebirth, max 80%.',
+    req:12, eff:'Reduced incoming damage',           check:()=>G.rebirths>=12 },
+  { id:'rb8', name:'Cytokine Cascade',    desc:'Unlocks the Cytokine Hypercharge upgrade.',
+    req:15, eff:'New upgrade unlocked',              check:()=>G.rebirths>=15 },
+  { id:'rb9', name:'Infinite Potential',  desc:'No cap on cytokine multiplier.',
+    req:20, eff:'Uncapped scaling',                  check:()=>G.rebirths>=20 },
+];
 
-            handleClick() {
-                if (!this.isRunning || this.clickCooldown > 0) return;
-                let hit = false;
-                const dmg = this.clickDmg + this.stats.clickBonus;
-                this.entities.filter(e => e.isEnemy).forEach(e => {
-                    if (Math.hypot(e.x - this.mouse.x, e.y - this.mouse.y) < e.r + 20) {
-                        e.takeDamage(dmg, this);
-                        this.spawnPart(this.mouse.x, this.mouse.y, 'white', 5);
-                        hit = true;
-                    }
-                });
-                if (hit) this.clickCooldown = this.clickMaxCooldown;
-            }
+// ═══════════════════════════════════════════════════════════════════
+// REBIRTH SYSTEM
+// ═══════════════════════════════════════════════════════════════════
+function cytokinesFromRun(){
+  // cytokines = floor(log10(totalAtp) - 5)^1.5   (meaningful after ~100K ATP)
+  const val = Math.log10(Math.max(1, G.totalAtp)) - 5;
+  return val <= 0 ? 0 : Math.floor(Math.pow(val, 1.5));
+}
 
-            refreshBuildMenu() {
-                const c = document.getElementById('build-list'); c.innerHTML = '';
-                const cats = {};
-                for (const [k, v] of Object.entries(DB.buildings)) {
-                    if (v.unlock && !this.saveData.unlocks.includes(v.unlock)) continue;
-                    if (!cats[v.cat]) cats[v.cat] = []; cats[v.cat].push({k, ...v});
-                }
-                for (const [cat, items] of Object.entries(cats)) {
-                    const h = document.createElement('div'); h.className = 'category-header'; h.innerText = cat; c.appendChild(h);
-                    items.forEach(i => {
-                        const b = document.createElement('button'); b.className = 'build-btn'; b.id = `btn-${i.k}`;
-                        b.onclick = () => this.buy(i.k);
-                        b.innerHTML = `<div class="btn-info"><span class="btn-name">${i.name}</span><span class="btn-desc">${i.desc}</span></div><div class="btn-cost">${i.cost}</div>`;
-                        c.appendChild(b);
-                    });
-                }
-            }
+function rebirthMultiplier(cyt){
+  // scales with total cytokines ever
+  const base = G.rebirths>=10 ? 2.0 : G.rebirths>=5 ? 1.8 : G.rebirths>=1 ? 1.5 : 1.0;
+  return Math.pow(base, Math.sqrt(cyt));
+}
 
-            buy(k) {
-                const b = DB.buildings[k];
-                if (this.res.atp >= b.cost) {
-                    if (b.instant) {
-                        if (k === 'repair' && this.res.wallHp < this.res.maxWallHp) {
-                            this.res.atp -= b.cost; this.res.wallHp = Math.min(this.res.maxWallHp, this.res.wallHp + 50);
-                            this.spawnPart(this.cx, this.cy, '#4ecca3', 10);
-                        }
-                    } else {
-                        this.res.atp -= b.cost;
-                        const ang = Math.random() * Math.PI * 2, r = Math.random() * (this.radius * 0.7);
-                        this.addEnt(new Construction(this.cx + Math.cos(ang)*r, this.cy + Math.sin(ang)*r, k, b.time / this.stats.buildSpeed));
-                    }
-                }
-            }
+function orgCostWithRbDiscount(o){
+  const disc = G.rebirths>=2 ? Math.min(0.5, G.rebirths * 0.05) : 0;
+  return Math.ceil(orgCost(o) * (1 - disc));
+}
 
-            // --- Recursive Tree Logic ---
-            openShop() {
-                document.getElementById('main-menu').classList.add('hidden');
-                document.getElementById('shop-screen').classList.remove('hidden');
-                this.switchTab('defense');
-            }
-            
-            switchTab(tab) {
-                this.activeTab = tab;
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                event.target.classList.add('active');
-                
-                const container = document.getElementById('tree-container');
-                container.innerHTML = '';
-                
-                // Render tree for active tab
-                const root = DB.trees[tab];
-                container.appendChild(this.renderNode(root));
-                
-                document.getElementById('shop-ep').innerText = this.saveData.ep;
-            }
+function openRebirthOverlay(){
+  const gain = cytokinesFromRun();
+  const newTotal = G.totalCytokines + gain;
+  const newMult = rebirthMultiplier(newTotal);
+  document.getElementById('rbogain').textContent =
+    `+${gain} Cytokines (${G.totalCytokines}→${newTotal}) · New mult: ×${newMult.toFixed(2)}`;
+  document.getElementById('rebirthoverlay').classList.add('show');
+}
 
-            renderNode(nodeData) {
-                const wrapper = document.createElement('div');
-                wrapper.className = `tf-tree ${!nodeData.parent ? 'root' : ''}`;
+function doRebirth(){
+  const gain = cytokinesFromRun();
+  G.cytokines = gain;
+  G.totalCytokines += gain;
+  G.rebirths++;
+  G.rebirthMult = rebirthMultiplier(G.totalCytokines);
 
-                const content = document.createElement('div');
-                const bought = this.saveData.unlocks.includes(nodeData.id);
-                const parentBought = !nodeData.parent || this.saveData.unlocks.includes(nodeData.parent);
-                
-                content.className = `tf-node-content ${bought ? 'bought' : !parentBought ? 'locked' : ''}`;
-                content.innerHTML = `
-                    <div class="node-name">${nodeData.name}</div>
-                    <div class="node-desc">${nodeData.desc}</div>
-                    ${bought 
-                        ? '<div class="bought-badge">ACQUIRED</div>' 
-                        : `<button class="buy-node" ${!parentBought ? 'disabled' : ''} onclick="game.unlock('${nodeData.id}')">${nodeData.cost} EP</button>`
-                    }
-                `;
-                wrapper.appendChild(content);
+  // reset run state
+  G.atp=0; G.totalAtp=0;
+  G.hp=G.rebirths>=3?120:100; G.maxHp=G.rebirths>=3?120:100;
+  G.wave=1; G.waveTimer=0; G.nextWave=18; G.inWave=false;
+  G.clickPower=1; G.totalClicks=0;
+  G.viruses=[]; G.particles=[]; G.projectiles=[];
+  G.upgMult={}; G.defMult={}; G.globalMult=1; G.hpRegen=0;
+  UPGRADES.forEach(u=>u.bought=false);
+  ORGS.forEach(o=>{
+    o.count=0; o.shootTimer=0;
+    // reset shoot intervals to base
+    if(o.id==='lyso') o.shootInterval=2.5;
+    if(o.id==='centriole') o.shootInterval=1.8;
+    if(o.id==='peroxi') o.shootInterval=1.2;
+  });
 
-                if (nodeData.children && nodeData.children.length > 0) {
-                    const childrenContainer = document.createElement('div');
-                    childrenContainer.className = 'tf-children';
-                    nodeData.children.forEach(child => {
-                        child.parent = nodeData.id; 
-                        const conn = document.createElement('div');
-                        conn.className = 'tf-child-connector';
-                        conn.appendChild(this.renderNode(child));
-                        childrenContainer.appendChild(conn);
-                    });
-                    wrapper.appendChild(childrenContainer);
-                }
-                
-                return wrapper;
-            }
-            
-            unlock(id) {
-                const findNode = (n, tid) => {
-                    if (n.id === tid) return n;
-                    if (n.children) {
-                        for (let c of n.children) {
-                            const found = findNode(c, tid);
-                            if (found) return found;
-                        }
-                    }
-                    return null;
-                };
-                
-                const node = findNode(DB.trees[this.activeTab], id);
-                
-                if (this.saveData.ep >= node.cost) {
-                    this.saveData.ep -= node.cost;
-                    this.saveData.unlocks.push(id);
-                    this.save();
-                    this.switchTab(this.activeTab);
-                    document.querySelector(`.tab-btn:nth-child(${this.activeTab=='defense'?1:this.activeTab=='offense'?2:3})`).classList.add('active');
-                }
-            }
-            
-            closeShop() {
-                document.getElementById('main-menu').classList.remove('hidden');
-                document.getElementById('shop-screen').classList.add('hidden');
-            }
+  // Ancestral Enzymes perk: start with 5 ribosomes
+  if(G.rebirths>=6) getOrg('ribosome').count=5;
 
-            // UI Actions for Extracting
-            requestExtract() { document.getElementById('extract-modal').classList.remove('hidden'); }
-            cancelExtract() { document.getElementById('extract-modal').classList.add('hidden'); }
-            confirmExtract() {
-                this.cancelExtract();
-                this.endRun(true);
-            }
+  document.getElementById('rebirthoverlay').classList.remove('show');
+  addLog(`🔁 Rebirth #${G.rebirths}! Gained ${gain} Cytokines · Mult now ×${G.rebirthMult.toFixed(2)}`,'lrb');
+  saveGame();
+  renderShop(); renderUpgrades(); renderRbPerks(); renderAchs();
+}
 
-            // Universal end game handler to ensure it only fires once and properly saves state
-            endRun(isExtraction = false) {
-                if (!this.isRunning) return; 
-                this.isRunning = false; // Immediately stops updates
-                
-                document.getElementById('ui-panel').classList.add('hidden');
-                document.getElementById('click-cd-bar').classList.add('hidden');
-                
-                const score = Math.floor(this.res.prot * 10);
-                const earned = Math.floor(score / 20) + (this.wave * 10);
-                
-                // Apply and commit save instantly
-                this.saveData.ep = (this.saveData.ep || 0) + earned;
-                this.save();
-                
-                const overScreen = document.getElementById('game-over-screen');
-                overScreen.classList.remove('hidden');
-                
-                const titleEl = document.getElementById('go-title');
-                if (isExtraction) {
-                    titleEl.innerText = "EXTRACTION SUCCESSFUL";
-                    titleEl.style.color = "var(--highlight)";
-                } else {
-                    titleEl.innerText = "CELLULAR DEATH";
-                    titleEl.style.color = "var(--danger)";
-                }
+document.getElementById('rebirthbtn').addEventListener('click', openRebirthOverlay);
+document.getElementById('rboconfirm').addEventListener('click', doRebirth);
+document.getElementById('rbocancel').addEventListener('click', ()=>document.getElementById('rebirthoverlay').classList.remove('show'));
 
-                document.getElementById('final-score').innerText = score;
-                document.getElementById('final-wave').innerText = this.wave;
-                document.getElementById('earned-ep').innerText = earned;
-            }
+// ═══════════════════════════════════════════════════════════════════
+// SAVE / LOAD
+// ═══════════════════════════════════════════════════════════════════
+const SK='cf_v5';
+function saveGame(){
+  try{
+    localStorage.setItem(SK,JSON.stringify({
+      atp:G.atp,totalAtp:G.totalAtp,hp:G.hp,maxHp:G.maxHp,
+      wave:G.wave,nextWave:G.nextWave,
+      clickPower:G.clickPower,totalClicks:G.totalClicks,
+      upgMult:G.upgMult,defMult:G.defMult,globalMult:G.globalMult,hpRegen:G.hpRegen,
+      rebirths:G.rebirths,cytokines:G.cytokines,totalCytokines:G.totalCytokines,rebirthMult:G.rebirthMult,
+      virusesKilled:G.virusesKilled,wavesCleared:G.wavesCleared,totalAtpEver:G.totalAtpEver,
+      orgs:ORGS.map(o=>({id:o.id,count:o.count,shootInterval:o.shootInterval})),
+      upgrades:UPGRADES.map(u=>({id:u.id,bought:u.bought})),
+      achs:ACHS.map(a=>({id:a.id,earned:a.earned})),
+    }));
+    const s=document.getElementById('sind');
+    s.classList.add('show'); setTimeout(()=>s.classList.remove('show'),1800);
+  }catch(e){}
+}
+function loadGame(){
+  try{
+    const d=JSON.parse(localStorage.getItem(SK)||'null');
+    if(!d) return;
+    Object.assign(G,{
+      atp:d.atp||0,totalAtp:d.totalAtp||0,hp:d.hp||100,maxHp:d.maxHp||100,
+      wave:d.wave||1,nextWave:d.nextWave||18,
+      clickPower:d.clickPower||1,totalClicks:d.totalClicks||0,
+      upgMult:d.upgMult||{},defMult:d.defMult||{},globalMult:d.globalMult||1,hpRegen:d.hpRegen||0,
+      rebirths:d.rebirths||0,cytokines:d.cytokines||0,totalCytokines:d.totalCytokines||0,rebirthMult:d.rebirthMult||1,
+      virusesKilled:d.virusesKilled||0,wavesCleared:d.wavesCleared||0,totalAtpEver:d.totalAtpEver||0,
+    });
+    if(d.orgs) d.orgs.forEach(s=>{const o=getOrg(s.id);if(o){o.count=s.count||0;if(s.shootInterval)o.shootInterval=s.shootInterval;}});
+    if(d.upgrades) d.upgrades.forEach(s=>{const u=UPGRADES.find(x=>x.id===s.id);if(u&&s.bought)u.bought=true;});
+    if(d.achs) d.achs.forEach(s=>{const a=ACHS.find(x=>x.id===s.id);if(a)a.earned=s.earned||false;});
+    addLog('Save loaded.','lev');
+  }catch(e){addLog('No save found. Starting fresh.','lw');}
+}
+setInterval(saveGame,30000);
+document.getElementById('savebtn').addEventListener('click',saveGame);
+document.getElementById('resetbtn').addEventListener('click',()=>{
+  if(confirm('Permanently delete ALL progress including rebirths?')){localStorage.removeItem(SK);location.reload();}
+});
 
-            // Safely returns to menu without reloading iframe and wiping out save instances
-            returnToMenu() {
-                document.getElementById('game-over-screen').classList.add('hidden');
-                document.getElementById('main-menu').classList.remove('hidden');
-                
-                // Clear state
-                this.entities = [];
-                this.particles = [];
-                this.projectiles = [];
-                this.orbs = [];
-                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-            }
+// ═══════════════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════════════
+function fmt(n){
+  if(n>=1e15)return(n/1e15).toFixed(2)+'Qa';
+  if(n>=1e12)return(n/1e12).toFixed(2)+'T';
+  if(n>=1e9) return(n/1e9).toFixed(2)+'B';
+  if(n>=1e6) return(n/1e6).toFixed(2)+'M';
+  if(n>=1e3) return(n/1e3).toFixed(1)+'K';
+  return Math.floor(n)+'';
+}
+function addLog(msg,cls){
+  const d=document.createElement('div');
+  d.className='le '+cls; d.textContent=msg;
+  const l=document.getElementById('log');
+  l.prepend(d); while(l.children.length>100)l.removeChild(l.lastChild);
+}
+function floater(x,y,t,col){
+  const el=document.createElement('div');
+  el.className='fnum'; el.textContent=t;
+  el.style.cssText=`color:${col};left:${x}px;top:${y}px;text-shadow:0 0 7px ${col}`;
+  document.getElementById('view').appendChild(el);
+  setTimeout(()=>el.remove(),1000);
+}
+function sparks(x,y,col,n){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2,s=1+Math.random()*3;
+    G.particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1,decay:.03+Math.random()*.04,col,sz:2+Math.random()*3});
+  }
+}
 
-            draw() {
-                this.ctx.clearRect(0,0,this.canvas.width,this.canvas.height);
-                // Wall
-                this.ctx.beginPath(); this.ctx.arc(this.cx,this.cy,this.radius,0,Math.PI*2);
-                this.ctx.fillStyle='#1e1e2e'; this.ctx.fill();
-                this.ctx.lineWidth=8;
-                const hp = this.res.wallHp/this.res.maxWallHp;
-                this.ctx.strokeStyle = hp > 0 ? `rgba(78, 204, 163, ${0.2+hp})` : 'rgba(239,68,68,0.3)';
-                if(hp<=0) this.ctx.setLineDash([5,10]);
-                this.ctx.stroke(); this.ctx.setLineDash([]);
+// ═══════════════════════════════════════════════════════════════════
+// CANVAS + SHAPES
+// ═══════════════════════════════════════════════════════════════════
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+function resize(){const v=document.getElementById('view');cv.width=v.clientWidth;cv.height=v.clientHeight;}
+resize(); window.addEventListener('resize',resize);
+let pulse=0;
 
-                this.entities.forEach(e => e.draw(this.ctx));
-                this.projectiles.forEach(p => p.draw(this.ctx));
-                this.orbs.forEach(o => {
-                    this.ctx.beginPath(); this.ctx.arc(o.x,o.y,5,0,Math.PI*2);
-                    this.ctx.fillStyle = o.type==='atp'?'#ffd700':o.type==='prot'?'#f472b6':'#4ecca3';
-                    this.ctx.fill();
-                });
-                this.particles.forEach(p => p.draw(this.ctx));
-            }
+function drawOrg(o,ox,oy,os){
+  ctx.save(); ctx.translate(ox,oy);
+  const c=o.color;
+  switch(o.shape){
+    case 'cluster':
+      for(let i=0;i<3;i++){const a=i*(Math.PI*2/3)+pulse*.35;const r=os*.52;
+        ctx.beginPath();ctx.arc(Math.cos(a)*r,Math.sin(a)*r,os*.38,0,Math.PI*2);
+        ctx.fillStyle=c+'3a';ctx.fill();ctx.strokeStyle=c;ctx.lineWidth=1;ctx.stroke();}
+      break;
+    case 'bean':
+      ctx.beginPath();ctx.ellipse(0,0,os*1.5,os*.65,pulse*.25,0,Math.PI*2);
+      ctx.fillStyle=c+'2a';ctx.fill();ctx.strokeStyle=c;ctx.lineWidth=1.3;ctx.stroke();
+      ctx.strokeStyle=c+'55';ctx.lineWidth=.7;
+      for(let i=-1;i<=1;i++){ctx.beginPath();ctx.moveTo(i*os*.42,-os*.4);ctx.lineTo(i*os*.42,os*.4);ctx.stroke();}
+      break;
+    case 'circle':
+      ctx.beginPath();ctx.arc(0,0,os,0,Math.PI*2);
+      ctx.fillStyle=c+'30';ctx.fill();ctx.strokeStyle=c;ctx.lineWidth=1.8;ctx.stroke();
+      ctx.beginPath();ctx.arc(0,0,os*.38,0,Math.PI*2);ctx.fillStyle=c+'88';ctx.fill();
+      // animated shooting glow when has viruses nearby
+      if(G.viruses.length>0){ctx.beginPath();ctx.arc(0,0,os*1.3,0,Math.PI*2);ctx.strokeStyle=c+'44';ctx.lineWidth=2+Math.sin(pulse*3)*.8;ctx.stroke();}
+      break;
+    case 'oval':
+      ctx.beginPath();ctx.ellipse(0,0,os*1.35,os*1.1,Math.sin(pulse*.18)*.18,0,Math.PI*2);
+      ctx.fillStyle=c+'15';ctx.fill();ctx.strokeStyle=c+'88';ctx.lineWidth=1.4;ctx.stroke();
+      ctx.beginPath();ctx.ellipse(0,0,os*.48,os*.38,0,0,Math.PI*2);ctx.fillStyle=c+'28';ctx.fill();
+      break;
+    case 'nucleus':
+      ctx.beginPath();ctx.arc(0,0,os,0,Math.PI*2);ctx.fillStyle=c+'1a';ctx.fill();ctx.strokeStyle=c;ctx.lineWidth=1.8;ctx.stroke();
+      ctx.beginPath();ctx.arc(0,0,os*.58,0,Math.PI*2);ctx.fillStyle=c+'35';ctx.fill();ctx.strokeStyle=c+'88';ctx.lineWidth=1;ctx.stroke();
+      for(let i=0;i<6;i++){const a=i*(Math.PI/3)+pulse*.08;
+        ctx.beginPath();ctx.arc(Math.cos(a)*os,Math.sin(a)*os,os*.13,0,Math.PI*2);ctx.fillStyle=c;ctx.fill();}
+      break;
+    case 'disc':
+      ctx.beginPath();ctx.ellipse(0,0,os*1.25,os*.55,pulse*.08,0,Math.PI*2);
+      ctx.fillStyle=c+'25';ctx.fill();ctx.strokeStyle=c;ctx.lineWidth=1.3;ctx.stroke();
+      ctx.strokeStyle=c+'44';ctx.lineWidth=.8;
+      ctx.beginPath();ctx.ellipse(0,0,os*.82,os*.3,pulse*.08,0,Math.PI*2);ctx.stroke();
+      ctx.beginPath();ctx.ellipse(0,0,os*.4,os*.12,pulse*.08,0,Math.PI*2);ctx.stroke();
+      break;
+    case 'stack':
+      for(let i=0;i<3;i++){const s2=1-i*.2;
+        ctx.beginPath();ctx.ellipse(0,i*os*.3-os*.25,os*s2,os*.2,0,0,Math.PI*2);
+        ctx.fillStyle=c+'25';ctx.fill();ctx.strokeStyle=c;ctx.lineWidth=1;ctx.stroke();}
+      break;
+    case 'barrel':
+      ctx.strokeStyle=c;ctx.lineWidth=1.3;
+      ctx.strokeRect(-os*.52,-os*.72,os*1.04,os*1.44);
+      ctx.fillStyle=c+'1a';ctx.fillRect(-os*.52,-os*.72,os*1.04,os*1.44);
+      for(let i=1;i<=3;i++){ctx.beginPath();ctx.moveTo(-os*.52,-os*.72+i*os*.36);ctx.lineTo(os*.52,-os*.72+i*os*.36);ctx.stroke();}
+      if(G.viruses.length>0){ctx.strokeStyle=c+'55';ctx.lineWidth=2+Math.sin(pulse*4)*.6;ctx.strokeRect(-os*.52,-os*.72,os*1.04,os*1.44);}
+      break;
+    case 'web':
+      const pts=[];for(let i=0;i<6;i++){const a=i*(Math.PI/3)+pulse*.04;pts.push([Math.cos(a)*os,Math.sin(a)*os]);}
+      ctx.strokeStyle=c+'66';ctx.lineWidth=.9;
+      pts.forEach(([x,y])=>{ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(x,y);ctx.stroke();});
+      for(let i=0;i<pts.length;i++){const n=pts[(i+1)%pts.length];ctx.beginPath();ctx.moveTo(pts[i][0],pts[i][1]);ctx.lineTo(n[0],n[1]);ctx.stroke();}
+      ctx.beginPath();ctx.arc(0,0,os*.22,0,Math.PI*2);ctx.fillStyle=c+'66';ctx.fill();
+      break;
+    case 'hex':
+      ctx.beginPath();for(let i=0;i<6;i++){const a=i*(Math.PI/3)+pulse*.12;i===0?ctx.moveTo(Math.cos(a)*os,Math.sin(a)*os):ctx.lineTo(Math.cos(a)*os,Math.sin(a)*os);}ctx.closePath();
+      ctx.fillStyle=c+'28';ctx.fill();ctx.strokeStyle=c;ctx.lineWidth=1.6;ctx.stroke();
+      if(G.viruses.length>0){ctx.beginPath();for(let i=0;i<6;i++){const a=i*(Math.PI/3)+pulse*.12;const r=os*(1.2+Math.sin(pulse*5)*.1);i===0?ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r):ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r);}ctx.closePath();ctx.strokeStyle=c+'44';ctx.lineWidth=1;ctx.stroke();}
+      break;
+    case 'helix':
+      ctx.strokeStyle=c;ctx.lineWidth=1.2;
+      for(let side=0;side<2;side++){ctx.beginPath();for(let t=0;t<=20;t++){const y=-os+(t/20)*os*2;const x=Math.sin(t/20*Math.PI*3+pulse+(side?Math.PI:0))*os*.55;t===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}ctx.stroke();}
+      for(let t=2;t<=18;t+=4){const y=-os+(t/20)*os*2;ctx.beginPath();ctx.moveTo(-os*.55,y);ctx.lineTo(os*.55,y);ctx.strokeStyle=c+'55';ctx.lineWidth=.7;ctx.stroke();}
+      break;
+    default:
+      ctx.beginPath();ctx.arc(0,0,os,0,Math.PI*2);ctx.fillStyle=c+'28';ctx.fill();ctx.strokeStyle=c;ctx.lineWidth=1.4;ctx.stroke();
+  }
+  ctx.restore();
+}
 
-            updateUI() {
-                document.getElementById('atp-txt').innerText = Math.floor(this.res.atp);
-                document.getElementById('aa-txt').innerText = Math.floor(this.res.aa);
-                document.getElementById('prot-txt').innerText = Math.floor(this.res.prot);
-                document.getElementById('wave-txt').innerText = this.wave;
-                document.getElementById('health-txt').innerText = `${Math.ceil(this.res.wallHp)}/${this.res.maxWallHp}`;
-                document.getElementById('health-bar').style.width = (Math.max(0,this.res.wallHp)/this.res.maxWallHp*100)+'%';
-                for(const k in DB.buildings) {
-                    const b = document.getElementById(`btn-${k}`);
-                    if(b) b.disabled = this.res.atp < DB.buildings[k].cost;
-                }
-            }
+function render(){
+  const W=cv.width,H=cv.height,cx=W/2,cy=H/2;
+  ctx.clearRect(0,0,W,H);
+  pulse+=0.016;
 
-            loop() { 
-                if(!this.isRunning) return; 
-                this.update();
-                this.draw(); 
-                requestAnimationFrame(this.loop); 
-            }
-            addEnt(e) { this.entities.push(e); }
-            spawnText(x,y,t,c) { this.particles.push(new FloatingText(x,y,t,c)); }
-            spawnPart(x,y,c,n) { for(let i=0;i<n;i++) this.particles.push(new Particle(x,y,c)); }
-            spawnMsg(t) { const m = document.getElementById('message-area'); m.innerText=t; m.style.opacity=1; setTimeout(()=>m.style.opacity=0, 2000); }
-            handleMouse(e) { const r = this.canvas.getBoundingClientRect(); this.mouse = {x:e.clientX-r.left, y:e.clientY-r.top}; }
-        }
+  // grid
+  ctx.strokeStyle='rgba(0,30,15,.22)';ctx.lineWidth=.5;
+  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
 
-        class Entity {
-            constructor(x,y,c,r,hp) { this.x=x;this.y=y;this.c=c;this.r=r;this.hp=hp;this.maxHp=hp;this.dead=false;this.isEnemy=false; }
-            takeDamage(n) { this.hp-=n; if(this.hp<=0) this.dead=true; }
-            update(g) {}
-            draw(ctx) { ctx.beginPath(); ctx.arc(this.x,this.y,this.r,0,Math.PI*2); ctx.fillStyle=this.c; ctx.fill(); }
-        }
+  // membrane
+  const hp=G.hp/G.maxHp;
+  const mc=`rgba(${Math.floor(255*(1-hp))},${Math.floor(200*hp)},${Math.floor(55*hp)},`;
+  const rad=Math.min(W,H)*.36+Math.sin(pulse)*2;
+  for(let i=4;i>0;i--){ctx.beginPath();ctx.arc(cx,cy,rad+i*5,0,Math.PI*2);ctx.strokeStyle=mc+(0.022*i)+')';ctx.lineWidth=8;ctx.stroke();}
+  ctx.beginPath();ctx.arc(cx,cy,rad,0,Math.PI*2);ctx.strokeStyle=mc+'0.82)';ctx.lineWidth=2;ctx.stroke();
+  const g=ctx.createRadialGradient(cx,cy,0,cx,cy,rad);
+  g.addColorStop(0,'rgba(0,25,15,.42)');g.addColorStop(1,'rgba(0,4,2,.08)');
+  ctx.beginPath();ctx.arc(cx,cy,rad,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
 
-        class Construction extends Entity {
-            constructor(x, y, key, time) { super(x, y, '#475569', 8, 10); this.key = key; this.time = time; }
-            update(g) { this.time--; if (this.time <= 0) { this.dead = true; 
-                let o;
-                if(this.key==='mitochondria') o=new Mitochondria(this.x,this.y);
-                if(this.key==='chloroplast') o=new Chloroplast(this.x,this.y);
-                if(this.key==='ribosome') o=new Ribosome(this.x,this.y);
-                if(this.key==='lysosome') o=new Lysosome(this.x,this.y);
-                if(this.key==='centriole') o=new Centriole(this.x,this.y);
-                if(this.key==='peroxisome') o=new Peroxisome(this.x,this.y);
-                if(this.key==='golgi') o=new Golgi(this.x,this.y);
-                if(this.key==='vacuole') o=new Vacuole(this.x,this.y);
-                if(this.key==='er') o=new ER(this.x,this.y);
-                if(this.key==='nucleolus') o=new Nucleolus(this.x,this.y);
-                if(o) g.addEnt(o); } 
-            }
-            draw(ctx) { ctx.strokeStyle='white'; ctx.strokeRect(this.x-8,this.y-8,16,16); ctx.fillStyle='#4ecca3'; ctx.fillRect(this.x-8,this.y+10,16*(1-this.time/100),2); }
-        }
+  // organelles
+  let idx=0;
+  for(const o of ORGS){
+    if(!o.count) continue;
+    const show=Math.min(o.count,13);
+    for(let i=0;i<show;i++){
+      const a=idx*2.399+i*1.18+pulse*.065;
+      const r=rad*.2+(idx%4)*rad*.15;
+      const ox=cx+Math.cos(a)*r,oy=cy+Math.sin(a)*r;
+      const os=6+Math.sin(pulse+i*.55)*.7;
+      drawOrg(o,ox,oy,os);
+      idx++;
+    }
+  }
 
-        class Nucleus extends Entity {
-            constructor(x,y) { super(x,y,'#ef4444',30, 500); }
-            draw(ctx) { ctx.beginPath(); ctx.arc(this.x,this.y,30,0,Math.PI*2); ctx.fillStyle='#ef4444'; ctx.fill(); ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.lineWidth=3; ctx.stroke(); }
-        }
+  // projectiles
+  for(let i=G.projectiles.length-1;i>=0;i--){
+    const p=G.projectiles[i];
+    p.x+=p.vx; p.y+=p.vy; p.life-=0.016;
+    if(p.life<=0||p.x<0||p.y<0||p.x>W||p.y>H){G.projectiles.splice(i,1);continue;}
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle=p.col+(Math.floor(p.life*200).toString(16).padStart(2,'0'));ctx.fill();
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r*1.8,0,Math.PI*2);ctx.fillStyle=p.col+'28';ctx.fill();
+  }
 
-        // Organelles
-        class Mitochondria extends Entity { 
-            constructor(x,y) { super(x,y,'#ffd700',12, DB.buildings.mitochondria.hp); this.t=0; } 
-            update(g) { 
-                this.t++; 
-                const baseTime = 300; 
-                const penalty = Math.pow(g.stats.mitoPenaltyMult, Math.max(0, g.mitoCount - 1));
-                const requiredTime = (baseTime * penalty) / g.stats.mitoSpeed;
-                
-                if(this.t > requiredTime) { 
-                    this.t=0; 
-                    g.orbs.push({x:this.x, y:this.y, val:g.stats.mitoBaseATP, type:'atp'}); 
-                } 
-            } 
-        }
-        
-        class Chloroplast extends Entity { 
-            constructor(x,y) { super(x,y,'#22c55e',14, DB.buildings.chloroplast.hp); this.t=0; } 
-            update(g) { 
-                this.t++; 
-                if(this.t>180) { 
-                    this.t=0; 
-                    let val=5; 
-                    if(g.stats.solarBurstChance > 0 && Math.random() < g.stats.solarBurstChance) val=15; 
-                    g.res.atp+=val; 
-                    g.spawnText(this.x,this.y,`+${val}`,'#ffd700'); 
-                } 
-            } 
-        }
-        
-        class Ribosome extends Entity { constructor(x,y) { super(x,y,'#d946ef',8, DB.buildings.ribosome.hp); this.t=0; } update(g) { if(g.res.aa>=3) { this.t++; if(this.t>120) { this.t=0; g.res.aa-=3; g.orbs.push({x:this.x,y:this.y,val:1*g.stats.proteinMult,type:'prot'}); } } } }
-        class Golgi extends Entity { constructor(x,y) { super(x,y,'#f97316',16, DB.buildings.golgi.hp); this.applied=false; } update(g) { if(!this.applied) { g.stats.proteinMult *= 2; this.applied=true; } } }
-        class Vacuole extends Entity { constructor(x,y) { super(x,y,'#38bdf8',18, DB.buildings.vacuole.hp); } }
-        class ER extends Entity { constructor(x,y) { super(x,y,'#a855f7',15, DB.buildings.er.hp); this.applied=false; } update(g) { if(!this.applied) { g.stats.autoCollect = true; this.applied=true; } } }
-        class Nucleolus extends Entity { constructor(x,y) { super(x,y,'#ec4899',10, DB.buildings.nucleolus.hp); this.applied=false; } update(g) { if(!this.applied) { g.stats.buildSpeed *= 1.2; this.applied=true; } } }
-        
-        // Defenses
-        class Lysosome extends Entity { 
-            constructor(x,y) { 
-                super(x,y,'#fbbf24',10, DB.buildings.lysosome.hp); 
-                this.spd = 1.5; 
-                this.anchorX = x; 
-                this.anchorY = y;
-            } 
-            
-            update(g) {
-                const patrolRadius = g.stats.lysoRange;
-                let target = g.entities.find(e => e.isEnemy && Math.hypot(e.x - this.anchorX, e.y - this.anchorY) < patrolRadius);
-                
-                if(target) {
-                    const ang = Math.atan2(target.y-this.y, target.x-this.x);
-                    this.x += Math.cos(ang)*this.spd*g.stats.lysoSpeed; 
-                    this.y += Math.sin(ang)*this.spd*g.stats.lysoSpeed;
-                    if(Math.hypot(target.x-this.x, target.y-this.y) < this.r+target.r) target.takeDamage(g.stats.lysoDmg, g);
-                } else {
-                    if (Math.hypot(this.x - this.anchorX, this.y - this.anchorY) > 5) {
-                        const ang = Math.atan2(this.anchorY-this.y, this.anchorX-this.x);
-                        this.x += Math.cos(ang)*this.spd*g.stats.lysoSpeed*0.5;
-                        this.y += Math.sin(ang)*this.spd*g.stats.lysoSpeed*0.5;
-                    }
-                }
-            }
-            
-            draw(ctx) {
-                super.draw(ctx);
-                ctx.beginPath(); ctx.arc(this.anchorX, this.anchorY, 2, 0, Math.PI*2);
-                ctx.fillStyle = 'rgba(251, 191, 36, 0.3)'; ctx.fill();
-            }
-        }
-        
-        class Centriole extends Entity { constructor(x,y) { super(x,y,'#6366f1',14, DB.buildings.centriole.hp); this.t=0; } update(g) { this.t++; if(this.t>g.stats.centrioleRate) { const target=g.entities.find(e=>e.isEnemy && Math.hypot(e.x-this.x, e.y-this.y)<250); if(target) { this.t=0; g.projectiles.push(new Projectile(this.x,this.y,target)); } } } }
-        class Peroxisome extends Entity { constructor(x,y) { super(x,y,'#14b8a6',14, DB.buildings.peroxisome.hp); } update(g) { g.entities.forEach(e => { if(e.isEnemy && Math.hypot(e.x-this.x, e.y-this.y)<60*g.stats.toxinRange) e.takeDamage(0.2, g); }); } draw(ctx){ super.draw(ctx); ctx.beginPath(); ctx.arc(this.x,this.y,60*game.stats.toxinRange,0,Math.PI*2); ctx.strokeStyle='rgba(20,184,166,0.3)'; ctx.stroke(); } }
+  // particles
+  for(let i=G.particles.length-1;i>=0;i--){
+    const p=G.particles[i];
+    p.x+=p.vx;p.y+=p.vy;p.vx*=.93;p.vy*=.93;p.life-=p.decay;
+    if(p.life<=0){G.particles.splice(i,1);continue;}
+    ctx.beginPath();ctx.arc(p.x,p.y,p.sz*p.life,0,Math.PI*2);
+    ctx.fillStyle=p.col+Math.floor(p.life*255).toString(16).padStart(2,'0');ctx.fill();
+  }
 
-        // Virus
-        class Virus extends Entity {
-            constructor(x, y, type, wave) {
-                let c='#ef4444', r=8, hp=10, spd=0.8, dmg=0.2;
-                const scale = 1 + (wave * 0.15);
-                
-                switch(type) {
-                    case 'speedster': c='#facc15'; spd=2.0; hp=5; break;
-                    case 'tank': c='#7f1d1d'; spd=0.4; hp=40; r=12; break;
-                    case 'breacher': c='#f97316'; dmg=0.8; break;
-                    case 'infector': c='#a3e635'; break;
-                    case 'vampire': c='#be123c'; break;
-                    case 'ghost': c='rgba(255,255,255,0.4)'; spd=1.2; hp=8; break;
-                    case 'swarm': c='#fbbf24'; r=4; hp=2; spd=1.5; break;
-                    case 'sniper': c='#60a5fa'; spd=0.5; break; 
-                    case 'weaver': c='#c084fc'; break;
-                    case 'titan': c='#000'; r=25; hp=300; spd=0.2; dmg=2.0; break;
-                }
-                super(x, y, c, r, hp * scale);
-                this.type = type; this.spd = spd; this.dmg = dmg;
-                this.target = null;
-                this.isEnemy = true; 
-            }
-            
-            takeDamage(n, g) { 
-                this.hp-=n; 
-                if(this.type === 'vampire') this.hp += n*0.2;
-                if(this.hp<=0) { 
-                    this.dead=true; 
-                    let loot = g.atpPerKill;
-                    if(g.stats.scavengerChance > 0 && Math.random() < g.stats.scavengerChance) loot *= 2;
-                    g.res.atp += loot;
-                    g.spawnText(this.x,this.y,`+${loot}`,'#ffd700');
-                    g.spawnPart(this.x,this.y,this.c,5); 
-                } 
-            }
+  // viruses
+  for(const v of G.viruses){
+    v.pulseT+=.015;
+    const ps=Math.sin(v.pulseT*3)*1.4;
+    const vg=ctx.createRadialGradient(v.x,v.y,0,v.x,v.y,v.sz+13);
+    vg.addColorStop(0,v.col+'50');vg.addColorStop(1,'transparent');
+    ctx.beginPath();ctx.arc(v.x,v.y,v.sz+13,0,Math.PI*2);ctx.fillStyle=vg;ctx.fill();
+    ctx.strokeStyle=v.col;ctx.lineWidth=1.4;
+    const spikes=v.type==='elite'?12:8;
+    for(let s=0;s<spikes;s++){const a=(s/spikes)*Math.PI*2+v.pulseT*.35;
+      ctx.beginPath();ctx.moveTo(v.x+Math.cos(a)*v.sz,v.y+Math.sin(a)*v.sz);
+      ctx.lineTo(v.x+Math.cos(a)*(v.sz+4+ps),v.y+Math.sin(a)*(v.sz+4+ps));ctx.stroke();}
+    ctx.beginPath();ctx.arc(v.x,v.y,v.sz+ps,0,Math.PI*2);ctx.fillStyle=v.col+'25';ctx.fill();
+    ctx.strokeStyle=v.col;ctx.lineWidth=1.8;ctx.stroke();
+    const bw=v.sz*2+5;
+    ctx.fillStyle='#150005';ctx.fillRect(v.x-bw/2,v.y-v.sz-10,bw,3);
+    ctx.fillStyle=v.col;ctx.fillRect(v.x-bw/2,v.y-v.sz-10,bw*(v.hp/v.maxHp),3);
+    // slowed indicator
+    if(v.slowed){ctx.beginPath();ctx.arc(v.x,v.y,v.sz+ps+3,0,Math.PI*2);ctx.strokeStyle='#44ccff55';ctx.lineWidth=2;ctx.stroke();}
+  }
+  requestAnimationFrame(render);
+}
+render();
 
-            update(g) {
-                const distToCenter = Math.hypot(g.cx-this.x, g.cy-this.y);
-                const inside = distToCenter < g.radius;
-                
-                if (inside || g.res.wallHp <= 0) {
-                    if (this.type === 'infector' || this.type === 'weaver') {
-                        if (!this.target || this.target.dead) this.target = g.entities.find(e => !e.isEnemy && !(e instanceof Nucleus) && !(e instanceof Construction));
-                    } else {
-                        this.target = g.nucleus;
-                    }
+// ═══════════════════════════════════════════════════════════════════
+// VIRUSES
+// ═══════════════════════════════════════════════════════════════════
+function spawnVirus(){
+  const edge=Math.floor(Math.random()*4);let x,y;const m=40;
+  if(edge===0){x=m+Math.random()*(cv.width-2*m);y=-22;}
+  else if(edge===1){x=cv.width+22;y=m+Math.random()*(cv.height-2*m);}
+  else if(edge===2){x=m+Math.random()*(cv.width-2*m);y=cv.height+22;}
+  else{x=-22;y=m+Math.random()*(cv.height-2*m);}
+  const baseHp=10+G.wave*10+G.wave*G.wave*.6;
+  const baseSpd=0.2+Math.random()*.25+G.wave*.032;
+  const baseDmg=0.5+G.wave*.42;
+  // damage reduction from rebirth perk
+  const dmgReduction = G.rebirths>=12 ? Math.min(0.8, G.rebirths*0.02) : 0;
+  const roll=Math.random();
+  const type=(G.wave>10&&roll<.12)?'elite':(G.wave>5&&roll<.22)?'armored':'normal';
+  const mults={normal:[1,1,1],armored:[2,.75,1.6],elite:[3.5,1.4,2.8]};
+  const[hm,sm,dm]=mults[type];
+  const cols={normal:'#ff2244',armored:'#ff8800',elite:'#cc00ff'};
+  const szs={normal:9,armored:13,elite:17};
+  const hp=baseHp*hm;
+  G.viruses.push({x,y,hp,maxHp:hp,spd:baseSpd*sm,dmg:baseDmg*dm*(1-dmgReduction),type,sz:szs[type],col:cols[type],pulseT:Math.random()*100,slowed:false});
+}
 
-                    if (this.target) {
-                        const d = Math.hypot(this.target.x-this.x, this.target.y-this.y);
-                        if (d < this.r + this.target.r + 5) {
-                            this.target.takeDamage(this.dmg);
-                            if (this.target instanceof Nucleus && this.target.hp <= 0) g.endRun(false);
-                            return; 
-                        } else {
-                            const ang = Math.atan2(this.target.y-this.y, this.target.x-this.x);
-                            this.x += Math.cos(ang)*this.spd; this.y += Math.sin(ang)*this.spd;
-                        }
-                    }
-                } else {
-                    if (distToCenter <= g.radius + this.r + 2) {
-                        const dmg = Math.max(0, this.dmg - g.stats.armor);
-                        g.res.wallHp -= dmg;
-                        if (g.stats.thorns > 0) this.takeDamage(g.stats.thorns, g);
-                        if(Math.random()<0.1) this.x += (Math.random()-0.5)*5;
-                    } else {
-                        const ang = Math.atan2(g.cy-this.y, g.cx-this.x);
-                        this.x += Math.cos(ang)*this.spd; this.y += Math.sin(ang)*this.spd;
-                    }
-                }
-                
-                if (this.type === 'sniper' && Math.random()<0.02) {
-                    g.projectiles.push(new Projectile(this.x, this.y, g.nucleus, true));
-                }
-            }
-        }
+// Defender shooting logic
+function tickDefenders(dt){
+  const cx=cv.width/2,cy=cv.height/2;
+  const defOrgs=ORGS.filter(o=>o.shootInterval>0&&o.count>0);
+  for(const o of defOrgs){
+    o.shootTimer-=dt;
+    if(o.shootTimer>0||G.viruses.length===0) continue;
+    o.shootTimer=o.shootInterval;
+    // find closest virus
+    let target=null,best=Infinity;
+    for(const v of G.viruses){const d=Math.hypot(v.x-cx,v.y-cy);if(d<best){best=d;target=v;}}
+    if(!target) continue;
+    // compute shot origin: the organelle closest to target
+    const orgInstances=Math.min(o.count,13);
+    let bx=cx,by=cy;
+    for(let i=0;i<orgInstances;i++){
+      const idx2=ORGS.slice(0,ORGS.indexOf(o)).reduce((s,x)=>s+Math.min(x.count,13),0)+i;
+      const a=idx2*2.399+i*1.18;
+      const r=Math.min(cv.width,cv.height)*.36*.2+(idx2%4)*Math.min(cv.width,cv.height)*.36*.15;
+      bx=cx+Math.cos(a)*r; by=cy+Math.sin(a)*r;
+    }
+    const dx=target.x-bx,dy=target.y-by,dist=Math.hypot(dx,dy);
+    const spd=5;
+    const dmg=(o.dmgPerShot*(G.upgMult[o.id]||1))*lysoDmgMult()*peroxiDefBonus();
+    G.projectiles.push({
+      x:bx,y:by,vx:(dx/dist)*spd,vy:(dy/dist)*spd,
+      dmg,life:3,r:o.id==='peroxi'?5:3,
+      col:o.color,target,
+      slows:o.id==='centriole'||o.id==='vacuole',
+    });
+  }
+}
 
-        class Projectile {
-            constructor(x,y,t, isEnemy=false) { this.x=x;this.y=y;this.t=t;this.isEnemy=isEnemy; }
-            update(g) {
-                if(!this.isEnemy && this.t.dead) { this.dead=true; return; }
-                const tx = this.isEnemy ? g.cx : this.t.x;
-                const ty = this.isEnemy ? g.cy : this.t.y;
-                const ang = Math.atan2(ty-this.y, tx-this.x);
-                this.x+=Math.cos(ang)*5; this.y+=Math.sin(ang)*5;
-                
-                if (this.isEnemy) {
-                    if (Math.hypot(g.cx-this.x, g.cy-this.y) < g.radius) { g.res.wallHp -= 5; this.dead=true; }
-                } else {
-                    if (Math.hypot(this.t.x-this.x, this.t.y-this.y) < 15) { this.t.takeDamage(5, g); this.dead=true; }
-                }
-            }
-            draw(ctx) { ctx.fillStyle=this.isEnemy?'#ef4444':'#6366f1'; ctx.beginPath(); ctx.arc(this.x,this.y,3,0,Math.PI*2); ctx.fill(); }
-        }
+function tickProjectiles(dt){
+  for(let i=G.projectiles.length-1;i>=0;i--){
+    const p=G.projectiles[i];
+    if(!p.target||p.target.hp<=0){G.projectiles.splice(i,1);continue;}
+    // check hit
+    const dist=Math.hypot(p.x-p.target.x,p.y-p.target.y);
+    if(dist<p.target.sz+p.r){
+      p.target.hp-=p.dmg;
+      if(p.slows){p.target.slowed=true;setTimeout(()=>{if(p.target)p.target.slowed=false;},2000);}
+      sparks(p.target.x,p.target.y,p.col,4);
+      if(p.target.hp<=0){
+        sparks(p.target.x,p.target.y,p.target.col,12);
+        const rew=Math.ceil(3+G.wave*2);
+        G.atp+=rew;G.totalAtp+=rew;G.totalAtpEver+=rew;G.virusesKilled++;
+        addLog(`Virus destroyed by ${ORGS.find(o=>o.color===p.col)?.name||'defense'} · +${rew} ATP`,'ld');
+        G.viruses.splice(G.viruses.indexOf(p.target),1);
+      }
+      G.projectiles.splice(i,1);
+    }
+  }
+}
 
-        class Particle {
-            constructor(x,y,c) { this.x=x;this.y=y;this.c=c; this.vx=(Math.random()-0.5)*4; this.vy=(Math.random()-0.5)*4; this.life=20; }
-            update() { this.x+=this.vx; this.y+=this.vy; this.life--; }
-            draw(ctx) { ctx.globalAlpha=this.life/20; ctx.fillStyle=this.c; ctx.beginPath(); ctx.arc(this.x,this.y,2,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1; }
-        }
-        class FloatingText {
-            constructor(x,y,t,c) { this.x=x;this.y=y;this.t=t;this.c=c;this.life=40; }
-            update() { this.y-=1; this.life--; }
-            draw(ctx) { ctx.globalAlpha=this.life/40; ctx.fillStyle=this.c; ctx.font="bold 12px sans-serif"; ctx.textAlign="center"; ctx.fillText(this.t,this.x,this.y); ctx.globalAlpha=1; }
-        }
+function tickViruses(dt){
+  const cx=cv.width/2,cy=cv.height/2;
+  const slow=vacuoleSlow()*centSlow();
+  let dmg2cell=0;
+  for(let i=G.viruses.length-1;i>=0;i--){
+    const v=G.viruses[i];
+    const spd=v.slowed?v.spd*0.4:v.spd;
+    const dx=cx-v.x,dy=cy-v.y,dist=Math.hypot(dx,dy);
+    if(dist>v.sz+26){const step=spd*slow*dt*60;v.x+=dx/dist*step;v.y+=dy/dist*step;}
+    else dmg2cell+=v.dmg*dt;
+  }
+  if(dmg2cell>0){
+    G.hp=Math.max(0,G.hp-dmg2cell);
+    if(G.hp<G.maxHp*.15&&Math.random()<.012)addLog('⚠ Membrane critical!','lw');
+    if(G.hp<=0)cellDeath();
+  }
+}
 
-        const game = new Game();
-    </script>
+function cellDeath(){
+  G.hp=G.maxHp*.06;G.viruses=[];G.projectiles=[];
+  const lost=Math.floor(G.atp*.6);G.atp-=lost;
+  addLog(`☠ Membrane breached! −${fmt(lost)} ATP · emergency seal`,'lw');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// WAVES
+// ═══════════════════════════════════════════════════════════════════
+function startWave(){
+  G.inWave=true;G.waveTimer=50+G.wave*5;
+  const count=Math.floor(3+G.wave*1.8);
+  document.getElementById('wnum').textContent='WAVE '+G.wave;
+  const wa=document.getElementById('walert');wa.classList.add('show');setTimeout(()=>wa.classList.remove('show'),2200);
+  addLog(`⚡ WAVE ${G.wave} — ${count} viruses inbound!`,'la');
+  let spawned=0;
+  const iv=setInterval(()=>{
+    if(!G.inWave||spawned>=count){clearInterval(iv);return;}
+    spawnVirus();spawned++;
+  },Math.max(200,1000-G.wave*22));
+}
+
+function endWave(){
+  if(!G.inWave)return;
+  G.inWave=false;G.viruses=[];G.projectiles=[];
+  const base=G.wave*20+G.wave*G.wave*3;
+  const bonus=Math.floor(base*chloroWaveBonus());
+  G.atp+=bonus;G.totalAtp+=bonus;G.totalAtpEver+=bonus;
+  G.hp=Math.min(G.maxHp,G.hp+G.maxHp*.12);
+  G.wavesCleared++;G.waveTimer=0;
+  addLog(`✓ Wave ${G.wave} cleared · +${fmt(bonus)} ATP`,'lev');
+  G.wave++;
+  G.nextWave=Math.max(8,22-Math.floor(G.wave/2));
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// GAME LOOP
+// ═══════════════════════════════════════════════════════════════════
+// Accelerated Growth perk: ×5 for first 10s of a run
+let runStartTime=Date.now();
+function earlyBoost(){return G.rebirths>=8&&(Date.now()-runStartTime)<10000?5:1;}
+
+function tick(){
+  const now=Date.now();
+  const dt=Math.min((now-G.lastTick)/1000,.1);
+  G.lastTick=now;
+
+  const inc=totalAps()*earlyBoost()*dt;
+  G.atp+=inc;G.totalAtp+=inc;G.totalAtpEver+=inc;
+
+  // vacuole maxHp bonus
+  const targetMax=( G.rebirths>=3?120:100 )+getOrg('nucleus').count*80+getOrg('vacuole').count*3;
+  if(G.maxHp!==targetMax){G.maxHp=targetMax;G.hp=Math.min(G.hp,G.maxHp);}
+
+  // regen
+  const regen=mitoRegen();
+  if(regen>0)G.hp=Math.min(G.maxHp,G.hp+regen*dt);
+
+  if(!G.inWave){G.nextWave-=dt;if(G.nextWave<=0)startWave();}
+  else{
+    G.waveTimer-=dt;
+    tickDefenders(dt);
+    tickProjectiles(dt);
+    tickViruses(dt);
+    if(G.waveTimer<=0)endWave();
+    else if(G.viruses.length===0&&G.waveTimer<(50+G.wave*5)-4)endWave();
+  }
+
+  updateUI();checkAchs();
+  requestAnimationFrame(tick);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// UI
+// ═══════════════════════════════════════════════════════════════════
+let lastRT=0;
+function updateUI(){
+  document.getElementById('datp').textContent=fmt(G.atp);
+  document.getElementById('daps').textContent=fmt(totalAps());
+  document.getElementById('dhp').textContent=Math.ceil(G.hp)+'/'+G.maxHp;
+  document.getElementById('dwav').textContent=G.wave;
+  document.getElementById('ddef').textContent=G.viruses.length?G.viruses.length+' vs':ORGS.filter(o=>o.role!=='prod'&&o.count>0).reduce((s,o)=>s+o.count,0);
+  document.getElementById('drb').textContent=G.rebirths;
+  document.getElementById('drbm').textContent='×'+G.rebirthMult.toFixed(2);
+  document.getElementById('hbf').style.width=(G.hp/G.maxHp*100)+'%';
+  document.getElementById('hbv').textContent=Math.ceil(G.hp)+'/'+G.maxHp;
+  const now=Date.now();
+  if(now-lastRT>280){lastRT=now;renderShop();renderUpgrades();renderAchs();renderRbPerks();}
+}
+
+function renderShop(){
+  const list=document.getElementById('orglist');
+  const sc=list.scrollTop;list.innerHTML='';
+  for(const o of ORGS){
+    const unlocked=G.totalAtp>=o.unlock||o.count>0;
+    const cost=orgCostWithRbDiscount(o);
+    const can=unlocked&&G.atp>=cost;
+    const d=document.createElement('div');
+    if(unlocked){
+      d.className='ocard '+(can?'can':'cant');
+      const ps=(o.baseAps*(G.upgMult[o.id]||1)*G.globalMult*G.rebirthMult).toFixed(2);
+      const fireInfo=o.shootInterval>0?`· fires every ${o.shootInterval.toFixed(1)}s`:'';
+      d.innerHTML=
+        `<div class="otop"><span class="oname" style="color:${o.color}">${o.name}</span>
+         <div class="obadge"><span class="orole ${o.role}">${o.roleLabel}</span><span class="ocount" style="color:${o.color}">${o.count}</span></div></div>
+         <div class="odesc">${o.desc}</div>
+         <div class="ostats"><span class="ocost" style="color:${can?'var(--atp)':'#446'}">${fmt(cost)} ATP</span>
+         <span class="oprod">+${ps}/s ${fireInfo}</span></div>
+         <div class="obonus">★ ${o.bonus}</div>`;
+      if(can)d.addEventListener('click',(function(org){return function(){buyOrg(org);};})(o));
+    } else {
+      d.className='ocard locked';
+      d.innerHTML=`<div class="otop"><span class="oname" style="color:#334">??? LOCKED</span></div><div class="odesc" style="color:#1a2a22">Requires ${fmt(o.unlock)} total ATP in this run</div>`;
+    }
+    list.appendChild(d);
+  }
+  list.scrollTop=sc;
+}
+
+function renderUpgrades(){
+  const list=document.getElementById('ulist');
+  const sc=list.scrollTop;list.innerHTML='';
+  for(const u of UPGRADES){
+    if(u.bought)continue;
+    const ul=u.ul();const can=ul&&G.atp>=u.cost;
+    const d=document.createElement('div');
+    if(ul){
+      d.className='ucard '+(can?'can':'cant');
+      d.innerHTML=`<div class="uname">${u.name}</div><div class="ueff">${u.eff}</div><div class="ucost" style="color:${can?'var(--atp)':'#446'}">${fmt(u.cost)} ATP</div>`;
+      if(can)d.addEventListener('click',(function(upg){return function(){buyUpgrade(upg);};})(u));
+    } else {
+      d.className='ucard locked';
+      d.innerHTML=`<div class="uname" style="color:#223">???</div><div class="ueff" style="color:#1a2530">Keep expanding...</div>`;
+    }
+    list.appendChild(d);
+  }
+  list.scrollTop=sc;
+}
+
+function renderAchs(){
+  const list=document.getElementById('achlist');
+  const sc=list.scrollTop;list.innerHTML='';
+  const sorted=[...ACHS].sort((a,b)=>(b.earned?1:0)-(a.earned?1:0));
+  for(const a of sorted){
+    const[cur,max]=a.pg();const pct=Math.min(100,cur/max*100);
+    const d=document.createElement('div');
+    d.className='acard'+(a.earned?' earned':'');
+    d.innerHTML=`<div class="aname">${a.ic} ${a.name}${a.earned?' ✓':''}</div>
+      <div class="adesc">${a.desc}</div>
+      ${!a.earned?`<div class="apbar"><div class="apfill" style="width:${pct}%"></div></div>`:''}`;
+    list.appendChild(d);
+  }
+  list.scrollTop=sc;
+}
+
+function renderRbPerks(){
+  const list=document.getElementById('rblist');
+  const sc=list.scrollTop;list.innerHTML='';
+  // rebirth info header
+  const gain=cytokinesFromRun();
+  const infoDiv=document.createElement('div');
+  infoDiv.style.cssText='padding:7px 9px;border:1px solid #2a1a00;background:rgba(8,5,0,.8);font-size:.49em;margin-bottom:4px';
+  infoDiv.innerHTML=`<div style="color:var(--gold);font-family:Orbitron,sans-serif;font-size:1em;margin-bottom:3px">REBIRTH STATUS</div>
+    <div style="color:#776">Total cytokines: <span style="color:var(--warn)">${G.totalCytokines}</span></div>
+    <div style="color:#776">Run cytokines: <span style="color:var(--warn)">${G.cytokines}</span></div>
+    <div style="color:#776">If rebirth now: <span style="color:var(--atp)">+${gain} cytokines</span></div>
+    <div style="color:#776">Current mult: <span style="color:var(--gold)">×${G.rebirthMult.toFixed(3)}</span></div>
+    <div style="color:#556;margin-top:3px;font-style:italic">Need ~100K ATP to gain cytokines.</div>`;
+  list.appendChild(infoDiv);
+  for(const p of RB_PERKS){
+    const earned=p.check();
+    const d=document.createElement('div');
+    d.className='rbcard'+(earned?' earned':'');
+    d.innerHTML=`<div class="rbname">${earned?'✓ ':''} ${p.name}</div>
+      <div class="rbdesc">${p.desc}</div>
+      <div class="rbeff">${p.eff}</div>
+      <div class="rbreq">${earned?'Unlocked':'Requires '+p.req+' rebirths (you have '+G.rebirths+')'}</div>`;
+    list.appendChild(d);
+  }
+  list.scrollTop=sc;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PURCHASES
+// ═══════════════════════════════════════════════════════════════════
+function buyOrg(o){
+  const cost=orgCostWithRbDiscount(o);
+  if(G.atp<cost)return;
+  G.atp-=cost;o.count++;
+  sparks(cv.width/2,cv.height/2,o.color,10);
+  addLog(`${o.name} #${o.count} · −${fmt(cost)} ATP`,'lev');
+  renderShop();renderUpgrades();
+}
+function buyUpgrade(u){
+  if(u.bought||!u.ul()||G.atp<u.cost)return;
+  G.atp-=u.cost;u.bought=true;u.ap();
+  addLog(`✦ ${u.name} — ${u.eff}`,'lu');
+  renderShop();renderUpgrades();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CLICK
+// ═══════════════════════════════════════════════════════════════════
+document.getElementById('clickbtn').addEventListener('click',function(e){
+  const gain=G.clickPower;
+  G.atp+=gain;G.totalAtp+=gain;G.totalAtpEver+=gain;G.totalClicks++;
+  const rect=document.getElementById('view').getBoundingClientRect();
+  floater(e.clientX-rect.left,e.clientY-rect.top-18,'+'+fmt(gain)+' ATP','var(--atp)');
+  sparks(cv.width/2+(Math.random()-.5)*50,cv.height/2+(Math.random()-.5)*50,'#00ffaa',4);
+  document.getElementById('clabel').textContent='+'+fmt(G.clickPower)+' ATP/CLICK';
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// ACHIEVEMENTS
+// ═══════════════════════════════════════════════════════════════════
+function checkAchs(){
+  for(const a of ACHS){
+    if(!a.earned&&a.chk()){
+      a.earned=true;
+      showAchPop(a);
+      addLog(`🏆 ${a.name}: ${a.desc}`,'lac');
+    }
+  }
+}
+function showAchPop(a){
+  G.achPopQ.push(a);
+  if(!G.achPopBusy)nextAchPop();
+}
+function nextAchPop(){
+  if(!G.achPopQ.length){G.achPopBusy=false;return;}
+  G.achPopBusy=true;
+  const a=G.achPopQ.shift();
+  document.getElementById('apopt').textContent=a.ic+' '+a.name;
+  document.getElementById('apopd').textContent=a.desc;
+  const pop=document.getElementById('achpop');
+  pop.classList.add('show');
+  setTimeout(()=>{pop.classList.remove('show');setTimeout(nextAchPop,380);},3000);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════════════════════════
+document.getElementById('tabs').addEventListener('click',function(e){
+  const t=e.target.closest('.tab');if(!t)return;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.tpanel').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById(t.dataset.tab+'panel').classList.add('active');
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// START
+// ═══════════════════════════════════════════════════════════════════
+loadGame();
+addLog('Cell Factory online. Click to earn ATP.','lev');
+addLog('Defenders actively shoot projectiles at viruses.','lw');
+addLog('Rebirth when ready for permanent cytokine bonuses.','lac');
+tick();
+</script>
 </body>
 </html>
