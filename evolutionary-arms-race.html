@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Evolutionary Arms Race</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+:root{
+  --bg:#080b08;--surface:#0e130e;--surface2:#141d14;
+  --border:#1e2e1e;--border2:#2a3e2a;
+  --text:#c8dcc8;--text-dim:#607860;--text-muted:#3a4e3a;
+  --accent:#4dff91;--accent2:#a8ff60;
+  --gold:#f0c040;--silver:#aabccc;--bronze:#c08040;
+  --danger:#ff4455;--warn:#ffaa30;
+  --biome-a:#4dff91;--biome-b:#00cc55;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Space Mono',monospace;font-size:13px;min-height:100vh;overflow-x:hidden;}
+body.biome-tropical{--biome-a:#4dff91;--biome-b:#00cc55;}
+body.biome-arctic{--biome-a:#70d8ff;--biome-b:#00aae0;}
+body.biome-desert{--biome-a:#ffb030;--biome-b:#ff7020;}
+body.biome-deepsea{--biome-a:#4080ff;--biome-b:#0050cc;}
+body.biome-volcanic{--biome-a:#ff5020;--biome-b:#cc2000;}
+body.biome-temperate{--biome-a:#88dd44;--biome-b:#4aaa20;}
+body.biome-savanna{--biome-a:#ddaa30;--biome-b:#aa7010;}
+body.biome-cave{--biome-a:#cc88ff;--biome-b:#7700cc;}
+#app{display:flex;flex-direction:column;min-height:100vh;}
+#topbar{display:flex;align-items:center;gap:16px;padding:8px 18px;background:rgba(0,0,0,0.7);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50;backdrop-filter:blur(8px);flex-wrap:wrap;}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:0.95rem;letter-spacing:0.12em;color:var(--biome-a);text-shadow:0 0 20px var(--biome-a);white-space:nowrap;}
+.logo small{display:block;font-size:0.5rem;color:var(--text-dim);letter-spacing:0.2em;font-weight:400;}
+.biome-badge{display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:3px;border:1px solid var(--biome-a);background:rgba(0,0,0,0.4);font-size:0.7rem;letter-spacing:0.06em;color:var(--biome-a);transition:all 0.8s ease;}
+.top-stat{text-align:center;padding:0 10px;border-left:1px solid var(--border);}
+.top-stat-val{font-family:'Syne',sans-serif;font-size:0.95rem;font-weight:700;color:var(--biome-a);}
+.top-stat-label{font-size:0.55rem;color:var(--text-dim);letter-spacing:0.1em;text-transform:uppercase;}
+.top-actions{margin-left:auto;display:flex;gap:8px;}
+#main{display:grid;grid-template-columns:1fr 320px;gap:0;flex:1;}
+#arena-col{padding:14px;display:flex;flex-direction:column;gap:12px;}
+#creatures-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}
+.creature-card{background:var(--surface);border:1px solid var(--border);border-radius:4px;overflow:hidden;position:relative;transition:border-color 0.3s,box-shadow 0.3s,opacity 0.4s;}
+.creature-card.is-player{border-color:var(--biome-a);box-shadow:0 0 10px rgba(77,255,145,0.12);}
+.creature-card.is-mutating{border-color:var(--biome-a)!important;box-shadow:0 0 16px var(--biome-a)!important;animation:mutate-pulse 1.5s ease infinite;}
+@keyframes mutate-pulse{0%,100%{box-shadow:0 0 8px var(--biome-a)}50%{box-shadow:0 0 24px var(--biome-a)}}
+.creature-card.is-extinct{opacity:0.28;filter:grayscale(1);pointer-events:none;}
+.cc-header{display:flex;align-items:center;justify-content:space-between;padding:6px 9px;background:var(--surface2);border-bottom:1px solid var(--border);}
+.cc-name{font-family:'Syne',sans-serif;font-weight:700;font-size:0.72rem;letter-spacing:0.04em;}
+.cc-tag{font-size:0.55rem;letter-spacing:0.07em;padding:1px 5px;border-radius:2px;border:1px solid;}
+.cc-tag.player{color:var(--biome-a);border-color:var(--biome-a);background:rgba(77,255,145,0.06);}
+.cc-tag.ai{color:var(--text-dim);border-color:var(--border2);}
+.cc-tag.extinct{color:var(--danger);border-color:var(--danger);}
+.cc-body{padding:7px 9px;display:flex;flex-direction:column;gap:5px;}
+.cc-visual{display:flex;justify-content:center;padding:5px 0;background:radial-gradient(ellipse at center,var(--surface2),transparent 70%);}
+.cc-svg{width:60px;height:60px;}
+.mini-stat{display:flex;align-items:center;gap:4px;}
+.msn{font-size:0.56rem;color:var(--text-dim);width:16px;flex-shrink:0;}
+.msbw{flex:1;height:4px;background:var(--bg);border-radius:2px;overflow:hidden;}
+.msb{height:100%;border-radius:2px;transition:width 0.5s ease;}
+.msb.hp{background:linear-gradient(90deg,#2a7,var(--accent));}
+.msb.atk{background:linear-gradient(90deg,#a42,#f64);}
+.msb.def{background:linear-gradient(90deg,#248,#4af);}
+.msb.spd{background:linear-gradient(90deg,#882,#ff4);}
+.msb.eff{background:linear-gradient(90deg,#628,#a6f);}
+.msv{font-size:0.58rem;width:20px;text-align:right;color:var(--text);font-family:'Syne',sans-serif;font-weight:600;}
+.pop-row{display:flex;align-items:center;gap:5px;padding:5px 9px;border-top:1px solid var(--border);background:rgba(0,0,0,0.2);}
+.pop-label{font-size:0.56rem;color:var(--text-dim);flex-shrink:0;}
+.pop-bw{flex:1;height:5px;background:var(--bg);border-radius:3px;overflow:hidden;}
+.pop-b{height:100%;border-radius:3px;transition:width 0.7s ease;}
+.pop-v{font-size:0.62rem;font-family:'Syne',sans-serif;font-weight:700;min-width:24px;text-align:right;}
+.pop-d{font-size:0.58rem;font-family:'Syne',sans-serif;min-width:26px;text-align:right;}
+.pop-d.up{color:var(--accent);}
+.pop-d.dn{color:var(--danger);}
+.trait-row{display:flex;flex-wrap:wrap;gap:2px;padding:4px 9px;border-top:1px solid var(--border);min-height:20px;}
+.tc{font-size:0.52rem;letter-spacing:0.03em;padding:1px 4px;border-radius:2px;border:1px solid;cursor:default;}
+.tc.atk{color:#ff6050;border-color:rgba(255,80,64,0.3);background:rgba(255,80,64,0.06);}
+.tc.def{color:#50a0dd;border-color:rgba(80,160,221,0.3);background:rgba(80,160,221,0.06);}
+.tc.spd{color:#dddd50;border-color:rgba(221,221,80,0.3);background:rgba(221,221,80,0.06);}
+.tc.eff{color:#a060dd;border-color:rgba(160,96,221,0.3);background:rgba(160,96,221,0.06);}
+.tc.biome{color:var(--biome-a);border-color:rgba(77,255,145,0.3);background:rgba(77,255,145,0.05);}
+.tc.survival{color:#dd9930;border-color:rgba(221,153,48,0.3);background:rgba(221,153,48,0.06);}
+.place-badge{position:absolute;top:5px;right:5px;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:0.6rem;font-weight:800;border:1px solid;}
+.p1{background:#f0c04020;border-color:#f0c040;color:#f0c040;}
+.p2{background:#aabccc20;border-color:#aabccc;color:#aabccc;}
+.p3{background:#c0804020;border-color:#c08040;color:#c08040;}
+.p4{color:#ff8888;border-color:rgba(255,68,85,0.3);background:rgba(255,68,85,0.08);}
+.p5{color:#ff5566;border-color:rgba(255,68,85,0.4);background:rgba(255,68,85,0.1);}
+.p6{color:var(--danger);border-color:var(--danger);background:rgba(255,68,85,0.14);}
+#bottom-section{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:4px;overflow:hidden;}
+.ph{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;background:var(--surface2);border-bottom:1px solid var(--border);font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);}
+#combat-log{padding:9px 12px;height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+.ll{font-size:0.68rem;line-height:1.4;color:var(--text-dim);animation:fi 0.2s ease;}
+.ll.h{color:var(--text);}.ll.v{color:var(--accent);}.ll.d{color:var(--danger);}.ll.w{color:var(--warn);}.ll.b{color:var(--biome-a);}
+@keyframes fi{from{opacity:0;transform:translateX(-3px)}to{opacity:1;transform:none}}
+#lb-rows{}
+.lb-row{display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid var(--border);transition:background 0.15s;}
+.lb-row:hover{background:var(--surface2);}
+.lb-rank{font-family:'Syne',sans-serif;font-weight:800;font-size:0.8rem;width:16px;flex-shrink:0;}
+.lb-rank.r1{color:var(--gold);}.lb-rank.r2{color:var(--silver);}.lb-rank.r3{color:var(--bronze);}.lb-rank.r4,.lb-rank.r5,.lb-rank.r6{color:var(--text-dim);}
+.lb-name{font-size:0.72rem;flex:1;font-family:'Syne',sans-serif;}
+.lb-pop{font-size:0.68rem;font-family:'Syne',sans-serif;font-weight:700;}
+.lb-score{font-size:0.6rem;color:var(--text-dim);min-width:30px;text-align:right;}
+.lb-ext{text-decoration:line-through;opacity:0.4;}
+#right-panel{border-left:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;overflow:hidden;}
+#mutation-panel{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+#mut-header{position:sticky;top:0;z-index:10;padding:9px 12px;background:var(--surface2);border-bottom:1px solid var(--border);}
+.mut-title{font-family:'Syne',sans-serif;font-size:0.78rem;font-weight:700;letter-spacing:0.08em;color:var(--biome-a);margin-bottom:2px;}
+.mut-sub{font-size:0.62rem;color:var(--text-dim);line-height:1.3;}
+.picks-tag{display:inline-block;margin-top:4px;font-size:0.6rem;letter-spacing:0.07em;padding:2px 7px;border-radius:2px;border:1px solid var(--biome-a);color:var(--biome-a);background:rgba(77,255,145,0.05);}
+#mut-list{padding:9px;}
+.mc{border:1px solid var(--border);border-radius:3px;margin-bottom:7px;padding:9px;cursor:pointer;background:var(--bg);transition:all 0.12s ease;position:relative;overflow:hidden;}
+.mc::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;}
+.mc.atk::before{background:#ff4455;}.mc.def::before{background:#4af;}.mc.spd::before{background:#ff4;}.mc.eff::before{background:#a6f;}.mc.survival::before{background:var(--gold);}.mc.biome::before{background:var(--biome-a);}
+.mc:hover:not(.disabled){border-color:var(--biome-a);background:rgba(77,255,145,0.04);transform:translateX(2px);}
+.mc.selected{border-color:var(--biome-a);background:rgba(77,255,145,0.08);}
+.mc.disabled{opacity:0.3;cursor:not-allowed;}
+.mc-name{font-family:'Syne',sans-serif;font-size:0.72rem;font-weight:700;margin-bottom:2px;letter-spacing:0.03em;}
+.mc-desc{font-size:0.62rem;color:var(--text-dim);line-height:1.35;margin-bottom:4px;}
+.mc-tags{display:flex;gap:3px;flex-wrap:wrap;}
+.mt{font-size:0.56rem;font-family:'Syne',sans-serif;padding:1px 4px;border-radius:2px;}
+.mt.p{color:var(--accent2);background:rgba(168,255,96,0.1);border:1px solid rgba(168,255,96,0.2);}
+.mt.n{color:var(--danger);background:rgba(255,68,85,0.1);border:1px solid rgba(255,68,85,0.2);}
+.mt.b{color:var(--biome-a);background:rgba(77,255,145,0.07);border:1px solid rgba(77,255,145,0.2);}
+#ctrl-bar{padding:10px 12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px;background:var(--surface2);}
+.btn{font-family:'Syne',sans-serif;font-size:0.68rem;font-weight:700;letter-spacing:0.09em;padding:8px 14px;border-radius:3px;cursor:pointer;border:1px solid;transition:all 0.12s ease;text-transform:uppercase;width:100%;}
+.btn-go{background:rgba(77,255,145,0.1);color:var(--accent);border-color:rgba(77,255,145,0.35);}
+.btn-go:hover:not(:disabled){background:rgba(77,255,145,0.2);box-shadow:0 0 14px rgba(77,255,145,0.2);}
+.btn-go:disabled{opacity:0.3;cursor:not-allowed;}
+.btn-skip{background:rgba(255,170,48,0.08);color:var(--warn);border-color:rgba(255,170,48,0.3);}
+.btn-skip:hover{background:rgba(255,170,48,0.15);}
+.btn-reset{background:rgba(255,68,85,0.07);color:var(--danger);border-color:rgba(255,68,85,0.2);}
+.btn-reset:hover{background:rgba(255,68,85,0.14);}
+.phase-lbl{font-size:0.62rem;color:var(--text-dim);letter-spacing:0.07em;text-align:center;}
+#round-bar{display:flex;align-items:center;gap:3px;flex-wrap:wrap;}
+.rp{width:14px;height:5px;border-radius:2px;border:1px solid var(--border2);background:var(--bg);transition:all 0.3s ease;}
+.rp.done{background:var(--biome-a);border-color:var(--biome-a);}
+.rp.cur{border-color:var(--warn);animation:bl 1s ease infinite;}
+.rp.shift{border-color:var(--warn)!important;background:rgba(255,170,48,0.18)!important;}
+@keyframes bl{0%,100%{opacity:1}50%{opacity:0.35}}
+#tooltip{position:fixed;z-index:200;background:rgba(5,10,5,0.97);border:1px solid var(--border2);border-radius:4px;padding:7px 11px;max-width:210px;font-size:0.66rem;line-height:1.45;color:var(--text);pointer-events:none;opacity:0;transition:opacity 0.12s ease;box-shadow:0 4px 18px rgba(0,0,0,0.6);}
+#tooltip.show{opacity:1;}
+.tt-title{font-family:'Syne',sans-serif;font-weight:700;font-size:0.7rem;color:var(--biome-a);margin-bottom:3px;}
+.tt-body{color:var(--text-dim);}
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,0.92);display:flex;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(6px);}
+#overlay.hidden{display:none;}
+.ov-box{background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:30px 38px;max-width:640px;width:92%;text-align:center;}
+.ov-title{font-family:'Syne',sans-serif;font-weight:800;font-size:1.6rem;letter-spacing:0.1em;margin-bottom:10px;line-height:1.2;}
+.ov-title.green{color:var(--accent);text-shadow:0 0 28px rgba(77,255,145,0.5);}
+.ov-title.red{color:var(--danger);text-shadow:0 0 28px rgba(255,68,85,0.5);}
+.ov-title.yellow{color:var(--gold);text-shadow:0 0 28px rgba(240,192,64,0.5);}
+.ov-text{font-size:0.78rem;color:var(--text-dim);line-height:1.7;margin:8px 0 18px;}
+.bs-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:14px 0 20px;}
+.bso{border:1px solid var(--border2);border-radius:3px;padding:10px 6px;cursor:pointer;transition:all 0.12s ease;background:var(--bg);display:flex;flex-direction:column;align-items:center;gap:4px;}
+.bso:hover{border-color:var(--accent);background:rgba(77,255,145,0.04);}
+.bso.selected{border-color:var(--accent);background:rgba(77,255,145,0.09);box-shadow:0 0 10px rgba(77,255,145,0.12);}
+.bso-icon{font-size:1.3rem;}
+.bso-name{font-family:'Syne',sans-serif;font-size:0.58rem;font-weight:700;letter-spacing:0.05em;}
+.bso-desc{font-size:0.54rem;color:var(--text-dim);text-align:center;line-height:1.3;}
+#shift-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.93);display:flex;align-items:center;justify-content:center;z-index:99;backdrop-filter:blur(10px);}
+#shift-overlay.hidden{display:none;}
+.shift-box{text-align:center;max-width:520px;padding:36px;}
+.shift-icon-big{font-size:3.5rem;margin-bottom:6px;animation:bob 2.5s ease infinite;}
+@keyframes bob{0%,100%{transform:scale(1) rotate(-4deg)}50%{transform:scale(1.08) rotate(4deg)}}
+.shift-title{font-family:'Syne',sans-serif;font-weight:800;font-size:2.2rem;letter-spacing:0.12em;color:var(--biome-a);text-shadow:0 0 36px var(--biome-a);margin:6px 0;}
+.shift-sub{font-size:0.8rem;color:var(--text-dim);font-style:italic;letter-spacing:0.05em;margin-bottom:14px;}
+.shift-efx{background:rgba(0,0,0,0.4);border:1px solid var(--biome-a);border-radius:4px;padding:12px;font-size:0.72rem;line-height:1.6;color:var(--text);text-align:left;margin:10px 0 20px;}
+.shift-efx strong{color:var(--biome-a);}
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+</style>
+</head>
+<body class="biome-tropical">
+<div id="app">
+<div id="topbar">
+  <div class="logo">EVO: ARMS RACE<small>Natural Selection Engine v2</small></div>
+  <div class="biome-badge"><span id="biome-icon">🌿</span><span id="biome-name-top">TROPICAL RAINFOREST</span></div>
+  <div class="top-stat"><div class="top-stat-val" id="top-gen">0</div><div class="top-stat-label">Generation</div></div>
+  <div class="top-stat"><div class="top-stat-val" id="top-alive">6</div><div class="top-stat-label">Alive</div></div>
+  <div class="top-stat"><div class="top-stat-val" id="top-extinct">0</div><div class="top-stat-label">Extinct</div></div>
+  <div class="top-actions"><button class="btn btn-reset" style="width:auto;padding:5px 12px;" onclick="G.restart()">↺ NEW RUN</button></div>
+</div>
+<div id="main">
+  <div id="arena-col">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+      <div id="round-bar"></div>
+      <div style="font-size:0.6rem;color:var(--text-dim);" id="round-label">Gen 0 of 15 — ⚠ Shifts at Gen 5, 10</div>
+    </div>
+    <div id="creatures-grid"></div>
+    <div id="bottom-section">
+      <div class="panel"><div class="ph"><span>Population Standings</span><span id="lb-gen">Gen 0</span></div><div id="lb-rows"></div></div>
+      <div class="panel"><div class="ph"><span>Combat Log</span><span id="log-round">—</span></div><div id="combat-log"></div></div>
+    </div>
+  </div>
+  <div id="right-panel">
+    <div id="mutation-panel">
+      <div id="mut-header">
+        <div class="mut-title">MUTATIONS</div>
+        <div class="mut-sub" id="mut-sub">Select your starting biome to begin.</div>
+        <span class="picks-tag" id="picks-tag">—</span>
+      </div>
+      <div id="mut-list"></div>
+    </div>
+    <div id="ctrl-bar">
+      <div class="phase-lbl" id="phase-lbl">Awaiting start</div>
+      <button class="btn btn-go" id="btn-fight" onclick="G.beginFight()" disabled>▶ Run Combat</button>
+      <button class="btn btn-skip" id="btn-skip" onclick="G.skipCombat()" style="display:none">⏩ Fast-Forward</button>
+    </div>
+  </div>
+</div>
+</div>
+<div id="tooltip"><div class="tt-title" id="tt-title"></div><div class="tt-body" id="tt-body"></div></div>
+<div id="shift-overlay" class="hidden">
+  <div class="shift-box">
+    <div class="shift-icon-big" id="shift-icon">🌋</div>
+    <div style="font-size:0.65rem;letter-spacing:0.18em;color:var(--text-dim)">ENVIRONMENTAL SHIFT</div>
+    <div class="shift-title" id="shift-title">NEW BIOME</div>
+    <div class="shift-sub" id="shift-sub">The world is remade.</div>
+    <div class="shift-efx" id="shift-efx"></div>
+    <button class="btn btn-go" style="max-width:180px;margin:0 auto;" onclick="G.acknowledgeShift()">Adapt →</button>
+  </div>
+</div>
+<div id="overlay">
+  <div class="ov-box" id="ov-box">
+    <div class="ov-title yellow">EVOLUTIONARY ARMS RACE</div>
+    <div class="ov-text">6 species compete through 15 generations of natural selection.<br>Pick 1 mutation before each round. <strong>Bottom 3 species earn 2 mutation picks</strong> as compensation.<br>Population reaches 0 → <em>extinction</em>. Biome shifts at Gen 5 &amp; 10.<br>Choose your starting biome to begin.</div>
+    <div style="font-family:'Syne',sans-serif;font-size:0.65rem;color:var(--text-dim);letter-spacing:0.1em;margin-bottom:10px;">SELECT STARTING BIOME</div>
+    <div class="bs-grid" id="bs-grid"></div>
+    <button class="btn btn-go" style="max-width:180px;margin:0 auto;" id="start-btn" onclick="G.startGame()" disabled>Begin Evolution</button>
+  </div>
+</div>
+<script>
+'use strict';
+const BIOMES={
+  tropical:{id:'tropical',name:'Tropical Rainforest',icon:'🌿',cssClass:'biome-tropical',color:'#4dff91',desc:'Lush canopy, high humidity, abundant prey',effects:'Venom amplified. Camouflage thrives. Arboreal movement rewarded.',penalty:'Insulated fur overheats (−20% ATK in tropical heat)'},
+  arctic:{id:'arctic',name:'Arctic Tundra',icon:'❄',cssClass:'biome-arctic',color:'#70d8ff',desc:'Sub-zero winds, sparse prey, frozen terrain',effects:'Metabolic efficiency critical. Cold-adapted creatures gain +10% HP each round.',penalty:'Uninsulated creatures lose 5 HP per round from cold exposure'},
+  desert:{id:'desert',name:'Scorched Desert',icon:'🏜',cssClass:'biome-desert',color:'#ffb030',desc:'Blistering heat, scarce water, burrowing prey',effects:'Speed and ambush traits doubled in effectiveness. Sand camouflage active.',penalty:'Heavy armor overheats — DEF reduced 25% against agile opponents'},
+  deepsea:{id:'deepsea',name:'Abyssal Deep Sea',icon:'🌊',cssClass:'biome-deepsea',color:'#4080ff',desc:'Total darkness, crushing pressure, bioluminescent prey',effects:'Pressure-adapted creatures gain massive defense bonus. Sonar penetrates all.',penalty:'Land-adapted creatures disoriented — SPD reduced 20%'},
+  volcanic:{id:'volcanic',name:'Volcanic Wastes',icon:'🌋',cssClass:'biome-volcanic',color:'#ff5020',desc:'Lava fields, toxic gases, heat-forged terrain',effects:'Fire-resistant creatures negate burn damage. Toxin immunity valued here.',penalty:'Moisture-dependent creatures suffer 8 HP loss per round'},
+  temperate:{id:'temperate',name:'Temperate Forest',icon:'🍂',cssClass:'biome-temperate',color:'#88dd44',desc:'Balanced seasons, diverse prey, moderate climate',effects:'Generalist builds thrive. Seasonal adaptation grants rotating bonuses.',penalty:'No major penalty — but no free bonuses either'},
+  savanna:{id:'savanna',name:'Open Savanna',icon:'🦁',cssClass:'biome-savanna',color:'#ddaa30',desc:'Endless grasslands, pack hunters, drought seasons',effects:'Speed supremely rewarded. Pack-coordinated attacks strike twice.',penalty:'Burrowing and camouflage less effective in open terrain'},
+  cave:{id:'cave',name:'Subterranean Caves',icon:'🦇',cssClass:'biome-cave',color:'#cc88ff',desc:'Total darkness, mineral-rich, echo chambers',effects:'Echolocation and tremorsense grant perfect accuracy and crit bonus.',penalty:'Visual attack bonuses nullified in darkness'},
+};
+const MUTATIONS=[
+  {id:'razor_claws',name:'Razor Claws',type:'atk',biome:null,desc:'Elongated keratin claws. High single-hit damage.',stats:{atk:+14},eCost:6,trait:'Razor Claws'},
+  {id:'venom_glands',name:'Venom Glands',type:'atk',biome:null,desc:'Toxic bite bypasses 30% of armor.',stats:{atk:+10,def:-3},eCost:5,trait:'Venomous'},
+  {id:'hyper_muscle',name:'Hyper Muscle Mass',type:'atk',biome:null,desc:'Explosive muscles deal massive blows but slow movement.',stats:{atk:+16,spd:-8},eCost:14,trait:'Musclebound'},
+  {id:'echoloc',name:'Echolocation Strike',type:'atk',biome:null,desc:'Sonar-guided precision attack. Never misses.',stats:{atk:+7,spd:+4},eCost:5,trait:'Echolocating'},
+  {id:'serrated_teeth',name:'Serrated Dentition',type:'atk',biome:null,desc:'Jagged teeth cause bleeding. Enemies lose 3 HP per turn.',stats:{atk:+9,maxHp:+5},eCost:4,trait:'Serrated'},
+  {id:'electric_disc',name:'Bioelectric Discharge',type:'atk',biome:null,desc:'Electric shocks on contact. Paralysis chance.',stats:{atk:+11,def:-2},eCost:7,trait:'Bioelectric'},
+  {id:'acid_spit',name:'Acid Spit',type:'atk',biome:null,desc:'Ranged acid corrodes enemy armor over 3 rounds.',stats:{atk:+8,def:+2},eCost:6,trait:'Acid Spitter'},
+  {id:'tail_whip',name:'Tail Strike',type:'atk',biome:null,desc:'Prehensile tail attack. Extra reach bonus.',stats:{atk:+6,spd:+6},eCost:3,trait:'Tail Fighter'},
+  {id:'bone_spurs',name:'Ossified Bone Spurs',type:'atk',biome:null,desc:'Calcified protrusions pierce armor.',stats:{atk:+10,def:+3,spd:-4},eCost:6,trait:'Bone Spurred'},
+  {id:'parasite_host',name:'Parasitic Larvae',type:'atk',biome:null,desc:'Injects larvae draining enemy HP each round.',stats:{atk:+7,maxHp:+12},eCost:5,trait:'Parasitic'},
+  {id:'crushing_jaw',name:'Crushing Jaw Mechanism',type:'atk',biome:null,desc:'Hydraulic bite force. Ignores 40% of armor.',stats:{atk:+13,spd:-3},eCost:8,trait:'Crushing Jaw'},
+  {id:'spine_volley',name:'Quill Spine Volley',type:'atk',biome:null,desc:'Fires spine projectiles at range.',stats:{atk:+9,spd:+3,def:-2},eCost:5,trait:'Spine Shooter'},
+  {id:'chitin_plate',name:'Chitin Plating',type:'def',biome:null,desc:'Thick shell absorbs significant damage.',stats:{def:+14,spd:-5},eCost:5,trait:'Armored'},
+  {id:'regen_tissue',name:'Regenerative Tissue',type:'def',biome:null,desc:'Self-heals 8 HP each combat round.',stats:{maxHp:+20,def:+5},eCost:10,trait:'Regenerating'},
+  {id:'camouflage',name:'Chromatic Camouflage',type:'def',biome:null,desc:'25% chance to completely dodge attacks.',stats:{def:+9},eCost:2,trait:'Camouflaged'},
+  {id:'dorsal_spines',name:'Dorsal Spines',type:'def',biome:null,desc:'Attackers take 20% damage as recoil.',stats:{def:+7,atk:+3},eCost:4,trait:'Spined'},
+  {id:'thick_hide',name:'Thick Layered Hide',type:'def',biome:null,desc:'Dense skin reduces all incoming damage.',stats:{def:+10,maxHp:+10},eCost:7,trait:'Thick-Hided'},
+  {id:'mucus_coat',name:'Mucus Secretion Coat',type:'def',biome:null,desc:'Slippery coat. 15% of hits glance off.',stats:{def:+6,spd:+3},eCost:3,trait:'Mucus-Coated'},
+  {id:'scale_mail',name:'Osteodermal Scale Mail',type:'def',biome:null,desc:'Bone-reinforced scales. Maximum protection.',stats:{def:+18,spd:-10,maxHp:+8},eCost:8,trait:'Scale Mailed'},
+  {id:'bony_crest',name:'Bony Nuchal Crest',type:'def',biome:null,desc:'Head crest deflects attacks. Reduces crit chance against you.',stats:{def:+8,maxHp:+8},eCost:5,trait:'Crested'},
+  {id:'hollow_bones',name:'Hollow Bone Structure',type:'spd',biome:null,desc:'Reduced mass for agility. Fragile but fast.',stats:{spd:+12,maxHp:-16},eCost:2,trait:'Hollow-Boned'},
+  {id:'fast_twitch',name:'Fast-Twitch Fiber Bundles',type:'spd',biome:null,desc:'Strikes first every round. Speed surge.',stats:{spd:+15},eCost:9,trait:'Swift'},
+  {id:'adrenaline',name:'Adrenaline Rush Glands',type:'spd',biome:null,desc:'Below 50% HP, speed doubles.',stats:{spd:+9,def:-3},eCost:4,trait:'Adrenaline'},
+  {id:'webbed_feet',name:'Webbed Membrane Feet',type:'spd',biome:null,desc:'Rapid lateral movement. Hard to flank.',stats:{spd:+7,def:+4},eCost:3,trait:'Web-Footed'},
+  {id:'spring_legs',name:'Pneumatic Spring Legs',type:'spd',biome:null,desc:'Explosive leg tendons. Burst speed.',stats:{spd:+13,atk:+3,maxHp:-10},eCost:6,trait:'Spring-Legged'},
+  {id:'biolumi_lure',name:'Bioluminescent Lure',type:'spd',biome:null,desc:'Distracts enemies. −15% enemy ATK.',stats:{spd:+5,def:+7},eCost:3,trait:'Bioluminescent'},
+  {id:'streamlined',name:'Streamlined Body Plan',type:'spd',biome:null,desc:'Aerodynamic form. Speed and dodge bonus.',stats:{spd:+10,def:+4,maxHp:-8},eCost:4,trait:'Streamlined'},
+  {id:'ectothermy',name:'Ectothermy (Cold-Blooded)',type:'eff',biome:null,desc:'Reduced metabolic rate. Energy drain halved.',stats:{eff:+16,spd:-4},eCost:-10,trait:'Cold-blooded'},
+  {id:'lipid_reserve',name:'Lipid Fat Reserves',type:'eff',biome:null,desc:'Store excess energy as fat for lean periods.',stats:{eff:+12,maxEnergy:+30},eCost:-5,trait:'Lipid Reserves'},
+  {id:'gut_symbiont',name:'Gut Symbiont Flora',type:'eff',biome:null,desc:'Microbiome maximizes nutrition extraction.',stats:{eff:+10,maxHp:+8},eCost:-4,trait:'Symbiotic'},
+  {id:'anaerobics',name:'Anaerobic Metabolism',type:'eff',biome:null,desc:'Fights without oxygen. Near-complete starvation resistance.',stats:{eff:+14,atk:-3},eCost:-9,trait:'Anaerobic'},
+  {id:'heat_shock',name:'Heat Shock Proteins',type:'eff',biome:null,desc:'Proteins maintain function under extreme stress.',stats:{eff:+8,maxHp:+12,def:+3},eCost:-3,trait:'Heat-Shock'},
+  {id:'torpor',name:'Torpor Cycling',type:'eff',biome:null,desc:'Short resting bursts restore HP between attacks.',stats:{eff:+9,maxHp:+15},eCost:-6,trait:'Torpor'},
+  {id:'nitrogen_fix',name:'Nitrogen Fixation',type:'eff',biome:null,desc:'Extracts nutrients from air. Ultra-efficient.',stats:{eff:+18,atk:-5,spd:-3},eCost:-12,trait:'N-Fixing'},
+  {id:'photosyn',name:'Photosynthetic Endosymbiont',type:'eff',biome:null,desc:'Partial photosynthesis regenerates 5 energy/round.',stats:{eff:+8,maxHp:+5,spd:-2},eCost:-8,trait:'Photosynthetic'},
+  {id:'apex_pherom',name:'Apex Predator Pheromones',type:'survival',biome:null,desc:'Terror pheromones reduce enemy ATK by 20%.',stats:{atk:+6,def:+6,spd:+4},eCost:14,trait:'Apex Predator'},
+  {id:'compact_form',name:'Compact Body Plan',type:'survival',biome:null,desc:'Small profile — efficient and hard to hit.',stats:{def:+9,eff:+9,spd:+5,maxHp:-10},eCost:-4,trait:'Compact'},
+  {id:'leeching_jaw',name:'Leeching Jaw',type:'survival',biome:null,desc:'Drain 30% of damage dealt as self-healing.',stats:{atk:+5,maxHp:+8},eCost:4,trait:'Leeching'},
+  {id:'toxic_blood',name:'Toxic Blood',type:'survival',biome:null,desc:'Attackers take 5 poison on contact.',stats:{def:+8,maxHp:+5},eCost:5,trait:'Toxic-Blooded'},
+  {id:'mimicry',name:'Aggressive Mimicry',type:'survival',biome:null,desc:'Copies enemy — reduces their accuracy 20%.',stats:{def:+7,spd:+5,atk:+3},eCost:6,trait:'Mimic'},
+  {id:'fracture_resist',name:'Fracture-Resistant Skeleton',type:'survival',biome:null,desc:'Bones absorb shock. Ignores first 4 damage per hit.',stats:{def:+11,maxHp:+12},eCost:7,trait:'Shock-Absorbing'},
+  {id:'berserk',name:'Berserk Cascade',type:'survival',biome:null,desc:'Below 25% HP, ATK surges +40%.',stats:{atk:+8,def:-5,maxHp:-5},eCost:4,trait:'Berserk'},
+  {id:'endosymbiont',name:'Endosymbiont Algae',type:'survival',biome:null,desc:'Converts light to energy. Passive regen.',stats:{eff:+8,maxHp:+5,spd:-2},eCost:-8,trait:'Endosymbiotic'},
+  {id:'pack_gland',name:'Pack Coordination Gland',type:'survival',biome:null,desc:'Releases signals that boost all allied attacks.',stats:{atk:+5,def:+5,eff:+5},eCost:4,trait:'Pack Leader'},
+  // BIOME-SPECIFIC
+  {id:'arboreal',name:'Arboreal Canopy Adaptation',type:'biome',biome:'tropical',desc:'[TROPICAL] Swing through canopy. +35% speed bonus.',stats:{spd:+18,def:-4},eCost:5,trait:'Arboreal'},
+  {id:'dart_toxin',name:'Poison Dart Toxin',type:'biome',biome:'tropical',desc:'[TROPICAL] Exotic dart venom. −5 enemy ATK for 3 rounds.',stats:{atk:+12,eff:+5},eCost:4,trait:'Dart Poisoner'},
+  {id:'mycelial',name:'Mycorrhizal Bond',type:'biome',biome:'tropical',desc:'[TROPICAL] Fungal symbiosis. Restore 10 HP on kill.',stats:{maxHp:+20,eff:+8},eCost:-6,trait:'Mycelial'},
+  {id:'strangler_vine',name:'Strangler Vine Grip',type:'biome',biome:'tropical',desc:'[TROPICAL] Entangles prey. Reduces enemy speed 30%.',stats:{atk:+8,def:+5,spd:+6},eCost:5,trait:'Vine Strangler'},
+  {id:'woolly_fur',name:'Woolly Insulation Layer',type:'biome',biome:'arctic',desc:'[ARCTIC] Dense fur. +25% HP, energy efficient in cold.',stats:{def:+12,eff:+10,spd:-5},eCost:-6,trait:'Insulated'},
+  {id:'antifreeze',name:'Antifreeze Protein Blood',type:'biome',biome:'arctic',desc:'[ARCTIC] Prevents cellular freezing. Huge HP bonus.',stats:{maxHp:+28,eff:+8,def:+5},eCost:-8,trait:'Antifreeze'},
+  {id:'blubber',name:'Blubber Thermal Mass',type:'biome',biome:'arctic',desc:'[ARCTIC] Thick blubber insulates and armors.',stats:{def:+16,eff:+12,maxEnergy:+20},eCost:-10,trait:'Blubbered'},
+  {id:'ice_claws',name:'Ice-Grip Crampons',type:'biome',biome:'arctic',desc:'[ARCTIC] Claws grip ice terrain. +speed, +first-strike.',stats:{spd:+14,atk:+8},eCost:6,trait:'Ice Grip'},
+  {id:'sand_burst',name:'Sand Burst Ambush',type:'biome',biome:'desert',desc:'[DESERT] Erupts from sand. First strike deals 200% damage.',stats:{atk:+14,spd:+8},eCost:5,trait:'Sand Striker'},
+  {id:'water_wise',name:'Renal Water Conservation',type:'biome',biome:'desert',desc:'[DESERT] Minimal water needs. Ultra-low energy drain.',stats:{eff:+20,maxEnergy:+40},eCost:-14,trait:'Water-Wise'},
+  {id:'thermochromic',name:'Thermochromic Scales',type:'biome',biome:'desert',desc:'[DESERT] Reflects heat. DEF dramatically increased.',stats:{def:+15,eff:+7,spd:+4},eCost:-4,trait:'Thermochromic'},
+  {id:'pressure_mantle',name:'Abyssal Pressure Mantle',type:'biome',biome:'deepsea',desc:'[DEEP SEA] Pressure-adapted. Massive DEF and HP.',stats:{def:+16,maxHp:+22,spd:-6},eCost:4,trait:'Pressure-Adapted'},
+  {id:'ink_jet',name:'Bioluminescent Ink Cloud',type:'biome',biome:'deepsea',desc:'[DEEP SEA] Blinding ink. −20% enemy SPD and ATK.',stats:{spd:+8,def:+8,atk:+4},eCost:5,trait:'Ink-Jet'},
+  {id:'sonar_array',name:'Lateral Line Sonar',type:'biome',biome:'deepsea',desc:'[DEEP SEA] Perfect spatial awareness. Cannot be flanked.',stats:{spd:+10,atk:+8,def:+5},eCost:7,trait:'Sonar Array'},
+  {id:'pyro_skin',name:'Pyroclastic Skin Plating',type:'biome',biome:'volcanic',desc:'[VOLCANIC] Lava-hardened plates. Fire immune.',stats:{def:+20,atk:+4,spd:-6},eCost:4,trait:'Pyroclastic Skin'},
+  {id:'sulfur_breath',name:'Sulfur Toxin Breath',type:'biome',biome:'volcanic',desc:'[VOLCANIC] Toxic gas poisons all enemies each round.',stats:{atk:+13,eff:+5},eCost:6,trait:'Sulfur Breather'},
+  {id:'thermovoric',name:'Thermo-Cellular Metabolism',type:'biome',biome:'volcanic',desc:'[VOLCANIC] Converts volcanic heat to energy. Never starves.',stats:{eff:+22,atk:+5,maxEnergy:+50},eCost:-16,trait:'Thermovoric'},
+  {id:'generalist',name:'Generalist Physiology',type:'biome',biome:'temperate',desc:'[TEMPERATE] No weaknesses. All stats +5.',stats:{atk:+5,def:+5,spd:+5,eff:+5,maxHp:+10},eCost:6,trait:'Generalist'},
+  {id:'seasonal_adapt',name:'Seasonal Adaptation Cycle',type:'biome',biome:'temperate',desc:'[TEMPERATE] Adapts each round, cycling ATK/DEF buffs.',stats:{atk:+8,def:+8,eff:+8},eCost:3,trait:'Seasonal'},
+  {id:'pack_coord',name:'Pack Coordination Signal',type:'biome',biome:'savanna',desc:'[SAVANNA] Coordinates pack. Attacks twice first round.',stats:{atk:+10,spd:+10,def:-3},eCost:7,trait:'Pack Instinct'},
+  {id:'sprint_adapt',name:'Long-Distance Sprint',type:'biome',biome:'savanna',desc:'[SAVANNA] Endless endurance. SPD never reduces with damage.',stats:{spd:+16,eff:+8,def:-4},eCost:3,trait:'Endurance Runner'},
+  {id:'cave_sonar',name:'Ultra-Precision Cave Sonar',type:'biome',biome:'cave',desc:'[CAVE] Perfect accuracy in darkness. Double crit chance.',stats:{atk:+12,spd:+6,def:+4},eCost:6,trait:'Cave Sonar'},
+  {id:'web_weave',name:'Subterranean Web Secretion',type:'biome',biome:'cave',desc:'[CAVE] Webs entangle foes. −40% enemy speed.',stats:{def:+8,atk:+6,eff:+6},eCost:5,trait:'Web-Weaver'},
+];
+const TEMPLATES=[
+  {bn:'Crawloid',sa:'#3a6e3a',sb:'#5aaa5a',player:true},
+  {bn:'Spinethorn',sa:'#6e3a3a',sb:'#aa5a5a',player:false},
+  {bn:'Gloomfin',sa:'#3a3a6e',sb:'#5a5aaa',player:false},
+  {bn:'Dustmaw',sa:'#6e5e3a',sb:'#aa9a5a',player:false},
+  {bn:'Veiltick',sa:'#4e3a6e',sb:'#8a5aaa',player:false},
+  {bn:'Slaghorn',sa:'#6e3a2a',sb:'#aa7a4a',player:false},
+];
+const STAGES=['Proto','Lesser','Common','Greater','Elder','Ancient','Apex','Transcendent'];
+const POP_CHANGES=[+20,+12,+5,-6,-13,-22];
+const TOTAL_ROUNDS=15;
+const SHIFT_AT=[5,10];
+const MAX_POP=100;
+
+const G=(()=>{
+  let creatures=[],biome=null,biomeHistory=[],round=0,phase='start';
+  let selectedMuts={},mutIdx=0,allDone=false,pendingShift=null;
+  let combatTimer=null;
+
+  function init(){buildBiomeGrid();}
+
+  function buildBiomeGrid(){
+    const g=document.getElementById('bs-grid');
+    g.innerHTML='';
+    let sel=null;
+    Object.values(BIOMES).forEach(b=>{
+      const d=document.createElement('div');
+      d.className='bso';
+      d.innerHTML=`<div class="bso-icon">${b.icon}</div><div class="bso-name">${b.name.toUpperCase()}</div><div class="bso-desc">${b.desc}</div>`;
+      d.onclick=()=>{
+        document.querySelectorAll('.bso').forEach(x=>x.classList.remove('selected'));
+        d.classList.add('selected');sel=b.id;
+        document.getElementById('start-btn').disabled=false;
+        document.getElementById('start-btn').dataset.biome=b.id;
+      };
+      tt(d,b.name,`${b.effects}<br><span style="color:var(--danger)">⚠ ${b.penalty}</span>`);
+      g.appendChild(d);
+    });
+  }
+
+  function startGame(){
+    const bid=document.getElementById('start-btn').dataset.biome;
+    if(!bid)return;
+    biome=BIOMES[bid];biomeHistory=[bid];round=0;phase='mutation';
+    creatures=TEMPLATES.map((t,i)=>({
+      id:i,bn:t.bn,name:`Proto-${t.bn}`,sa:t.sa,sb:t.sb,player:t.player,
+      hp:80,maxHp:80,atk:14+ri(-3,3),def:10+ri(-2,2),spd:18+ri(-3,3),eff:14+ri(-2,2),
+      maxEnergy:100,energy:100,pop:80,traits:[],extinct:false,
+      lastPlace:null,combatScore:0,popDelta:0,mutChoices:null
+    }));
+    applyBiome();
+    document.getElementById('overlay').classList.add('hidden');
+    setupMutPhase();
+    renderAll();
+    log(`Evolution begins in the ${biome.name}. Choose your mutations before combat.`,'b');
+  }
+
+  function applyBiome(){
+    document.body.className='';
+    document.body.classList.add(biome.cssClass);
+    document.getElementById('biome-icon').textContent=biome.icon;
+    document.getElementById('biome-name-top').textContent=biome.name.toUpperCase();
+    const badge=document.querySelector('.biome-badge');
+    badge.style.borderColor=biome.color;badge.style.color=biome.color;
+  }
+
+  function setupMutPhase(){
+    selectedMuts={};allDone=false;
+    creatures.forEach(c=>{
+      if(c.extinct)return;
+      const picks=(round===0)?1:(c.lastPlace!==null&&c.lastPlace>=3)?2:1;
+      selectedMuts[c.id]={chosen:[],picks,choices:randomMutChoices(c)};
+    });
+    // Find first non-extinct, non-AI that is player
+    mutIdx=nextMutIdx(-1);
+    if(mutIdx===-1){autoPickAll();allDone=true;enableFight();renderMutPanel();setPhase('Combat Ready','All mutations chosen.',true);return;}
+    renderMutPanel();
+    setPhase('Choose Mutation',`Picking for: ${creatures[mutIdx].name}`,false);
+  }
+
+  function randomMutChoices(c){
+    const pool=MUTATIONS.filter(m=>!m.biome||(m.biome===biome.id));
+    const sh=shuffle([...pool]);
+    const picks=[];const types=new Set();
+    for(const m of sh){
+      if(picks.find(p=>p.id===m.id))continue;
+      picks.push(m);
+      if(picks.length>=4)break;
+    }
+    // ensure all 4 are different
+    return picks.slice(0,4);
+  }
+
+  function nextMutIdx(after){
+    for(let i=after+1;i<creatures.length;i++){
+      const c=creatures[i];
+      if(c.extinct||!c.player)continue;
+      const s=selectedMuts[c.id];
+      if(s&&s.chosen.length<s.picks)return i;
+    }
+    return -1;
+  }
+
+  function pickMutation(mutId){
+    if(phase!=='mutation'||allDone)return;
+    const c=creatures[mutIdx];if(!c)return;
+    const s=selectedMuts[c.id];
+    if(!s||s.chosen.length>=s.picks)return;
+    if(s.chosen.includes(mutId))return;
+    s.chosen.push(mutId);
+    applyMut(c,[mutId]);
+    log(`${c.name} mutated: ${MUTATIONS.find(m=>m.id===mutId)?.name}`,'h');
+
+    if(s.chosen.length<s.picks){renderMutPanel();return;}
+
+    // advance to next player creature
+    const ni=nextMutIdx(mutIdx);
+    if(ni===-1){
+      // auto-pick all remaining AI
+      autoPickAll();
+      allDone=true;
+      enableFight();
+      renderMutPanel();
+      setPhase('Combat Ready','All species evolved. Begin combat!',true);
+    } else {
+      mutIdx=ni;
+      renderMutPanel();
+      setPhase('Choose Mutation',`Picking for: ${creatures[mutIdx].name}`,false);
+    }
+    renderCreatureCards();
+  }
+
+  function autoPickAll(){
+    creatures.forEach(c=>{
+      if(c.extinct)return;
+      const s=selectedMuts[c.id];if(!s)return;
+      if(c.player&&s.chosen.length>=s.picks)return;
+      const needed=s.picks-s.chosen.length;
+      if(needed<=0)return;
+      const choices=s.choices||randomMutChoices(c);
+      const unused=shuffle(choices.filter(m=>!s.chosen.includes(m.id)));
+      for(let i=0;i<needed&&i<unused.length;i++){
+        s.chosen.push(unused[i].id);
+        applyMut(c,[unused[i].id]);
+        log(`${c.name} evolved: ${unused[i].name}`,'');
+      }
+    });
+  }
+
+  function applyMut(c,ids){
+    ids.forEach(id=>{
+      const m=MUTATIONS.find(x=>x.id===id);if(!m)return;
+      for(const[k,v]of Object.entries(m.stats)){
+        if(k==='maxHp'){c.maxHp=Math.max(20,c.maxHp+v);c.hp=Math.min(c.hp,c.maxHp);}
+        else if(k==='maxEnergy'){c.maxEnergy=Math.max(20,c.maxEnergy+v);c.energy=Math.min(c.energy,c.maxEnergy);}
+        else c[k]=Math.max(1,(c[k]||0)+v);
+      }
+      c.energy=Math.max(0,Math.min(c.maxEnergy,c.energy-m.eCost));
+      if(m.trait&&!c.traits.includes(m.trait))c.traits.push(m.trait);
+      c.hp=Math.min(c.maxHp,c.hp+Math.floor(c.maxHp*0.2));
+    });
+    c.name=`${STAGES[Math.min(c.traits.length,STAGES.length-1)]}-${c.bn}`;
+  }
+
+  function beginFight(){
+    if(!allDone)return;
+    phase='combat';
+    document.getElementById('btn-fight').style.display='none';
+    document.getElementById('btn-skip').style.display='block';
+    round++;
+    document.getElementById('top-gen').textContent=round;
+    document.getElementById('lb-gen').textContent=`Gen ${round}`;
+    document.getElementById('log-round').textContent=`Gen ${round}`;
+    document.getElementById('round-label').textContent=`Gen ${round} of ${TOTAL_ROUNDS} — ⚠ Shifts at ${SHIFT_AT.join(', ')}`;
+    log(`━━ GENERATION ${round} ━━ ${biome.icon} ${biome.name}`,'b');
+    creatures.forEach(c=>{if(!c.extinct){c.hp=c.maxHp;c.combatScore=0;}});
+    runCombat();
+  }
+
+  function skipCombat(){
+    if(combatTimer)clearInterval(combatTimer);
+    finalizeCombat();
+  }
+
+  function runCombat(){
+    const alive=creatures.filter(c=>!c.extinct);
+    const pairs=[];
+    for(let i=0;i<alive.length;i++)for(let j=i+1;j<alive.length;j++)pairs.push([alive[i],alive[j]]);
+    shuffle(pairs);
+    let pi=0;
+    combatTimer=setInterval(()=>{
+      if(pi>=pairs.length){clearInterval(combatTimer);finalizeCombat();return;}
+      const[a,b]=pairs[pi++];
+      const res=fightPair(a,b);
+      log(`${res.winner.name} defeats ${res.loser.name} (${res.dmgA}/${res.dmgB} dmg)`,'w');
+    },120);
+  }
+
+  function fightPair(a,b){
+    let aHp=a.hp,bHp=b.hp;
+    let dmgA=0,dmgB=0;
+    for(let r=0;r<25&&aHp>0&&bHp>0;r++){
+      const aFirst=a.spd>=b.spd;
+      if(aFirst){const d=dmg(a,b);bHp=Math.max(0,bHp-d);dmgA+=d;if(bHp<=0)break;}
+      const d2=dmg(b,a);aHp=Math.max(0,aHp-d2);dmgB+=d2;
+      if(!aFirst&&aHp>0){const d3=dmg(a,b);bHp=Math.max(0,bHp-d3);dmgA+=d3;}
+      if(aHp<=0||bHp<=0)break;
+      if(a.traits.includes('Regenerating'))aHp=Math.min(a.maxHp,aHp+8);
+      if(b.traits.includes('Regenerating'))bHp=Math.min(b.maxHp,bHp+8);
+      if(a.traits.includes('Leeching')){const l=Math.floor(dmgA*0.3);aHp=Math.min(a.maxHp,aHp+l);}
+      if(b.traits.includes('Leeching')){const l=Math.floor(dmgB*0.3);bHp=Math.min(b.maxHp,bHp+l);}
+    }
+    const winner=aHp>=bHp?a:b,loser=winner===a?b:a;
+    winner.combatScore=(winner.combatScore||0)+3;
+    loser.combatScore=(loser.combatScore||0)+0;
+    a.hp=Math.max(1,aHp);b.hp=Math.max(1,bHp);
+    return{winner,loser,dmgA,dmgB};
+  }
+
+  function dmg(att,def){
+    let base=Math.max(1,att.atk-Math.floor(def.def*0.45))+ri(-3,3);
+    if(biome.id==='arctic'&&!att.traits.includes('Insulated')&&!att.traits.includes('Cold-blooded')&&!att.traits.includes('Antifreeze'))base=Math.floor(base*0.82);
+    if(biome.id==='desert'&&(att.traits.includes('Armored')||att.traits.includes('Scale Mailed')))base=Math.floor(base*0.78);
+    if(biome.id==='deepsea'&&!att.traits.includes('Pressure-Adapted')&&!att.traits.includes('Sonar Array'))base=Math.floor(base*0.83);
+    if(biome.id==='volcanic'&&!att.traits.includes('Pyroclastic Skin')&&!att.traits.includes('Thermovoric'))base=Math.floor(base*0.86);
+    if(att.traits.includes('Berserk')&&att.hp<att.maxHp*0.25)base=Math.floor(base*1.4);
+    if(att.traits.includes('Apex Predator'))base=Math.floor(base*1.1);
+    return Math.max(1,base);
+  }
+
+  function finalizeCombat(){
+    document.getElementById('btn-skip').style.display='none';
+    const alive=creatures.filter(c=>!c.extinct);
+    alive.sort((a,b)=>(b.combatScore||0)-(a.combatScore||0));
+    alive.forEach((c,i)=>{
+      c.lastPlace=i;
+      const delta=POP_CHANGES[Math.min(i,POP_CHANGES.length-1)];
+      c.pop=Math.max(0,Math.min(MAX_POP,c.pop+delta));
+      c.popDelta=delta;
+      if(c.pop===0){c.extinct=true;log(`☠ ${c.name} — EXTINCT (population collapsed)`,'d');}
+    });
+    log(`Standings: ${alive.map((c,i)=>`${i+1}.${c.name}(${c.combatScore}pts,pop${c.pop})`).join(' ')}`,'h');
+    updateCounters();renderAll();
+    const surviving=creatures.filter(c=>!c.extinct);
+    if(surviving.length<=1){setTimeout(()=>endScreen(surviving[0]||null),800);return;}
+    if(round>=TOTAL_ROUNDS){setTimeout(()=>endScreen(surviving[0]),800);return;}
+    if(SHIFT_AT.includes(round)){
+      const nb=pickNextBiome();
+      if(nb){pendingShift=nb;setTimeout(()=>showShift(nb),800);return;}
+    }
+    setTimeout(()=>{
+      phase='mutation';
+      document.getElementById('btn-fight').style.display='block';
+      setupMutPhase();renderAll();
+    },600);
+  }
+
+  function pickNextBiome(){
+    const keys=Object.keys(BIOMES).filter(k=>!biomeHistory.includes(k));
+    if(!keys.length)return null;
+    return BIOMES[keys[Math.floor(Math.random()*keys.length)]];
+  }
+
+  function showShift(b){
+    document.body.className='';document.body.classList.add(b.cssClass);
+    document.getElementById('shift-icon').textContent=b.icon;
+    document.getElementById('shift-title').textContent=b.name.toUpperCase();
+    document.getElementById('shift-sub').textContent=b.desc;
+    document.getElementById('shift-efx').innerHTML=`<strong>Effects:</strong> ${b.effects}<br><strong style="color:var(--danger)">Penalty:</strong> ${b.penalty}<br><em>Biome-specific mutations now unlocked.</em>`;
+    document.getElementById('shift-overlay').classList.remove('hidden');
+    log(`🌍 BIOME SHIFT → ${b.name}`,'b');
+  }
+
+  function acknowledgeShift(){
+    biome=pendingShift;biomeHistory.push(biome.id);pendingShift=null;
+    document.getElementById('shift-overlay').classList.add('hidden');
+    applyBiome();phase='mutation';
+    document.getElementById('btn-fight').style.display='block';
+    setupMutPhase();renderAll();
+    log(`Adaptation begins. ${biome.icon} ${biome.name} mutations now available.`,'b');
+  }
+
+  function renderAll(){renderCreatureCards();renderMutPanel();renderLeaderboard();renderRoundBar();}
+
+  function renderCreatureCards(){
+    const g=document.getElementById('creatures-grid');g.innerHTML='';
+    creatures.forEach(c=>{
+      const isMutating=!allDone&&mutIdx<creatures.length&&creatures[mutIdx]?.id===c.id&&phase==='mutation';
+      const card=document.createElement('div');
+      card.className='creature-card'+(c.player?' is-player':'')+(c.extinct?' is-extinct':'')+(isMutating?' is-mutating':'');
+      const p=c.lastPlace!==null?c.lastPlace+1:null;
+      const popPct=Math.max(0,(c.pop/MAX_POP)*100);
+      const popCol=c.pop>60?'#4dff91':c.pop>30?'#ffaa30':'#ff4455';
+      card.innerHTML=`
+        ${p?`<div class="place-badge p${p}">${p}</div>`:''}
+        <div class="cc-header">
+          <div class="cc-name" style="color:${c.sa}">${c.name}</div>
+          <div class="cc-tag ${c.extinct?'extinct':c.player?'player':'ai'}">${c.extinct?'EXTINCT':c.player?'YOU':'AI'}</div>
+        </div>
+        <div class="cc-body">
+          <div class="cc-visual">${svgCreature(c)}</div>
+          ${['hp','atk','def','spd','eff'].map(s=>{
+            const v=s==='hp'?c.hp:c[s],mx=s==='hp'?c.maxHp:60;
+            return `<div class="mini-stat"><div class="msn">${s.toUpperCase()}</div><div class="msbw"><div class="msb ${s}" style="width:${Math.min(100,(v/mx)*100)}%"></div></div><div class="msv">${v}</div></div>`;
+          }).join('')}
+        </div>
+        <div class="pop-row">
+          <div class="pop-label">POP</div>
+          <div class="pop-bw"><div class="pop-b" style="width:${popPct}%;background:${popCol}"></div></div>
+          <div class="pop-v" style="color:${popCol}">${c.pop}</div>
+          ${c.popDelta?`<div class="pop-d ${c.popDelta>0?'up':'dn'}">${c.popDelta>0?'+':''}${c.popDelta}</div>`:''}
+        </div>
+        <div class="trait-row">${c.traits.slice(-9).map(tr=>{
+          const mut=MUTATIONS.find(m=>m.trait===tr);
+          const tp=mut?mut.type:'survival';
+          return `<span class="tc ${tp}" data-tt="${tr}" data-ttb="${mut?mut.desc:''}">${tr}</span>`;
+        }).join('')}</div>`;
+      g.appendChild(card);
+      card.querySelectorAll('[data-tt]').forEach(el=>tt(el,el.dataset.tt,el.dataset.ttb));
+    });
+  }
+
+  function svgCreature(c){
+    const traits=c.traits;
+    const hasArmor=traits.includes('Armored')||traits.includes('Scale Mailed')||traits.includes('Thick-Hided');
+    const hasSpikes=traits.includes('Spined')||traits.includes('Bone Spurred');
+    const hasWings=traits.includes('Arboreal')||traits.includes('Hollow-Boned')||traits.includes('Streamlined');
+    const hasFur=traits.includes('Insulated')||traits.includes('Blubbered')||traits.includes('Mycelial');
+    const sa=c.sa,sb=c.sb;
+    return `<svg class="cc-svg" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+      ${hasFur?`<ellipse cx="32" cy="38" rx="20" ry="16" fill="${sa}" opacity="0.35"/>`:''}
+      <ellipse cx="32" cy="38" rx="15" ry="11" fill="${sa}"/>
+      <circle cx="32" cy="22" r="10" fill="${sb}"/>
+      <circle cx="28" cy="20" r="2" fill="#111"/>
+      <circle cx="36" cy="20" r="2" fill="#111"/>
+      <circle cx="27.5" cy="19.5" r="0.7" fill="#fff"/>
+      <circle cx="35.5" cy="19.5" r="0.7" fill="#fff"/>
+      ${hasArmor?`<ellipse cx="32" cy="38" rx="15" ry="11" fill="none" stroke="${sb}" stroke-width="1.5" opacity="0.7"/>`:''}
+      ${hasSpikes?`<polygon points="32,8 34,15 30,15" fill="${sb}"/><polygon points="38,11 40,17 36,16" fill="${sb}"/>`:''}
+      ${hasWings?`<ellipse cx="16" cy="31" rx="7" ry="4" fill="${sb}" opacity="0.5" transform="rotate(-20,16,31)"/><ellipse cx="48" cy="31" rx="7" ry="4" fill="${sb}" opacity="0.5" transform="rotate(20,48,31)"/>`:`<ellipse cx="19" cy="35" rx="5" ry="3" fill="${sa}" transform="rotate(-14,19,35)"/><ellipse cx="45" cy="35" rx="5" ry="3" fill="${sa}" transform="rotate(14,45,35)"/>`}
+      <rect x="28" y="47" width="4" height="8" rx="2" fill="${sa}"/>
+      <rect x="33" y="47" width="4" height="8" rx="2" fill="${sa}"/>
+      <path d="M46 38 Q56 31 54 44" stroke="${sa}" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    </svg>`;
+  }
+
+  function renderMutPanel(){
+    const list=document.getElementById('mut-list');
+    if(phase!=='mutation'||allDone){
+      list.innerHTML='<div style="padding:18px;color:var(--text-dim);font-size:0.68rem;font-style:italic;text-align:center;">All mutations selected. Press Run Combat.</div>';
+      document.getElementById('mut-sub').textContent='All species have evolved.';
+      document.getElementById('picks-tag').textContent='—';
+      return;
+    }
+    const c=creatures[mutIdx];
+    if(!c||c.extinct){list.innerHTML='';return;}
+    const s=selectedMuts[c.id];if(!s)return;
+    const picksLeft=s.picks-s.chosen.length;
+    document.getElementById('mut-sub').textContent=`${c.player?'YOU':'AI'}: ${c.name} ${c.lastPlace!==null&&c.lastPlace>=3?'(bottom — 2 picks)':''}`;
+    document.getElementById('picks-tag').textContent=`${picksLeft} pick${picksLeft!==1?'s':''} remaining`;
+
+    if(!c.player){
+      list.innerHTML='<div style="padding:18px;color:var(--text-dim);font-size:0.68rem;text-align:center;font-style:italic;">AI evolving...</div>';
+      setTimeout(()=>{autoPickAll();advanceMut();},350);
+      return;
+    }
+
+    const choices=s.choices||randomMutChoices(c);
+    list.innerHTML=choices.map(m=>{
+      const selected=s.chosen.includes(m.id);
+      const isBiome=m.biome===biome.id;
+      const tags=Object.entries(m.stats).map(([k,v])=>{
+        const lbl=k==='maxHp'?'MaxHP':k==='maxEnergy'?'MaxEN':k.toUpperCase();
+        return `<span class="mt ${v>0?'p':'n'}">${lbl} ${v>0?'+':''}${v}</span>`;
+      }).join('');
+      return `<div class="mc ${m.type}${selected?' selected':''}" onclick="G.pickMutation('${m.id}')">
+        <div class="mc-name">${isBiome?biome.icon+' ':''}${m.name}</div>
+        <div class="mc-desc">${m.desc}</div>
+        <div class="mc-tags">${tags}${isBiome?`<span class="mt b">BIOME</span>`:''}</div>
+      </div>`;
+    }).join('');
+
+    list.querySelectorAll('.mc').forEach((el,i)=>{
+      const m=choices[i];if(!m)return;
+      const statsStr=Object.entries(m.stats).map(([k,v])=>`<span style="color:${v>0?'var(--accent)':'var(--danger)'}">${k} ${v>0?'+':''}${v}</span>`).join(' ');
+      tt(el,m.name,`${m.desc}<br>${statsStr}`);
+    });
+  }
+
+  function advanceMut(){
+    const ni=nextMutIdx(mutIdx);
+    if(ni===-1){autoPickAll();allDone=true;enableFight();renderMutPanel();setPhase('Combat Ready','All species evolved.',true);}
+    else{mutIdx=ni;renderMutPanel();setPhase('Choose Mutation',`Picking for: ${creatures[mutIdx].name}`,false);}
+    renderCreatureCards();
+  }
+
+  function renderLeaderboard(){
+    const rows=document.getElementById('lb-rows');
+    const sorted=[...creatures].sort((a,b)=>b.pop-a.pop);
+    rows.innerHTML=sorted.map((c,i)=>`<div class="lb-row">
+      <div class="lb-rank r${i+1}">${i+1}</div>
+      <div class="lb-name ${c.extinct?'lb-ext':''}">${c.name}</div>
+      <div class="lb-pop" style="color:${c.pop>60?'var(--accent)':c.pop>30?'var(--warn)':'var(--danger)'}">${c.pop}</div>
+      <div class="lb-score">${c.combatScore!==undefined?c.combatScore+'pt':''}</div>
+      ${c.lastPlace!==null?`<div style="font-size:0.56rem;color:var(--text-dim)">#${c.lastPlace+1}</div>`:''}
+    </div>`).join('');
+  }
+
+  function renderRoundBar(){
+    const bar=document.getElementById('round-bar');
+    let h='';
+    for(let i=1;i<=TOTAL_ROUNDS;i++){
+      let cls='rp';
+      if(SHIFT_AT.includes(i))cls+=' shift';
+      if(i<round)cls+=' done';
+      else if(i===round)cls+=' cur';
+      h+=`<div class="${cls}" title="Gen ${i}${SHIFT_AT.includes(i)?' ⚠ Shift':''}"></div>`;
+    }
+    bar.innerHTML=h;
+  }
+
+  function enableFight(){document.getElementById('btn-fight').disabled=false;}
+  function setPhase(lbl,sub,fightOn){
+    document.getElementById('phase-lbl').textContent=`Phase: ${lbl}`;
+    document.getElementById('mut-sub').textContent=sub;
+    document.getElementById('btn-fight').disabled=!fightOn;
+  }
+  function updateCounters(){
+    document.getElementById('top-alive').textContent=creatures.filter(c=>!c.extinct).length;
+    document.getElementById('top-extinct').textContent=creatures.filter(c=>c.extinct).length;
+  }
+
+  function log(msg,type){
+    const el=document.getElementById('combat-log');
+    const d=document.createElement('div');d.className='ll '+(type||'');d.textContent=msg;
+    el.appendChild(d);el.scrollTop=el.scrollHeight;
+    while(el.children.length>100)el.removeChild(el.firstChild);
+  }
+
+  function endScreen(winner){
+    phase='gameover';
+    const surviving=creatures.filter(c=>!c.extinct);
+    const box=document.getElementById('ov-box');
+    box.innerHTML=`
+      <div class="ov-title ${winner?.player?'green':surviving.length>1?'yellow':'red'}">
+        ${winner?.player?'YOUR LINEAGE<br>PREVAILS':surviving.length>1?`GEN ${round}<br>COMPLETE`:'TOTAL<br>EXTINCTION'}
+      </div>
+      <div class="ov-text">${winner?.player?`${winner.name} evolved ${winner.traits.length} traits over ${round} generations and claimed the ecosystem.`:surviving.length>1?`${round} generations of brutal selection complete. ${surviving.length} species survive.`:`All ${creatures.length} lineages have collapsed. Natural selection was merciless.`}</div>
+      <div style="margin:14px 0;">
+        ${[...creatures].sort((a,b)=>b.pop-a.pop).map((c,i)=>`
+          <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);${c.extinct?'opacity:0.35':''}">
+            <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:0.85rem;width:14px;color:${['var(--gold)','var(--silver)','var(--bronze)','var(--text-dim)','var(--text-dim)','var(--text-dim)'][i]}">${i+1}</div>
+            <div style="flex:1;font-size:0.75rem;font-family:'Syne',sans-serif;${c.extinct?'text-decoration:line-through':''}">${c.name}</div>
+            <div style="font-size:0.7rem;font-family:'Syne',sans-serif;color:${c.pop>50?'var(--accent)':c.pop>20?'var(--warn)':'var(--danger)'}">${c.pop} pop</div>
+            <div style="font-size:0.58rem;color:var(--text-dim)">${c.traits.length} traits</div>
+          </div>`).join('')}
+      </div>
+      <button class="btn btn-go" style="max-width:200px;margin:12px auto 0;" onclick="location.reload()">↺ Evolve Again</button>`;
+    document.getElementById('overlay').classList.remove('hidden');
+  }
+
+  function restart(){location.reload();}
+
+  // TOOLTIP
+  let ttShowing=false;
+  function tt(el,title,body){
+    el.addEventListener('mouseenter',e=>{
+      document.getElementById('tt-title').textContent=title;
+      document.getElementById('tt-body').innerHTML=body||'';
+      document.getElementById('tooltip').classList.add('show');
+      ttShowing=true;moveTT(e);
+    });
+    el.addEventListener('mousemove',moveTT);
+    el.addEventListener('mouseleave',()=>{document.getElementById('tooltip').classList.remove('show');ttShowing=false;});
+  }
+  function moveTT(e){
+    if(!ttShowing)return;
+    const t=document.getElementById('tooltip');
+    let x=e.clientX+14,y=e.clientY+14;
+    if(x+220>window.innerWidth)x=e.clientX-220;
+    if(y+130>window.innerHeight)y=e.clientY-130;
+    t.style.left=x+'px';t.style.top=y+'px';
+  }
+  document.addEventListener('mousemove',moveTT);
+
+  function ri(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+  function shuffle(a){for(let i=a.length-1;i>0;i--){const j=ri(0,i);[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+  return{startGame,pickMutation,beginFight,skipCombat,acknowledgeShift,restart,init};
+})();
+
+G.init();
+</script>
+</body>
+</html>
